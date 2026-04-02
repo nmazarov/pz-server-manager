@@ -1,0 +1,414 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Config Manager Module
+Handles reading and writing server configuration files (.ini and .lua).
+"""
+
+import os
+import re
+import logging
+from pathlib import Path
+from typing import Dict, Any, Optional, List
+from configparser import ConfigParser
+
+logger = logging.getLogger(__name__)
+
+
+class ConfigManager:
+    """Manages server configuration files."""
+    
+    def __init__(self, paths: dict):
+        self.paths = paths
+        self.server_config_dir = paths['server_config_dir']
+        self._server_name = "servertest"
+        
+    def set_server_name(self, name: str):
+        """Set the server name (config folder name)."""
+        self._server_name = name
+        
+    def get_ini_path(self) -> Path:
+        """Get path to the server .ini file."""
+        return self.server_config_dir / f"{self._server_name}.ini"
+        
+    def get_sandbox_path(self) -> Path:
+        """Get path to the SandboxVars.lua file."""
+        return self.server_config_dir / f"{self._server_name}_SandboxVars.lua"
+        
+    def get_spawnpoints_path(self) -> Path:
+        """Get path to the spawnpoints.lua file."""
+        return self.server_config_dir / f"{self._server_name}_spawnpoints.lua"
+        
+    def get_spawnregions_path(self) -> Path:
+        """Get path to the spawnregions.lua file."""
+        return self.server_config_dir / f"{self._server_name}_spawnregions.lua"
+        
+    # ===== INI File Handling =====
+    
+    def load_server_ini(self) -> Dict[str, str]:
+        """Load server settings from .ini file."""
+        ini_path = self.get_ini_path()
+        
+        if not ini_path.exists():
+            logger.warning(f"INI file not found: {ini_path}")
+            raise FileNotFoundError(f"Config file not found: {ini_path}")
+        
+        config = {}
+        
+        try:
+            with open(ini_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    
+                    # Skip comments and empty lines
+                    if not line or line.startswith('#') or line.startswith(';'):
+                        continue
+                    
+                    # Parse key=value
+                    if '=' in line:
+                        key, _, value = line.partition('=')
+                        config[key.strip()] = value.strip()
+                        
+            logger.info(f"Loaded {len(config)} settings from {ini_path}")
+            return config
+            
+        except Exception as e:
+            logger.error(f"Failed to load INI file: {e}")
+            raise
+            
+    def save_server_ini(self, settings: Dict[str, str]):
+        """Save server settings to .ini file, preserving comments and order."""
+        ini_path = self.get_ini_path()
+        
+        # Ensure directory exists
+        ini_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # If file exists, update it preserving structure
+        if ini_path.exists():
+            self._update_ini_file(ini_path, settings)
+        else:
+            # Create new file with default structure
+            self._create_ini_file(ini_path, settings)
+            
+        logger.info(f"Saved settings to {ini_path}")
+        
+    def _update_ini_file(self, path: Path, settings: Dict[str, str]):
+        """Update existing INI file, preserving comments and unknown keys."""
+        lines = []
+        updated_keys = set()
+        
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                original_line = line
+                line_stripped = line.strip()
+                
+                # Keep comments and empty lines
+                if not line_stripped or line_stripped.startswith('#') or line_stripped.startswith(';'):
+                    lines.append(original_line)
+                    continue
+                
+                # Check if this is a key we want to update
+                if '=' in line_stripped:
+                    key, _, _ = line_stripped.partition('=')
+                    key = key.strip()
+                    
+                    if key in settings:
+                        lines.append(f"{key}={settings[key]}\n")
+                        updated_keys.add(key)
+                    else:
+                        lines.append(original_line)
+                else:
+                    lines.append(original_line)
+        
+        # Add any new keys that weren't in the file
+        for key, value in settings.items():
+            if key not in updated_keys:
+                lines.append(f"{key}={value}\n")
+        
+        # Write back
+        with open(path, 'w', encoding='utf-8') as f:
+            f.writelines(lines)
+            
+    def _create_ini_file(self, path: Path, settings: Dict[str, str]):
+        """Create a new INI file with the given settings."""
+        # Default settings with comments
+        default_content = """# Project Zomboid Server Configuration
+# Generated by PZ Server Manager
+
+# Server name displayed in the server browser
+PublicName={PublicName}
+PublicDescription={PublicDescription}
+
+# Server password (leave empty for no password)
+Password={Password}
+
+# Maximum number of players
+MaxPlayers={MaxPlayers}
+
+# Network ports
+DefaultPort={DefaultPort}
+SteamPort1={SteamPort1}
+RCONPort={RCONPort}
+RCONPassword={RCONPassword}
+
+# Server visibility
+Open={Open}
+
+# Gameplay settings
+PVP={PVP}
+PauseEmpty={PauseEmpty}
+GlobalChat={GlobalChat}
+SafetySystem={SafetySystem}
+ShowSafety={ShowSafety}
+
+# Admin settings
+AdminPassword={AdminPassword}
+SaveWorldEveryMinutes={SaveWorldEveryMinutes}
+
+# Spawn settings
+SpawnPoint={SpawnPoint}
+
+# Mods
+WorkshopItems=
+Mods=
+
+"""
+        # Fill in defaults for missing settings
+        defaults = {
+            'PublicName': 'My PZ Server',
+            'PublicDescription': 'A Project Zomboid server',
+            'Password': '',
+            'MaxPlayers': '16',
+            'DefaultPort': '16261',
+            'SteamPort1': '8766',
+            'RCONPort': '27015',
+            'RCONPassword': '',
+            'Open': 'true',
+            'PVP': 'true',
+            'PauseEmpty': 'true',
+            'GlobalChat': 'true',
+            'SafetySystem': 'true',
+            'ShowSafety': 'true',
+            'AdminPassword': '',
+            'SaveWorldEveryMinutes': '15',
+            'SpawnPoint': '0,0,0',
+        }
+        
+        # Merge with provided settings
+        all_settings = {**defaults, **settings}
+        
+        # Format content
+        content = default_content.format(**all_settings)
+        
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(content)
+            
+    def get_ini_value(self, key: str, default: str = '') -> str:
+        """Get a single value from the INI file."""
+        try:
+            config = self.load_server_ini()
+            return config.get(key, default)
+        except FileNotFoundError:
+            return default
+            
+    def set_ini_value(self, key: str, value: str):
+        """Set a single value in the INI file."""
+        try:
+            config = self.load_server_ini()
+        except FileNotFoundError:
+            config = {}
+            
+        config[key] = value
+        self.save_server_ini(config)
+        
+    # ===== Lua File Handling =====
+    
+    def load_sandbox_vars(self) -> Dict[str, Any]:
+        """Load sandbox variables from SandboxVars.lua."""
+        lua_path = self.get_sandbox_path()
+        
+        if not lua_path.exists():
+            logger.warning(f"Sandbox file not found: {lua_path}")
+            raise FileNotFoundError(f"Sandbox file not found: {lua_path}")
+        
+        vars_dict = {}
+        
+        try:
+            with open(lua_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Parse Lua assignments
+            # Handles: SandboxVars.ZombieLore.Speed = 3,
+            pattern = r'SandboxVars\.(\w+)\.(\w+)\s*=\s*([^,\n]+)'
+            
+            for match in re.finditer(pattern, content):
+                category = match.group(1)
+                key = match.group(2)
+                value = match.group(3).strip()
+                
+                # Clean up value
+                if value.lower() == 'true':
+                    value = True
+                elif value.lower() == 'false':
+                    value = False
+                elif value.isdigit():
+                    value = int(value)
+                elif '.' in value:
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        value = value.strip('"\'')
+                else:
+                    value = value.strip('"\'')
+                
+                if category not in vars_dict:
+                    vars_dict[category] = {}
+                vars_dict[category][key] = value
+                
+            logger.info(f"Loaded sandbox vars from {lua_path}")
+            return vars_dict
+            
+        except Exception as e:
+            logger.error(f"Failed to load sandbox vars: {e}")
+            raise
+            
+    def save_sandbox_vars(self, vars_dict: Dict[str, Dict[str, Any]]):
+        """Save sandbox variables to SandboxVars.lua."""
+        lua_path = self.get_sandbox_path()
+        
+        # Ensure directory exists
+        lua_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            lines = ["SandboxVars = {"]
+            
+            for category, values in vars_dict.items():
+                lines.append(f"    {category} = {{")
+                
+                for key, value in values.items():
+                    # Format value based on type
+                    if isinstance(value, bool):
+                        formatted_value = 'true' if value else 'false'
+                    elif isinstance(value, (int, float)):
+                        formatted_value = str(value)
+                    else:
+                        formatted_value = f'"{value}"'
+                    
+                    lines.append(f"        {key} = {formatted_value},")
+                    
+                lines.append("    },")
+                
+            lines.append("}")
+            
+            with open(lua_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(lines))
+                
+            logger.info(f"Saved sandbox vars to {lua_path}")
+            
+        except Exception as e:
+            logger.error(f"Failed to save sandbox vars: {e}")
+            raise
+            
+    def get_sandbox_value(self, category: str, key: str, default: Any = None) -> Any:
+        """Get a single sandbox variable."""
+        try:
+            vars_dict = self.load_sandbox_vars()
+            return vars_dict.get(category, {}).get(key, default)
+        except FileNotFoundError:
+            return default
+            
+    def set_sandbox_value(self, category: str, key: str, value: Any):
+        """Set a single sandbox variable."""
+        try:
+            vars_dict = self.load_sandbox_vars()
+        except FileNotFoundError:
+            vars_dict = {}
+            
+        if category not in vars_dict:
+            vars_dict[category] = {}
+            
+        vars_dict[category][key] = value
+        self.save_sandbox_vars(vars_dict)
+        
+    # ===== Mod Configuration =====
+    
+    def get_workshop_items(self) -> List[str]:
+        """Get list of Workshop item IDs from config."""
+        value = self.get_ini_value('WorkshopItems', '')
+        if not value:
+            return []
+        return [id.strip() for id in value.split(';') if id.strip()]
+        
+    def set_workshop_items(self, items: List[str]):
+        """Set list of Workshop item IDs in config."""
+        value = ';'.join(items)
+        self.set_ini_value('WorkshopItems', value)
+        
+    def get_mods(self) -> List[str]:
+        """Get list of mod IDs from config."""
+        value = self.get_ini_value('Mods', '')
+        if not value:
+            return []
+        return [mod.strip() for mod in value.split(';') if mod.strip()]
+        
+    def set_mods(self, mods: List[str]):
+        """Set list of mod IDs in config."""
+        value = ';'.join(mods)
+        self.set_ini_value('Mods', value)
+        
+    # ===== Config File Discovery =====
+    
+    def list_server_configs(self) -> List[str]:
+        """List available server configurations (names)."""
+        configs = []
+        
+        if self.server_config_dir.exists():
+            for file in self.server_config_dir.glob('*.ini'):
+                # Filter out backup files
+                if not file.stem.endswith('_backup'):
+                    configs.append(file.stem)
+                    
+        return configs
+        
+    def config_exists(self) -> bool:
+        """Check if the current server config exists."""
+        return self.get_ini_path().exists()
+        
+    def backup_config(self):
+        """Create a backup of the current configuration."""
+        import shutil
+        from datetime import datetime
+        
+        ini_path = self.get_ini_path()
+        sandbox_path = self.get_sandbox_path()
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        if ini_path.exists():
+            backup_path = ini_path.with_suffix(f'.ini.backup_{timestamp}')
+            shutil.copy2(ini_path, backup_path)
+            logger.info(f"Created backup: {backup_path}")
+            
+        if sandbox_path.exists():
+            backup_path = sandbox_path.with_suffix(f'.lua.backup_{timestamp}')
+            shutil.copy2(sandbox_path, backup_path)
+            logger.info(f"Created backup: {backup_path}")
+            
+    def restore_defaults(self):
+        """Restore default configuration values."""
+        default_settings = {
+            'PublicName': 'My PZ Server',
+            'PublicDescription': 'A Project Zomboid server',
+            'Password': '',
+            'MaxPlayers': '16',
+            'DefaultPort': '16261',
+            'SteamPort1': '8766',
+            'RCONPort': '27015',
+            'Open': 'true',
+            'PVP': 'true',
+            'PauseEmpty': 'true',
+            'GlobalChat': 'true',
+        }
+        
+        self.save_server_ini(default_settings)
+        logger.info("Restored default configuration")

@@ -1,0 +1,11 @@
+# Project Zomboid Server Manager - Dependencies
+# Install with: pip install -r requirements.txt
+
+# GUI Framework
+PyQt5>=5.15.0
+
+# For building executables (optional, for distribution)
+pyinstaller>=5.0
+
+# Additional utilities (optional but recommended)
+# requests>=2.28.0  # Alternative to urllib for HTTP requests
