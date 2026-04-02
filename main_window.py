@@ -256,7 +256,7 @@ class MainWindow(QMainWindow):
         scroll_layout = QVBoxLayout(scroll_widget)
         
         # Basic settings
-        basic_group = QGroupBox("Basic Settings")
+        basic_group = QGroupBox(tr("group_basic"))
         basic_layout = QFormLayout(basic_group)
         
         self.setting_public_name = QLineEdit()
@@ -280,7 +280,7 @@ class MainWindow(QMainWindow):
         scroll_layout.addWidget(basic_group)
         
         # Network settings
-        network_group = QGroupBox("Network Settings")
+        network_group = QGroupBox(tr("group_network"))
         network_layout = QFormLayout(network_group)
         
         self.setting_port = QSpinBox()
@@ -302,33 +302,33 @@ class MainWindow(QMainWindow):
         self.setting_rcon_password.setPlaceholderText("RCON password")
         network_layout.addRow("RCON Password:", self.setting_rcon_password)
         
-        self.setting_public = QCheckBox("List on public server browser")
+        self.setting_public = QCheckBox(tr("chk_public"))
         self.setting_public.setChecked(True)
         network_layout.addRow("Public Server:", self.setting_public)
         
         scroll_layout.addWidget(network_group)
         
         # Gameplay settings
-        gameplay_group = QGroupBox("Gameplay Settings")
+        gameplay_group = QGroupBox(tr("group_gameplay"))
         gameplay_layout = QFormLayout(gameplay_group)
         
-        self.setting_pvp = QCheckBox("Enable PvP")
+        self.setting_pvp = QCheckBox(tr("chk_pvp"))
         self.setting_pvp.setChecked(True)
         gameplay_layout.addRow("PvP:", self.setting_pvp)
         
-        self.setting_pause_empty = QCheckBox("Pause when server is empty")
+        self.setting_pause_empty = QCheckBox(tr("chk_pause_empty"))
         self.setting_pause_empty.setChecked(True)
         gameplay_layout.addRow("Pause Empty:", self.setting_pause_empty)
         
-        self.setting_global_chat = QCheckBox("Enable global chat")
+        self.setting_global_chat = QCheckBox(tr("chk_global_chat"))
         self.setting_global_chat.setChecked(True)
         gameplay_layout.addRow("Global Chat:", self.setting_global_chat)
         
-        self.setting_safety_system = QCheckBox("Enable safety system (spawn protection)")
+        self.setting_safety_system = QCheckBox(tr("chk_safety_system"))
         self.setting_safety_system.setChecked(True)
         gameplay_layout.addRow("Safety System:", self.setting_safety_system)
         
-        self.setting_show_safety = QCheckBox("Show safety indicators")
+        self.setting_show_safety = QCheckBox(tr("chk_show_safety"))
         self.setting_show_safety.setChecked(True)
         gameplay_layout.addRow("Show Safety:", self.setting_show_safety)
         
@@ -339,7 +339,7 @@ class MainWindow(QMainWindow):
         scroll_layout.addWidget(gameplay_group)
         
         # Admin settings
-        admin_group = QGroupBox("Admin Settings")
+        admin_group = QGroupBox(tr("group_admin"))
         admin_layout = QFormLayout(admin_group)
         
         self.setting_admin_password = QLineEdit()
@@ -361,17 +361,17 @@ class MainWindow(QMainWindow):
         # Buttons
         btn_layout = QHBoxLayout()
         
-        save_btn = QPushButton("💾 Save Settings")
+        save_btn = QPushButton(tr("btn_save_settings"))
         save_btn.clicked.connect(self.save_settings)
         btn_layout.addWidget(save_btn)
         
-        reload_btn = QPushButton("🔄 Reload Settings")
+        reload_btn = QPushButton(tr("btn_reload_settings"))
         reload_btn.clicked.connect(self.load_settings)
         btn_layout.addWidget(reload_btn)
         
         layout.addLayout(btn_layout)
         
-        self.tabs.addTab(tab, "⚙️ Server Settings")
+        self.tabs.addTab(tab, tr("tab_settings"))
         
     def create_sandbox_tab(self):
         """Create the sandbox/difficulty settings tab."""
@@ -380,7 +380,7 @@ class MainWindow(QMainWindow):
         
         # Preset selector
         preset_layout = QHBoxLayout()
-        preset_layout.addWidget(QLabel("Preset:"))
+        preset_layout.addWidget(QLabel(tr("lbl_preset")))
         
         self.preset_combo = QComboBox()
         self.preset_combo.addItems([
@@ -398,7 +398,7 @@ class MainWindow(QMainWindow):
         scroll_layout = QVBoxLayout(scroll_widget)
         
         # Zombie settings
-        zombie_group = QGroupBox("Zombie Settings")
+        zombie_group = QGroupBox(tr("group_zombie"))
         zombie_layout = QFormLayout(zombie_group)
         
         self.sandbox_zombie_count = QComboBox()
@@ -438,7 +438,7 @@ class MainWindow(QMainWindow):
         scroll_layout.addWidget(zombie_group)
         
         # Loot settings
-        loot_group = QGroupBox("Loot & Resources")
+        loot_group = QGroupBox(tr("group_loot"))
         loot_layout = QFormLayout(loot_group)
         
         self.sandbox_loot_rarity = QComboBox()
@@ -468,7 +468,7 @@ class MainWindow(QMainWindow):
         scroll_layout.addWidget(loot_group)
         
         # Time settings
-        time_group = QGroupBox("Time & Environment")
+        time_group = QGroupBox(tr("group_time"))
         time_layout = QFormLayout(time_group)
         
         self.sandbox_start_month = QComboBox()
@@ -495,7 +495,7 @@ class MainWindow(QMainWindow):
         scroll_layout.addWidget(time_group)
         
         # Character settings
-        char_group = QGroupBox("Character & XP")
+        char_group = QGroupBox(tr("group_character"))
         char_layout = QFormLayout(char_group)
         
         self.sandbox_xp_multiplier = QComboBox()
@@ -522,17 +522,17 @@ class MainWindow(QMainWindow):
         # Buttons
         btn_layout = QHBoxLayout()
         
-        save_btn = QPushButton("💾 Save Sandbox Settings")
+        save_btn = QPushButton(tr("btn_save_sandbox"))
         save_btn.clicked.connect(self.save_sandbox_settings)
         btn_layout.addWidget(save_btn)
         
-        reload_btn = QPushButton("🔄 Reload")
+        reload_btn = QPushButton(tr("btn_reload"))
         reload_btn.clicked.connect(self.load_sandbox_settings)
         btn_layout.addWidget(reload_btn)
         
         layout.addLayout(btn_layout)
         
-        self.tabs.addTab(tab, "🎲 Sandbox Settings")
+        self.tabs.addTab(tab, tr("tab_sandbox"))
         
     def create_mods_tab(self):
         """Create the mods management tab."""
@@ -549,7 +549,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(info_label)
         
         # Mods list
-        mods_group = QGroupBox("Installed Mods")
+        mods_group = QGroupBox(tr("group_mods"))
         mods_layout = QVBoxLayout(mods_group)
         
         self.mods_list = QListWidget()
@@ -559,15 +559,15 @@ class MainWindow(QMainWindow):
         # Mod control buttons
         mod_btn_layout = QHBoxLayout()
         
-        add_btn = QPushButton("➕ Add Mod")
+        add_btn = QPushButton(tr("btn_add_mod"))
         add_btn.clicked.connect(self.add_mod)
         mod_btn_layout.addWidget(add_btn)
         
-        remove_btn = QPushButton("➖ Remove Selected")
+        remove_btn = QPushButton(tr("btn_remove_mod"))
         remove_btn.clicked.connect(self.remove_mod)
         mod_btn_layout.addWidget(remove_btn)
         
-        clear_btn = QPushButton("🗑️ Clear All")
+        clear_btn = QPushButton(tr("btn_clear_mods"))
         clear_btn.clicked.connect(self.clear_mods)
         mod_btn_layout.addWidget(clear_btn)
         
@@ -575,25 +575,25 @@ class MainWindow(QMainWindow):
         layout.addWidget(mods_group)
         
         # Import/Export
-        io_group = QGroupBox("Import / Export")
+        io_group = QGroupBox(tr("group_import_export"))
         io_layout = QHBoxLayout(io_group)
         
-        import_btn = QPushButton("📥 Import Mod List")
+        import_btn = QPushButton(tr("btn_import_mods"))
         import_btn.clicked.connect(self.import_mods)
         io_layout.addWidget(import_btn)
         
-        export_btn = QPushButton("📤 Export Mod List")
+        export_btn = QPushButton(tr("btn_export_mods"))
         export_btn.clicked.connect(self.export_mods)
         io_layout.addWidget(export_btn)
         
         layout.addWidget(io_group)
         
         # Save button
-        save_btn = QPushButton("💾 Save & Apply Mods")
+        save_btn = QPushButton(tr("btn_save_mods"))
         save_btn.clicked.connect(self.save_mods)
         layout.addWidget(save_btn)
         
-        self.tabs.addTab(tab, "🧩 Mods")
+        self.tabs.addTab(tab, tr("tab_mods"))
         
     def create_install_tab(self):
         """Create the installation tab."""
@@ -601,23 +601,23 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(tab)
         
         # Installation path
-        path_group = QGroupBox("Installation Path")
+        path_group = QGroupBox(tr("group_install_path"))
         path_layout = QHBoxLayout(path_group)
         
         self.install_path_edit = QLineEdit(str(self.paths['server_dir']))
         path_layout.addWidget(self.install_path_edit)
         
-        browse_btn = QPushButton("Browse...")
+        browse_btn = QPushButton(tr("btn_browse"))
         browse_btn.clicked.connect(self.browse_install_path)
         path_layout.addWidget(browse_btn)
         
         layout.addWidget(path_group)
         
         # Installation status
-        status_group = QGroupBox("Installation Status")
+        status_group = QGroupBox(tr("group_install_status"))
         status_layout = QVBoxLayout(status_group)
         
-        self.install_status_label = QLabel("Ready to install")
+        self.install_status_label = QLabel(tr("lbl_ready_install"))
         self.install_status_label.setStyleSheet("font-size: 14px;")
         status_layout.addWidget(self.install_status_label)
         
@@ -643,7 +643,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(status_group)
         
         # Install button
-        self.install_btn = QPushButton("📥 Install / Update Server")
+        self.install_btn = QPushButton(tr("btn_install_server"))
         self.install_btn.setMinimumHeight(50)
         self.install_btn.setStyleSheet("font-size: 14px; font-weight: bold;")
         self.install_btn.clicked.connect(self.start_installation)
@@ -657,7 +657,7 @@ class MainWindow(QMainWindow):
         info_label.setStyleSheet("color: #ffaa00; padding: 10px;")
         layout.addWidget(info_label)
         
-        self.tabs.addTab(tab, "📥 Install")
+        self.tabs.addTab(tab, tr("tab_install"))
         
     def show_install_tab(self):
         """Switch to the installation tab."""
