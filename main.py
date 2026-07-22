@@ -245,6 +245,11 @@ def main():
             padding: 6px;
             border-radius: 4px;
         }}
+        QSpinBox::up-button, QSpinBox::down-button {{
+            width: 0px;
+            height: 0px;
+            border: none;
+        }}
         QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{
             border: 1px solid #5294e2;
         }}

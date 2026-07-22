@@ -20,9 +20,21 @@ from PyQt5.QtWidgets import (
     QGroupBox, QFormLayout, QGridLayout, QFileDialog, QMessageBox,
     QInputDialog, QScrollArea, QFrame, QSplitter, QStatusBar, QMenuBar,
     QMenu, QAction, QSystemTrayIcon, QStyle, QDialog, QApplication,
+    QAbstractSpinBox,
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QEvent, QObject
 from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont, QIcon
+
+
+class NoScrollEventFilter(QObject):
+    """Filter out mouse wheel events on QSpinBox and QComboBox to prevent accidental value changes."""
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Wheel:
+            if isinstance(obj, (QAbstractSpinBox, QComboBox)):
+                event.ignore()
+                return True
+        return super().eventFilter(obj, event)
 
 from server_installer import ServerInstaller, InstallWorker
 from server_process import ServerProcess, check_ports_in_use
@@ -174,6 +186,15 @@ class MainWindow(QMainWindow):
         self.statusBar = QStatusBar()
         self.setStatusBar(self.statusBar)
         self.update_status()
+
+        # Disable mouse wheel scrolling on controls & hide spinbox arrows
+        self.no_scroll_filter = NoScrollEventFilter(self)
+        app_inst = QApplication.instance()
+        if app_inst:
+            app_inst.installEventFilter(self.no_scroll_filter)
+
+        for spin in self.findChildren(QAbstractSpinBox):
+            spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
 
         self._setup_tray_icon()
 
