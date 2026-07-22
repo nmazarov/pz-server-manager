@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for PZ Server Manager.
-Includes monkey-patch for Qt5 non-ASCII path resolution on Windows.
+PyInstaller spec file for PZ Server Manager (Single-file .exe edition).
+Builds a single standalone dist/PZ Server Manager.exe file.
 """
 
 import sys
@@ -80,13 +80,17 @@ pyz = PYZ(
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
     [],
-    exclude_binaries=True,
     name='PZ Server Manager',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -94,15 +98,4 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     uac_admin=False,
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='PZ Server Manager',
 )
