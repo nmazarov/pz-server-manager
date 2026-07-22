@@ -88,10 +88,30 @@ def _combo_items(mapping):
     return [tr(k) for k, _ in mapping]
 
 
+def _safe_int(val, default: int = 0) -> int:
+    """Safely convert float/int/str representation to int, handling '10.0' strings."""
+    try:
+        if val is None or val == '':
+            return default
+        return int(float(val))
+    except (ValueError, TypeError):
+        return default
+
+
 def _combo_index(mapping, pz_value, default=0):
     """Return the combo index matching pz_value (2nd element of each tuple)."""
+    try:
+        if isinstance(pz_value, str):
+            if '.' in pz_value:
+                pz_value = float(pz_value)
+            elif pz_value.isdigit() or (pz_value.startswith('-') and pz_value[1:].isdigit()):
+                pz_value = int(pz_value)
+        if isinstance(pz_value, float) and pz_value.is_integer():
+            pz_value = int(pz_value)
+    except Exception:
+        pass
     for i, (_, v) in enumerate(mapping):
-        if v == pz_value:
+        if v == pz_value or str(v) == str(pz_value):
             return i
     return default
 
@@ -1101,15 +1121,15 @@ class MainWindow(QMainWindow):
             self.setting_public_name.setText(c.get('PublicName', ''))
             self.setting_public_desc.setText(c.get('PublicDescription', ''))
             self.setting_password.setText(c.get('Password', ''))
-            self.setting_max_players.setValue(int(c.get('MaxPlayers', 16)))
+            self.setting_max_players.setValue(_safe_int(c.get('MaxPlayers', 16)))
             self.setting_map.setText(c.get('Map', 'Muldraugh, KY'))
             self.setting_welcome_msg.setText(c.get('ServerWelcomeMessage', ''))
 
-            self.setting_port.setValue(int(c.get('DefaultPort', 16261)))
-            self.setting_udp_port.setValue(int(c.get('UDPPort', 16262)))
-            self.setting_steam_port.setValue(int(c.get('SteamPort1', 8766)))
-            self.setting_steam_port2.setValue(int(c.get('SteamPort2', 8767)))
-            self.setting_rcon_port.setValue(int(c.get('RCONPort', 27015)))
+            self.setting_port.setValue(_safe_int(c.get('DefaultPort', 16261)))
+            self.setting_udp_port.setValue(_safe_int(c.get('UDPPort', 16262)))
+            self.setting_steam_port.setValue(_safe_int(c.get('SteamPort1', 8766)))
+            self.setting_steam_port2.setValue(_safe_int(c.get('SteamPort2', 8767)))
+            self.setting_rcon_port.setValue(_safe_int(c.get('RCONPort', 27015)))
             self.setting_rcon_password.setText(c.get('RCONPassword', ''))
             self.setting_public.setChecked(c.get('Open', 'true').lower() == 'true')
 
@@ -1123,7 +1143,7 @@ class MainWindow(QMainWindow):
             self.setting_allow_destruction.setChecked(
                 c.get('AllowDestructionBySledgehammer', 'true').lower() == 'true')
             self.setting_drop_on_death.setCurrentIndex(
-                _combo_index(_DROP_DEATH, int(c.get('DropOnDeath', 1))))
+                _combo_index(_DROP_DEATH, _safe_int(c.get('DropOnDeath', 1))))
             self.setting_spawn_point.setText(c.get('SpawnPoint', '0,0,0'))
 
             self.setting_player_safehouse.setChecked(c.get('PlayerSafehouse', 'false').lower() == 'true')
@@ -1141,20 +1161,20 @@ class MainWindow(QMainWindow):
             self.setting_display_username.setChecked(c.get('DisplayUserName', 'true').lower() == 'true')
             self.setting_voice_enable.setChecked(c.get('VoiceEnable', 'true').lower() == 'true')
             self.setting_voice_3d.setChecked(c.get('Voice3D', 'true').lower() == 'true')
-            self.setting_voice_min.setValue(int(c.get('VoiceMinDistance', 10)))
-            self.setting_voice_max.setValue(int(c.get('VoiceMaxDistance', 100)))
+            self.setting_voice_min.setValue(_safe_int(c.get('VoiceMinDistance', 10)))
+            self.setting_voice_max.setValue(_safe_int(c.get('VoiceMaxDistance', 100)))
 
             self.setting_secure_join.setChecked(c.get('UseSecureJoin', 'false').lower() == 'true')
             self.setting_non_ascii.setChecked(c.get('AllowNonAsciiUsername', 'false').lower() == 'true')
             self.setting_auto_whitelist.setChecked(
                 c.get('AutoCreateUserInWhiteList', 'false').lower() == 'true')
-            self.setting_max_accounts.setValue(int(c.get('MaxAccountsPerUser', 0)))
-            self.setting_speed_limit.setValue(int(c.get('SpeedLimit', 70)))
+            self.setting_max_accounts.setValue(_safe_int(c.get('MaxAccountsPerUser', 0)))
+            self.setting_speed_limit.setValue(_safe_int(c.get('SpeedLimit', 70)))
 
             self.setting_admin_password.setText(c.get('AdminPassword', ''))
-            self.setting_auto_save.setValue(int(c.get('SaveWorldEveryMinutes', 15)))
-            self.setting_backups_count.setValue(int(c.get('BackupsCount', 5)))
-            self.setting_backups_period.setValue(int(c.get('BackupsPeriod', 0)))
+            self.setting_auto_save.setValue(_safe_int(c.get('SaveWorldEveryMinutes', 15)))
+            self.setting_backups_count.setValue(_safe_int(c.get('BackupsCount', 5)))
+            self.setting_backups_period.setValue(_safe_int(c.get('BackupsPeriod', 0)))
 
             self.load_mods_list()
             self.load_sandbox_settings()
@@ -1269,12 +1289,12 @@ class MainWindow(QMainWindow):
             self.sandbox_loot_rarity.setCurrentIndex(_si(_LOOT_RARITY, lo.get('Weapons', 2)))
             hrs = lo.get('HoursForLootRespawn', 0)
             self.sandbox_loot_respawn.setCurrentIndex(_si(_LOOT_RESPAWN, hrs))
-            self.sandbox_water_shutoff.setValue(int(lo.get('WaterShutModifier', 14)))
-            self.sandbox_electricity_shutoff.setValue(int(lo.get('ElecShutModifier', 14)))
+            self.sandbox_water_shutoff.setValue(_safe_int(lo.get('WaterShutModifier', 14)))
+            self.sandbox_electricity_shutoff.setValue(_safe_int(lo.get('ElecShutModifier', 14)))
 
             # Time
-            self.sandbox_start_month.setCurrentIndex(max(0, int(gt.get('StartMonth', 7)) - 1))
-            self.sandbox_start_day.setValue(int(gt.get('StartDay', 9)))
+            self.sandbox_start_month.setCurrentIndex(max(0, _safe_int(gt.get('StartMonth', 7)) - 1))
+            self.sandbox_start_day.setValue(_safe_int(gt.get('StartDay', 9)))
             self.sandbox_day_length.setCurrentIndex(_si(_DAY_LENGTH, gt.get('DayLength', 4)))
             self.sandbox_night_darkness.setCurrentIndex(_si(_NIGHT_DARK, gt.get('NightDarkness', 2)))
             self.sandbox_time_since_apo.setCurrentIndex(_si(_TIME_APO, gt.get('TimeSinceApo', 1)))
@@ -1292,7 +1312,7 @@ class MainWindow(QMainWindow):
             best_xp = min(range(len(_XP_MULT)), key=lambda i: abs(_XP_MULT[i][1]-xp))
             self.sandbox_xp_multiplier.setCurrentIndex(best_xp)
             self.sandbox_player_damage.setCurrentIndex(_si(_PLAYER_DMG, ch.get('DamageToPlayer', 3)))
-            self.sandbox_char_free_points.setValue(int(ch.get('FreePoints', 0)))
+            self.sandbox_char_free_points.setValue(_safe_int(ch.get('FreePoints', 0)))
 
             # Farming / generators
             self.sandbox_farming_speed.setCurrentIndex(_si(_FARMING_SPD, fa.get('FarmingSpeed', 3)))
