@@ -255,7 +255,11 @@ Mods=
                     value = int(value)
                 elif '.' in value:
                     try:
-                        value = float(value)
+                        f_val = float(value)
+                        if f_val.is_integer():
+                            value = int(f_val)
+                        else:
+                            value = f_val
                     except ValueError:
                         value = value.strip('"\'')
                 else:
