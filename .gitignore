@@ -28,6 +28,10 @@ Desktop.ini
 
 # Logs
 *.log
+logs/
+
+# Installer output
+installer_output/
 
 # Config (user-specific)
 language.cfg

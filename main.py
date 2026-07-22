@@ -18,21 +18,48 @@ from PyQt5.QtWidgets import QApplication, QMessageBox, QSplashScreen
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont
 
+import traceback
 from main_window import MainWindow
-from server_installer import ServerInstaller
+from server_installer import ServerInstaller, find_existing_server_installations
 from config_manager import ConfigManager
-from translations import set_language
+from translations import set_language, tr
+
+# Ensure logs directory exists
+LOGS_DIR = Path('logs')
+LOGS_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOGS_DIR / 'pz_manager.log'
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('pz_server_manager.log', encoding='utf-8'),
+        logging.FileHandler(LOG_FILE, encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+def global_exception_hook(exctype, value, tb):
+    """Global exception handler logging to logs/pz_manager.log and showing dialog."""
+    err_msg = "".join(traceback.format_exception(exctype, value, tb))
+    logger.critical(f"Unhandled exception:\n{err_msg}")
+    
+    # Try to show QMessageBox if QApplication instance exists
+    app = QApplication.instance()
+    if app:
+        QMessageBox.critical(
+            None,
+            tr('app_title') or "Critical Error",
+            f"An unexpected error occurred:\n{str(value)}\n\n"
+            f"Details saved to {LOG_FILE.resolve()}"
+        )
+    sys.__excepthook__(exctype, value, tb)
+
+
+sys.excepthook = global_exception_hook
+
 
 
 def is_admin() -> bool:
@@ -299,21 +326,36 @@ def main():
         # Get default paths
         paths = get_default_paths()
 
-        # Check if server is installed
+        # Check if server is installed in default path
         server_installed = check_server_installed(paths)
+
+        # Auto-detect manually installed server in common system paths if default not installed
+        if not server_installed:
+            existing = find_existing_server_installations()
+            if existing:
+                detected_path = existing[0]
+                res = QMessageBox.question(
+                    None,
+                    tr('server_detected_title'),
+                    tr('server_detected_msg', path=str(detected_path)),
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes
+                )
+                if res == QMessageBox.Yes:
+                    paths['server_dir'] = detected_path
+                    paths['steamcmd_dir'] = detected_path / 'steamcmd'
+                    server_installed = True
 
         # Create and show main window
         window = MainWindow(paths, server_installed)
         window.show()
 
-        # If server is not installed, show installation dialog
+        # If server is still not installed, offer automated first-run installation
         if not server_installed:
             result = QMessageBox.question(
                 window,
-                "Server Not Found",
-                "Project Zomboid server is not installed.\n\n"
-                "Would you like to install it now?\n\n"
-                "This will download SteamCMD and the dedicated server files (~3GB).",
+                tr('first_run_title'),
+                tr('first_run_msg'),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.Yes
             )

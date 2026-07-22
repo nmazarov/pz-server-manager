@@ -331,6 +331,41 @@ TRANSLATIONS = {
         'july':      'July',      'august':   'August',
         'september': 'September', 'october':  'October',
         'november':  'November',  'december': 'December',
+
+        # Presets
+        'preset_label': 'Preset / Difficulty:',
+        'preset_select': '-- Select Preset --',
+        'preset_beginner': 'Beginner',
+        'preset_survival': 'Survival',
+        'preset_hardcore': 'Hardcore',
+        'preset_horde': 'Zombie Horde',
+        'preset_builder': 'Builder',
+        'preset_applied': 'Preset "{name}" applied successfully!',
+
+        # Backups
+        'btn_manage_backups': 'Manage Backups',
+        'backup_title': 'Configuration Backups',
+        'btn_restore': 'Restore Selected',
+        'backup_restored': 'Configuration restored successfully!',
+        'no_backups_found': 'No backups found for this server.',
+
+        # Tray
+        'tray_show': 'Show Manager',
+        'tray_hide': 'Hide to Tray',
+        'tray_start': 'Start Server',
+        'tray_stop': 'Stop Server',
+        'tray_exit': 'Exit',
+        'tray_server_started': 'Server has been started successfully.',
+        'tray_server_stopped': 'Server has stopped.',
+        'tray_minimized': 'App minimized to system tray.',
+
+        # Diagnostics & Warnings
+        'error_disk_space': 'Insufficient disk space! Needed at least {required} GB, available: {available:.2f} GB.',
+        'warn_ports_in_use': 'The following ports are already in use by another application: {ports}.\nDo you still want to start the server?',
+        'first_run_title': 'PZ Dedicated Server Not Found',
+        'first_run_msg': 'Project Zomboid dedicated server was not found on your system.\n\nWould you like to automatically download and install SteamCMD and the server (~3GB) now?',
+        'server_detected_title': 'Existing Server Detected',
+        'server_detected_msg': 'Found existing Project Zomboid server at:\n{path}\n\nWould you like to use this directory as your server location?',
     },
 
     # ════════════════════════════════════════════════════════════════
@@ -659,6 +694,41 @@ TRANSLATIONS = {
         'july':      'Июль',     'august':   'Август',
         'september': 'Сентябрь', 'october':  'Октябрь',
         'november':  'Ноябрь',   'december': 'Декабрь',
+
+        # Presets
+        'preset_label': 'Предустановка сложности:',
+        'preset_select': '-- Выберите пресет --',
+        'preset_beginner': 'Начинающий (Легкий)',
+        'preset_survival': 'Выживание (Стандарт)',
+        'preset_hardcore': 'Хардкор (Сложный)',
+        'preset_horde': 'Орда Zomboid',
+        'preset_builder': 'Строитель (Мирные зомби)',
+        'preset_applied': 'Пресет "{name}" успешно применен!',
+
+        # Backups
+        'btn_manage_backups': 'Управление бэкапами',
+        'backup_title': 'Резервные копии конфигураций',
+        'btn_restore': 'Восстановить выбранную',
+        'backup_restored': 'Конфигурация успешно восстановлена!',
+        'no_backups_found': 'Резервных копий для этого сервера не найдено.',
+
+        # Tray
+        'tray_show': 'Показать приложение',
+        'tray_hide': 'Свернуть в трей',
+        'tray_start': 'Запустить сервер',
+        'tray_stop': 'Остановить сервер',
+        'tray_exit': 'Выход',
+        'tray_server_started': 'Сервер успешно запущен.',
+        'tray_server_stopped': 'Сервер остановлен.',
+        'tray_minimized': 'Приложение свернуто в системный трей.',
+
+        # Diagnostics & Warnings
+        'error_disk_space': 'Недостаточно свободного места на диске! Требуется минимум {required} ГБ, свободно: {available:.2f} ГБ.',
+        'warn_ports_in_use': 'Следующие сетевые порты уже заняты другим приложением: {ports}.\nВы уверены, что хотите запустить сервер?',
+        'first_run_title': 'Сервер PZ не найден',
+        'first_run_msg': 'Сервер Project Zomboid не обнаружен на компьютере.\n\nХотите автоматически скачать и установить SteamCMD и сервер (~3 ГБ) в папку по умолчанию?',
+        'server_detected_title': 'Обнаружен существующий сервер',
+        'server_detected_msg': 'Обнаружен установленный сервер Project Zomboid по адресу:\n{path}\n\nИспользовать эту папку для работы?',
     },
 }
 

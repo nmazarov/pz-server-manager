@@ -19,13 +19,13 @@ from PyQt5.QtWidgets import (
     QTextEdit, QPlainTextEdit, QListWidget, QListWidgetItem, QProgressBar,
     QGroupBox, QFormLayout, QGridLayout, QFileDialog, QMessageBox,
     QInputDialog, QScrollArea, QFrame, QSplitter, QStatusBar, QMenuBar,
-    QMenu, QAction,
+    QMenu, QAction, QSystemTrayIcon, QStyle, QDialog, QApplication,
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont, QIcon
 
 from server_installer import ServerInstaller, InstallWorker
-from server_process import ServerProcess
+from server_process import ServerProcess, check_ports_in_use
 from config_manager import ConfigManager
 from mod_manager import ModManager
 from translations import tr, set_language, get_language
@@ -155,6 +155,77 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.statusBar)
         self.update_status()
 
+        self._setup_tray_icon()
+
+    # ── Tray ────────────────────────────────────────────────────────
+
+    def _setup_tray_icon(self):
+        """Setup system tray icon and context menu."""
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+
+        self.tray_icon = QSystemTrayIcon(self)
+        icon = self.windowIcon()
+        if icon.isNull():
+            icon = self.style().standardIcon(QStyle.SP_ComputerIcon)
+        self.tray_icon.setIcon(icon)
+
+        tray_menu = QMenu(self)
+        a_show = QAction(tr('tray_show'), self)
+        a_show.triggered.connect(self.show_normal_and_raise)
+        tray_menu.addAction(a_show)
+
+        a_start = QAction(tr('tray_start'), self)
+        a_start.triggered.connect(self.start_server)
+        tray_menu.addAction(a_start)
+
+        a_stop = QAction(tr('tray_stop'), self)
+        a_stop.triggered.connect(self.stop_server)
+        tray_menu.addAction(a_stop)
+
+        tray_menu.addSeparator()
+        a_exit = QAction(tr('tray_exit'), self)
+        a_exit.triggered.connect(self.quit_app)
+        tray_menu.addAction(a_exit)
+
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self._on_tray_icon_activated)
+        self.tray_icon.show()
+
+    def show_normal_and_raise(self):
+        self.showNormal()
+        self.activateWindow()
+        self.raise_()
+
+    def _on_tray_icon_activated(self, reason):
+        if reason == QSystemTrayIcon.Trigger:
+            if self.isVisible():
+                self.hide()
+            else:
+                self.show_normal_and_raise()
+
+    def closeEvent(self, event):
+        """Minimize to system tray on window close."""
+        if hasattr(self, 'tray_icon') and self.tray_icon.isVisible():
+            self.hide()
+            self.tray_icon.showMessage(
+                tr('app_title'),
+                tr('tray_minimized'),
+                QSystemTrayIcon.Information,
+                2000
+            )
+            event.ignore()
+        else:
+            event.accept()
+
+    def quit_app(self):
+        """Force application exit."""
+        if hasattr(self, 'tray_icon'):
+            self.tray_icon.hide()
+        if self.server_process.is_running():
+            self.server_process.stop()
+        QApplication.quit()
+
     # ── Menu ────────────────────────────────────────────────────────
 
     def setup_menu(self):
@@ -173,6 +244,7 @@ class MainWindow(QMainWindow):
         for key, slot in [
             ('menu_validate',    self.validate_server),
             ('menu_update',      self.update_server),
+            ('btn_manage_backups', self.open_backup_manager),
             (None,               None),
             ('menu_open_config', self.open_config_folder),
             ('menu_open_server', self.open_server_folder),
@@ -871,6 +943,30 @@ class MainWindow(QMainWindow):
         if not self.server_installed:
             QMessageBox.warning(self, tr('server_not_installed'), tr('server_not_installed_msg'))
             return
+
+        # Check ports availability before launching
+        try:
+            game_port = getattr(self, 'setting_game_port', None)
+            g_p = game_port.text().strip() if game_port else '16261'
+            steam_port = getattr(self, 'setting_steam_port1', None)
+            s_p = steam_port.text().strip() if steam_port else '8766'
+            rcon_port = getattr(self, 'setting_rcon_port', None)
+            r_p = rcon_port.text().strip() if rcon_port else '27015'
+
+            in_use = check_ports_in_use([g_p, s_p, r_p])
+            if in_use:
+                res = QMessageBox.warning(
+                    self,
+                    tr('app_title'),
+                    tr('warn_ports_in_use', ports=", ".join(map(str, in_use))),
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                if res != QMessageBox.Yes:
+                    return
+        except Exception as e:
+            logger.debug(f"Port check failed: {e}")
+
         name = self.server_name_input.text().strip() or 'servertest'
         self.append_console_output(f"{tr('starting_server')} '{name}'…")
         try:
@@ -903,6 +999,8 @@ class MainWindow(QMainWindow):
         self.start_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
         self.restart_btn.setEnabled(True)
+        if hasattr(self, 'tray_icon') and self.tray_icon.isVisible():
+            self.tray_icon.showMessage(tr('app_title'), tr('tray_server_started'), QSystemTrayIcon.Information, 3000)
 
     def on_server_stopped(self):
         self.status_indicator.setStyleSheet('color:#ff4444;font-size:24px;')
@@ -910,10 +1008,31 @@ class MainWindow(QMainWindow):
         self.start_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
         self.restart_btn.setEnabled(False)
+        if hasattr(self, 'tray_icon') and self.tray_icon.isVisible():
+            self.tray_icon.showMessage(tr('app_title'), tr('tray_server_stopped'), QSystemTrayIcon.Information, 3000)
 
     def append_console_output(self, text: str):
         ts = datetime.now().strftime('%H:%M:%S')
-        self.console_output.appendPlainText(f'[{ts}] {text}')
+        cursor = self.console_output.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        
+        fmt = QTextCharFormat()
+        line_lower = text.lower()
+
+        if any(k in line_lower for k in ['server started', 'logged in', 'listening', 'ready', 'started']):
+            fmt.setForeground(QColor('#4CAF50'))  # Green
+        elif any(k in line_lower for k in ['error', 'failed', 'exception', 'critical']):
+            fmt.setForeground(QColor('#F44336'))  # Red
+        elif any(k in line_lower for k in ['connected', 'connecting', 'fully connected', 'disconnected', 'join']):
+            fmt.setForeground(QColor('#00BCD4'))  # Cyan / Blue
+        elif any(k in line_lower for k in ['warning', 'warn']):
+            fmt.setForeground(QColor('#FF9800'))  # Orange
+        else:
+            fmt.setForeground(QColor('#E0E0E0'))  # Light Gray
+
+        cursor.insertText(f'[{ts}] {text}\n', fmt)
+        self.console_output.setTextCursor(cursor)
+        self.console_output.ensureCursorVisible()
 
     def append_console_error(self, text: str):
         ts = datetime.now().strftime('%H:%M:%S')
@@ -924,6 +1043,54 @@ class MainWindow(QMainWindow):
         cursor.insertText(f'[{ts}] ERROR: {text}\n', fmt)
         self.console_output.setTextCursor(cursor)
         self.console_output.ensureCursorVisible()
+
+    def open_backup_manager(self):
+        """Show backup manager dialog to list and restore config backups."""
+        backups = self.config_manager.list_backups()
+        if not backups:
+            QMessageBox.information(self, tr('backup_title'), tr('no_backups_found'))
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(tr('backup_title'))
+        dialog.resize(500, 350)
+        vlayout = QVBoxLayout(dialog)
+
+        lbl = QLabel(tr('backup_title'))
+        vlayout.addWidget(lbl)
+
+        list_widget = QListWidget()
+        for b_path in backups:
+            list_widget.addItem(b_path.name)
+        vlayout.addWidget(list_widget)
+
+        btn_row = QHBoxLayout()
+        restore_btn = QPushButton(tr('btn_restore'))
+        btn_row.addWidget(restore_btn)
+
+        close_btn = QPushButton("Закрыть")
+        close_btn.clicked.connect(dialog.reject)
+        btn_row.addWidget(close_btn)
+        vlayout.addLayout(btn_row)
+
+        def restore_action():
+            selected = list_widget.currentItem()
+            if not selected:
+                return
+            b_name = selected.text()
+            b_path = self.paths['server_config_dir'] / b_name
+            try:
+                self.config_manager.restore_backup_file(b_path)
+                QMessageBox.information(dialog, tr('backup_title'), tr('backup_restored'))
+                self.load_settings()
+                if hasattr(self, 'load_sandbox_settings'):
+                    self.load_sandbox_settings()
+                dialog.accept()
+            except Exception as e:
+                QMessageBox.critical(dialog, tr('error'), f"Failed to restore: {e}")
+
+        restore_btn.clicked.connect(restore_action)
+        dialog.exec_()
 
     # ── Settings load / save ─────────────────────────────────────────
 

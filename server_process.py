@@ -11,12 +11,41 @@ import logging
 import subprocess
 import signal
 import platform
+import socket
 from pathlib import Path
 from typing import Optional
 
 from PyQt5.QtCore import QObject, QThread, pyqtSignal, QTimer
 
 logger = logging.getLogger(__name__)
+
+
+def check_ports_in_use(ports: list) -> list:
+    """Check a list of port numbers for binding availability. Return list of occupied ports."""
+    occupied = []
+    for p in ports:
+        try:
+            p_int = int(p)
+        except (ValueError, TypeError):
+            continue
+        # Test TCP
+        s_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s_tcp.settimeout(0.3)
+        res_tcp = s_tcp.connect_ex(('127.0.0.1', p_int))
+        s_tcp.close()
+        if res_tcp == 0:
+            occupied.append(p_int)
+            continue
+
+        # Test UDP binding
+        s_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s_udp.bind(('0.0.0.0', p_int))
+            s_udp.close()
+        except OSError:
+            occupied.append(p_int)
+    return list(set(occupied))
+
 
 
 class OutputReader(QThread):

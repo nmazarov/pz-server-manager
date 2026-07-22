@@ -373,42 +373,107 @@ Mods=
     def config_exists(self) -> bool:
         """Check if the current server config exists."""
         return self.get_ini_path().exists()
-        
+
     def backup_config(self):
         """Create a backup of the current configuration."""
         import shutil
         from datetime import datetime
-        
+
         ini_path = self.get_ini_path()
         sandbox_path = self.get_sandbox_path()
-        
+
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        
+
         if ini_path.exists():
             backup_path = ini_path.with_suffix(f'.ini.backup_{timestamp}')
             shutil.copy2(ini_path, backup_path)
             logger.info(f"Created backup: {backup_path}")
-            
+
         if sandbox_path.exists():
             backup_path = sandbox_path.with_suffix(f'.lua.backup_{timestamp}')
             shutil.copy2(sandbox_path, backup_path)
             logger.info(f"Created backup: {backup_path}")
-            
-    def restore_defaults(self):
-        """Restore default configuration values."""
-        default_settings = {
-            'PublicName': 'My PZ Server',
-            'PublicDescription': 'A Project Zomboid server',
-            'Password': '',
-            'MaxPlayers': '16',
-            'DefaultPort': '16261',
-            'SteamPort1': '8766',
-            'RCONPort': '27015',
-            'Open': 'true',
-            'PVP': 'true',
-            'PauseEmpty': 'true',
-            'GlobalChat': 'true',
+
+    def list_backups(self) -> List[Path]:
+        """List all backup files for the current configuration."""
+        backups = []
+        if self.server_config_dir.exists():
+            pattern_ini = f"{self._server_name}.ini.backup_*"
+            pattern_lua = f"{self._server_name}_SandboxVars.lua.backup_*"
+            backups.extend(sorted(self.server_config_dir.glob(pattern_ini), reverse=True))
+            backups.extend(sorted(self.server_config_dir.glob(pattern_lua), reverse=True))
+        return backups
+
+    def restore_backup_file(self, backup_file: Path):
+        """Restore a specific backup file to active configuration."""
+        import shutil
+        if not backup_file.exists():
+            raise FileNotFoundError(f"Backup file not found: {backup_file}")
+
+        if '.ini.backup_' in backup_file.name:
+            target = self.get_ini_path()
+        elif '.lua.backup_' in backup_file.name:
+            target = self.get_sandbox_path()
+        else:
+            raise ValueError(f"Unknown backup file format: {backup_file.name}")
+
+        shutil.copy2(backup_file, target)
+        logger.info(f"Restored {backup_file.name} to {target}")
+
+    def get_sandbox_presets(self) -> Dict[str, Dict[str, Dict[str, Any]]]:
+        """Return preset dictionary for Sandbox settings."""
+        return {
+            'beginner': {
+                'ZombieLore': {'Speed': 3, 'Strength': 3, 'Toughness': 3, 'Transmission': 1, 'Memory': 3},
+                'Zombies': {'PopulationMultiplier': 0.35},
+                'Loot': {'Other': 4, 'Medical': 4, 'SurvivalGears': 4, 'CannedFood': 4},
+                'Character': {'XPMultiplier': 3.0},
+            },
+            'survival': {
+                'ZombieLore': {'Speed': 2, 'Strength': 2, 'Toughness': 2, 'Transmission': 1, 'Memory': 2},
+                'Zombies': {'PopulationMultiplier': 1.0},
+                'Loot': {'Other': 2, 'Medical': 2, 'SurvivalGears': 2, 'CannedFood': 2},
+                'Character': {'XPMultiplier': 1.0},
+            },
+            'hardcore': {
+                'ZombieLore': {'Speed': 1, 'Strength': 1, 'Toughness': 1, 'Transmission': 1, 'Memory': 1},
+                'Zombies': {'PopulationMultiplier': 2.0},
+                'Loot': {'Other': 1, 'Medical': 1, 'SurvivalGears': 1, 'CannedFood': 1},
+                'Character': {'XPMultiplier': 0.5},
+            },
+            'horde': {
+                'ZombieLore': {'Speed': 2, 'Strength': 2, 'Toughness': 2, 'Transmission': 1, 'Memory': 1},
+                'Zombies': {'PopulationMultiplier': 4.0},
+                'Loot': {'Other': 2, 'Medical': 2, 'SurvivalGears': 2, 'CannedFood': 2},
+                'Character': {'XPMultiplier': 1.5},
+            },
+            'builder': {
+                'ZombieLore': {'Speed': 3, 'Strength': 3, 'Toughness': 3, 'Transmission': 4, 'Memory': 4},
+                'Zombies': {'PopulationMultiplier': 0.0},
+                'Loot': {'Other': 5, 'Medical': 5, 'SurvivalGears': 5, 'CannedFood': 5},
+                'Character': {'XPMultiplier': 2.0},
+            },
         }
-        
-        self.save_server_ini(default_settings)
-        logger.info("Restored default configuration")
+
+    def apply_sandbox_preset(self, preset_name: str):
+        """Apply a preset to the sandbox configuration."""
+        presets = self.get_sandbox_presets()
+        if preset_name not in presets:
+            raise ValueError(f"Unknown preset: {preset_name}")
+
+        self.backup_config()
+        try:
+            vars_dict = self.load_sandbox_vars()
+        except FileNotFoundError:
+            vars_dict = {}
+
+        preset_data = presets[preset_name]
+        for category, settings in preset_data.items():
+            if category not in vars_dict:
+                vars_dict[category] = {}
+            for key, val in settings.items():
+                vars_dict[category][key] = val
+
+        self.save_sandbox_vars(vars_dict)
+        logger.info(f"Applied sandbox preset: {preset_name}")
+

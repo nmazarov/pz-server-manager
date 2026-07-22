@@ -46,6 +46,47 @@ def get_steamcmd_executable_name() -> str:
         return "steamcmd.sh"
 
 
+def check_disk_space(target_path: Path, required_gb: float = 5.0) -> tuple:
+    """Check free disk space in GB on target_path drive."""
+    try:
+        # Resolve existing parent directory for check
+        check_dir = target_path
+        while not check_dir.exists() and check_dir.parent != check_dir:
+            check_dir = check_dir.parent
+        usage = shutil.disk_usage(check_dir)
+        free_gb = usage.free / (1024 ** 3)
+        return (free_gb >= required_gb, free_gb)
+    except Exception as e:
+        logger.warning(f"Could not check disk space on {target_path}: {e}")
+        return (True, 999.0)
+
+
+def find_existing_server_installations() -> list:
+    """Scan common paths for an existing Project Zomboid Dedicated Server."""
+    program_data = os.environ.get("ProgramData", "C:\\ProgramData")
+    candidates = [
+        Path("C:/PZServer"),
+        Path("C:/Program Files (x86)/Steam/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("C:/Program Files/Steam/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("D:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("E:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
+        Path(program_data) / "PZServer",
+        Path.home() / "pzserver",
+    ]
+    found = []
+    for c in candidates:
+        try:
+            if c.exists() and (
+                (c / "StartServer64.bat").exists() or 
+                (c / "ProjectZomboid64.exe").exists() or 
+                (c / "start-server.sh").exists()
+            ):
+                found.append(c)
+        except Exception:
+            pass
+    return found
+
+
 class InstallWorker(QThread):
     """Worker thread for installation process."""
 
@@ -62,6 +103,14 @@ class InstallWorker(QThread):
     def run(self):
         """Run the installation process."""
         try:
+            # Step 0: Check disk space (minimum 5 GB)
+            server_dir = self.paths.get('server_dir', Path("C:/PZServer"))
+            has_space, free_gb = check_disk_space(server_dir, required_gb=5.0)
+            if not has_space:
+                raise RuntimeError(
+                    f"Insufficient disk space on target drive! Required: 5.0 GB, Free: {free_gb:.2f} GB."
+                )
+
             # Step 1: Download SteamCMD
             self.progress.emit(5, "Downloading SteamCMD...")
             self.log.emit("Starting SteamCMD download...")
