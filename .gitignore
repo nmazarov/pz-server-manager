@@ -41,6 +41,7 @@ installer_output/
 
 # Config (user-specific)
 language.cfg
+web_auth.json
 
 # Mod cache (regenerated)
 pz_mods.json

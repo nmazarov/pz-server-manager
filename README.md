@@ -124,6 +124,41 @@ build.bat
 
 ---
 
+### 🌐 Linux VPS / Выделенный сервер (Headless Веб-панель)
+
+Если вы используете удаленный Linux VDS/VPS сервер без монитора и графической оболочки (Ubuntu, Debian, Fedora, Arch), для него предусмотрена **полнофункциональная веб-панель управления** через браузер.
+
+#### 🚀 Автоматическая установка в 1 команду (`setup_vps.sh`):
+```bash
+git clone https://github.com/nmazarov/pz-server-manager.git
+cd pz-server-manager
+chmod +x setup_vps.sh
+sudo ./setup_vps.sh
+```
+
+**Что делает скрипт `setup_vps.sh`:**
+1. Устанавливает системные пакеты `python3`, `pip`, `venv`, `curl`, `tar`.
+2. Устанавливает 32-битные библиотеки SteamCMD (`lib32gcc-s1`) и 64-битную **Java 17** (`openjdk-17-jre-headless`).
+3. Разворачивает бэкенд на базе **FastAPI** с живой консолью на **WebSockets**.
+4. Запрашивает или генерирует защитный пароль администратора.
+5. Создает и активирует службу **systemd** (`pz-web-manager.service`) с автозапуском при перезагрузке VPS.
+6. Открывает необходимые порты в фаерволе `ufw` (порт `8080` и игровые порты).
+7. Выводит ссылку для входа: `http://<IP-вашего-VPS>:8080`.
+
+#### 🛠️ Полезные команды управления веб-службой на VPS:
+* Статус службы: `sudo systemctl status pz-web-manager`
+* Живые логи панели: `sudo journalctl -u pz-web-manager -f`
+* Перезапуск службы: `sudo systemctl restart pz-web-manager`
+* Остановка службы: `sudo systemctl stop pz-web-manager`
+
+#### Ручной запуск веб-панели (без systemd):
+```bash
+chmod +x run_web.sh
+./run_web.sh --host 0.0.0.0 --port 8080
+```
+
+---
+
 ## 🌐 Настройка портов и сети (Port Forwarding)
 
 Для того чтобы друзья и игроки из интернета могли подключаться к вашему серверу, необходимо пробросить следующие порты на вашем роутере:

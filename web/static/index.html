@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧟 PZ Server Manager Web</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Login Modal -->
+  <div id="login-modal">
+    <div class="login-box">
+      <h2>🧟 PZ Server Manager</h2>
+      <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">
+        Вход в панель управления сервером
+      </p>
+      <input type="password" id="login-password" placeholder="Пароль администратора" autofocus>
+      <button onclick="handleLogin()">Войти</button>
+      <div id="login-error" style="color: #ff6b6b; margin-top: 12px; font-size: 13px; display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-left">
+      <span style="font-size: 26px;">🧟</span>
+      <div>
+        <div class="header-title">Project Zomboid Server Manager</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Web Dashboard • Build 41 & 42 Ready</div>
+      </div>
+    </div>
+
+    <div class="header-badges">
+      <span id="badge-status" class="badge offline">🔴 Остановлен</span>
+      <span id="badge-version" class="badge metric">🎯 Build 42</span>
+      <span id="badge-vps-ram" class="badge metric">🖥️ VPS RAM: -- / --</span>
+      <span id="badge-srv-ram" class="badge metric">🎮 Server RAM: 0 MB</span>
+      <button class="btn btn-secondary" onclick="logout()" style="padding: 4px 10px; font-size: 12px;">Выйти</button>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('server')">🎮 Управление</button>
+    <button class="tab-btn" onclick="switchTab('settings')">⚙️ Настройки (INI)</button>
+    <button class="tab-btn" onclick="switchTab('sandbox')">🧟 Sandbox</button>
+    <button class="tab-btn" onclick="switchTab('mods')">🧩 Моды</button>
+    <button class="tab-btn" onclick="switchTab('install')">📦 Установка & Обновления</button>
+    <button class="tab-btn" onclick="switchTab('backups')">💾 Бэкапы</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="content-area">
+
+    <!-- ── TAB 1: SERVER ── -->
+    <div id="tab-server" class="tab-panel active">
+      <div class="card">
+        <div class="card-title">
+          <span>Управление сервером</span>
+        </div>
+        <div class="row" style="align-items: flex-end;">
+          <div class="col" style="max-width: 200px;">
+            <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Имя сервера:</label>
+            <input type="text" id="srv-name" class="form-control" value="servertest" style="margin-top: 4px;">
+          </div>
+          <div class="col" style="max-width: 180px;">
+            <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">ОЗУ (RAM):</label>
+            <select id="srv-ram" class="form-control" style="margin-top: 4px;">
+              <option value="4">4 GB</option>
+              <option value="6" selected>6 GB</option>
+              <option value="8">8 GB</option>
+              <option value="12">12 GB</option>
+              <option value="16">16 GB</option>
+              <option value="24">24 GB</option>
+              <option value="32">32 GB</option>
+            </select>
+          </div>
+          <div class="col" style="display: flex; gap: 8px;">
+            <button id="btn-start" class="btn btn-primary" onclick="startServer()">▶ Запустить сервер</button>
+            <button id="btn-stop" class="btn btn-danger" onclick="stopServer()" disabled>⏹ Остановить</button>
+            <button id="btn-restart" class="btn btn-secondary" onclick="restartServer()" disabled>🔄 Перезапустить</button>
+          </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="quick-actions">
+          <span style="font-weight: bold; font-size: 13px; color: #64b5f6;">⚡ Быстрые команды:</span>
+          <button class="btn btn-secondary" onclick="sendQuickAction('save')">💾 Сохранить мир</button>
+          <button class="btn btn-secondary" onclick="sendQuickAction('rain')">🌧️ Дождь Вкл/Выкл</button>
+          <button class="btn btn-secondary" onclick="sendQuickAction('chopper')">🚁 Вызвать вертолет</button>
+          <button class="btn btn-secondary" onclick="promptBroadcast()">📢 Объявление в чат</button>
+        </div>
+      </div>
+
+      <!-- Live Terminal -->
+      <div class="card" style="padding: 14px;">
+        <div class="card-title">
+          <span>Интерактивная консоль сервера</span>
+          <div style="display: flex; gap: 10px; align-items: center; font-size: 12px; font-weight: normal;">
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <input type="checkbox" id="autoscroll-chk" checked> Автопрокрутка
+            </label>
+            <button class="btn btn-secondary" onclick="clearConsole()" style="padding: 2px 8px; font-size: 11px;">Очистить</button>
+          </div>
+        </div>
+        <div class="terminal-window">
+          <div class="terminal-output" id="console-output"></div>
+          <div class="terminal-input-row">
+            <input type="text" id="console-cmd" placeholder="Введите команду (например: players, servermsg 'Hello', save)..." onkeydown="if(event.key==='Enter') sendConsoleCommand()">
+            <button onclick="sendConsoleCommand()">Отправить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 2: SETTINGS (INI) ── -->
+    <div id="tab-settings" class="tab-panel">
+      <div class="card">
+        <div class="card-title">
+          <span>Настройки сервера (servertest.ini)</span>
+          <button class="btn btn-primary" onclick="saveSettings()">💾 Сохранить настройки</button>
+        </div>
+        <div class="row">
+          <div class="col">
+            <div class="form-group">
+              <label>Название сервера (PublicName):</label>
+              <input type="text" id="ini-PublicName" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>Описание сервера (PublicDescription):</label>
+              <textarea id="ini-PublicDescription" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Пароль сервера (Password):</label>
+              <input type="password" id="ini-Password" class="form-control" placeholder="Оставьте пустым для свободного входа">
+            </div>
+            <div class="form-group">
+              <label>Пароль RCON / Администратора:</label>
+              <input type="password" id="ini-RCONPassword" class="form-control">
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="form-group">
+              <label>Максимум игроков (MaxPlayers):</label>
+              <input type="number" id="ini-MaxPlayers" class="form-control" value="32">
+            </div>
+            <div class="form-group">
+              <label>Игровой порт (DefaultPort - UDP):</label>
+              <input type="number" id="ini-DefaultPort" class="form-control" value="16261">
+            </div>
+            <div class="form-group">
+              <label>Steam порт (UDP):</label>
+              <input type="number" id="ini-UDPPort" class="form-control" value="8766">
+            </div>
+            <div class="form-group">
+              <label>Пауза когда сервер пуст (PauseEmpty):</label>
+              <select id="ini-PauseEmpty" class="form-control">
+                <option value="true">Да (Пауза)</option>
+                <option value="false">Нет (Время идет)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Голосовой чат (VoiceEnable):</label>
+              <select id="ini-VoiceEnable" class="form-control">
+                <option value="true">Включен</option>
+                <option value="false">Отключен</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 3: SANDBOX ── -->
+    <div id="tab-sandbox" class="tab-panel">
+      <div class="card">
+        <div class="card-title">
+          <span>Настройки песочницы (servertest_SandboxVars.lua)</span>
+          <div style="display: flex; gap: 8px;">
+            <select id="sandbox-preset" class="form-control" style="width: 170px;" onchange="applySandboxPreset(this.value)">
+              <option value="">-- Пресеты сложности --</option>
+              <option value="apocalypse">💀 Апокалипсис</option>
+              <option value="survivor">🏕️ Выживание</option>
+              <option value="builder">🏗️ Строитель</option>
+            </select>
+            <button class="btn btn-primary" onclick="saveSandbox()">💾 Сохранить Sandbox</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <h4 style="color: var(--accent); margin-bottom: 10px;">🧟 Зомби (ZombieLore)</h4>
+            <div class="form-group">
+              <label>Скорость зомби (Speed):</label>
+              <select id="sb-ZombieLore-Speed" class="form-control">
+                <option value="1">Спринтеры (Sprinters)</option>
+                <option value="2" selected>Быстрые ходячие (Fast Shamblers)</option>
+                <option value="3">Медленные (Shamblers)</option>
+                <option value="4">Случайно (Random)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Сила зомби (Strength):</label>
+              <select id="sb-ZombieLore-Strength" class="form-control">
+                <option value="1">Сверхчеловеческая</option>
+                <option value="2" selected>Обычная</option>
+                <option value="3">Слабая</option>
+                <option value="4">Случайно</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Живучесть зомби (Toughness):</label>
+              <select id="sb-ZombieLore-Toughness" class="form-control">
+                <option value="1">Высокая</option>
+                <option value="2" selected>Обычная</option>
+                <option value="3">Хрупкая</option>
+                <option value="4">Случайно</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Передача инфекции (Transmission):</label>
+              <select id="sb-ZombieLore-Transmission" class="form-control">
+                <option value="1" selected>Кровь и слюна (Blood + Saliva)</option>
+                <option value="2">Только слюна / укус (Saliva Only)</option>
+                <option value="3">Все заражены (Everyone's Infected)</option>
+                <option value="4">Отключена (None)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="col">
+            <h4 style="color: var(--accent); margin-bottom: 10px;">📦 Спавн лута (Loot Rarity)</h4>
+            <div class="form-group">
+              <label>Еда (Food):</label>
+              <select id="sb-Loot-Food" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Оружие (Weapon):</label>
+              <select id="sb-Loot-Weapon" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Книги / Литература (Literature):</label>
+              <select id="sb-Loot-Literature" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Медикаменты (Medical):</label>
+              <select id="sb-Loot-Medical" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 4: MODS ── -->
+    <div id="tab-mods" class="tab-panel">
+      <div class="card">
+        <div class="card-title">
+          <span>Управление модами Steam Workshop</span>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-primary" onclick="checkAllModsCompatibility()">🔍 Проверить актуальность</button>
+            <button class="btn btn-info" onclick="analyzeMods()">⚡ Анализ зависимостей</button>
+            <button class="btn btn-primary" onclick="saveMods()">💾 Сохранить список</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 14px; display: flex; gap: 10px;">
+          <input type="text" id="mod-input-id" class="form-control" placeholder="Введите Workshop ID или ссылку на мод/коллекцию Steam...">
+          <button class="btn btn-primary" onclick="addMod()" style="white-space: nowrap;">➕ Добавить мод</button>
+        </div>
+
+        <!-- Curated Packs -->
+        <div style="margin-bottom: 16px; background: #222; padding: 10px 14px; border-radius: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span style="font-weight: bold; font-size: 12px; color: #ffb74d;">🎁 Готовые наборы:</span>
+          <button class="btn btn-secondary" onclick="applyModPack('vehicles')" style="font-size: 12px;">🚗 Автопарк KI5</button>
+          <button class="btn btn-secondary" onclick="applyModPack('weapons')" style="font-size: 12px;">⚔️ Оружие Brita</button>
+          <button class="btn btn-secondary" onclick="applyModPack('qol')" style="font-size: 12px;">🖥️ Удобный QoL</button>
+          <button class="btn btn-secondary" onclick="applyModPack('hardcore')" style="font-size: 12px;">🧟 Хардкор</button>
+          <button class="btn btn-danger" onclick="clearMods()" style="font-size: 12px; margin-left: auto;">🧹 Очистить все</button>
+        </div>
+
+        <!-- Legend -->
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+          🟢 <b>Зеленый</b>: Совместим с текущей версией сервера | 🔴 <b>Красный</b>: Несовместим или устарел | 🟡 <b>Желтый</b>: Универсальный / требует проверки
+        </div>
+
+        <!-- Mod Items List -->
+        <div id="mods-container"></div>
+      </div>
+    </div>
+
+    <!-- ── TAB 5: INSTALL & UPDATE ── -->
+    <div id="tab-install" class="tab-panel">
+      <div class="card">
+        <div class="card-title">
+          <span>Установка и обновление сервера (SteamCMD)</span>
+          <button class="btn btn-info" onclick="checkSteamUpdate()">🔍 Проверить обновления в Steam</button>
+        </div>
+
+        <div class="row">
+          <div class="col" style="max-width: 320px;">
+            <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Ветка / Версия сервера в Steam:</label>
+            <select id="install-branch" class="form-control" style="margin-top: 6px;">
+              <option value="">Загрузка веток...</option>
+            </select>
+          </div>
+          <div class="col" style="display: flex; align-items: flex-end;">
+            <button id="btn-do-install" class="btn btn-primary" onclick="startInstallation()" style="padding: 10px 20px;">
+              🚀 Установить / Обновить сервер
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 6px;">
+            <span id="install-status-msg">Готов к установке</span>
+            <span id="install-status-pct">0%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div id="install-progress-fill" class="progress-bar-fill"></div>
+          </div>
+        </div>
+
+        <div class="terminal-window" style="height: 260px; margin-top: 14px;">
+          <div class="terminal-output" id="install-log-output">Логи установки SteamCMD появятся здесь...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB 6: BACKUPS ── -->
+    <div id="tab-backups" class="tab-panel">
+      <div class="card">
+        <div class="card-title">
+          <span>Резервные копии мира и конфигураций</span>
+          <button class="btn btn-primary" onclick="createBackup()">📦 Создать бэкап сейчас</button>
+        </div>
+        <div id="backups-container">Загрузка бэкапов...</div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
