@@ -51,21 +51,35 @@ class InstallTabMixin:
         pl.addWidget(b)
         layout.addWidget(g)
 
-        # ── Group 2: Steam Betas & Versions (Compact Steam Table) ──
+        # ── Group 2: Steam Betas & Versions (Authentic Steam Table) ──
         g_ver = QGroupBox(tr('group_server_version'))
         vl_ver = QVBoxLayout(g_ver)
-        vl_ver.setContentsMargins(8, 8, 8, 8)
-        vl_ver.setSpacing(6)
+        vl_ver.setContentsMargins(10, 10, 10, 10)
+        vl_ver.setSpacing(8)
+
+        # Steam explanation subtitle
+        lbl_sub_title = QLabel(tr('lbl_selected_version_title'))
+        lbl_sub_title.setStyleSheet("color: #ffffff; font-size: 13px; font-weight: bold; background: transparent;")
+        vl_ver.addWidget(lbl_sub_title)
+
+        lbl_sub_note = QLabel(tr('lbl_selected_version_note'))
+        lbl_sub_note.setStyleSheet("color: #8f98a0; font-size: 11px; background: transparent; line-height: 1.4;")
+        lbl_sub_note.setWordWrap(True)
+        vl_ver.addWidget(lbl_sub_note)
 
         # Steam table frame
         self.steam_table_frame = QFrame()
         self.steam_table_frame.setObjectName("SteamTableFrame")
-        self.steam_table_frame.setMinimumHeight(180)
+        self.steam_table_frame.setMinimumHeight(240)
         self.steam_table_frame.setStyleSheet("""
             QFrame#SteamTableFrame {
                 background-color: #171d25;
-                border: 1px solid #2a475e;
-                border-radius: 5px;
+                border: 1px solid #232b38;
+                border-radius: 4px;
+            }
+            QFrame#SteamTableFrame QLabel {
+                background: transparent;
+                border: none;
             }
         """)
         table_vbox = QVBoxLayout(self.steam_table_frame)
@@ -74,20 +88,20 @@ class InstallTabMixin:
 
         # Table Column Headers
         hdr_frame = QFrame()
-        hdr_frame.setFixedHeight(28)
+        hdr_frame.setFixedHeight(30)
         hdr_frame.setStyleSheet(
-            "background-color: #1f2b3b; border-bottom: 1px solid #2a475e; "
+            "background-color: #1f2b3b; border-bottom: 1px solid #2a3a4d; "
             "border-top-left-radius: 4px; border-top-right-radius: 4px;"
         )
         hdr_layout = QHBoxLayout(hdr_frame)
-        hdr_layout.setContentsMargins(14, 0, 14, 0)
+        hdr_layout.setContentsMargins(16, 0, 16, 0)
 
         lbl_hdr_name = QLabel(tr('col_branch_name_desc'))
-        lbl_hdr_name.setStyleSheet("color: #8f98a0; font-size: 10px; font-weight: bold; letter-spacing: 0.5px;")
+        lbl_hdr_name.setStyleSheet("color: #8f98a0; font-size: 10px; font-weight: bold; letter-spacing: 0.5px; background: transparent;")
         hdr_layout.addWidget(lbl_hdr_name, 1)
 
         lbl_hdr_date = QLabel(tr('col_branch_last_update'))
-        lbl_hdr_date.setStyleSheet("color: #8f98a0; font-size: 10px; font-weight: bold; letter-spacing: 0.5px;")
+        lbl_hdr_date.setStyleSheet("color: #8f98a0; font-size: 10px; font-weight: bold; letter-spacing: 0.5px; background: transparent;")
         lbl_hdr_date.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         hdr_layout.addWidget(lbl_hdr_date)
 
@@ -95,6 +109,7 @@ class InstallTabMixin:
 
         # Dynamic rows container
         self.rows_container = QWidget()
+        self.rows_container.setStyleSheet("background: transparent;")
         self.rows_layout = QVBoxLayout(self.rows_container)
         self.rows_layout.setContentsMargins(0, 0, 0, 0)
         self.rows_layout.setSpacing(1)
@@ -112,54 +127,77 @@ class InstallTabMixin:
         self.combo_server_version.setVisible(False)
         vl_ver.addWidget(self.combo_server_version)
 
-        # Section: Скрытые версии (Compact single-line bar)
+        # Section: Скрытые версии (Private Betas)
         hidden_box = QFrame()
         hidden_box.setObjectName("HiddenBox")
-        hidden_box.setFixedHeight(40)
         hidden_box.setStyleSheet("""
             QFrame#HiddenBox {
-                background-color: #1b2838;
-                border: 1px solid #2a475e;
+                background-color: #171d25;
+                border: 1px solid #232b38;
                 border-radius: 4px;
             }
+            QFrame#HiddenBox QLabel {
+                background: transparent;
+            }
         """)
-        hidden_layout = QHBoxLayout(hidden_box)
-        hidden_layout.setContentsMargins(10, 4, 10, 4)
-        hidden_layout.setSpacing(8)
+        hl_vbox = QVBoxLayout(hidden_box)
+        hl_vbox.setContentsMargins(14, 10, 14, 10)
+        hl_vbox.setSpacing(6)
 
-        lbl_hidden_icon = QLabel("🔑 " + tr('lbl_hidden_betas') + ":")
-        lbl_hidden_icon.setStyleSheet("color: #8f98a0; font-size: 11px; font-weight: bold;")
-        hidden_layout.addWidget(lbl_hidden_icon)
+        lbl_hidden_title = QLabel("🔑 " + tr('lbl_hidden_betas'))
+        lbl_hidden_title.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: bold; background: transparent;")
+        hl_vbox.addWidget(lbl_hidden_title)
+
+        lbl_hidden_desc = QLabel(tr('lbl_hidden_betas_desc'))
+        lbl_hidden_desc.setStyleSheet("color: #8f98a0; font-size: 11px; background: transparent;")
+        hl_vbox.addWidget(lbl_hidden_desc)
+
+        input_row = QHBoxLayout()
+        input_row.setSpacing(8)
 
         self.edit_hidden_branch = QLineEdit()
         self.edit_hidden_branch.setPlaceholderText(tr('placeholder_hidden_branch'))
         self.edit_hidden_branch.setMaximumWidth(170)
-        self.edit_hidden_branch.setFixedHeight(26)
-        hidden_layout.addWidget(self.edit_hidden_branch)
+        self.edit_hidden_branch.setFixedHeight(30)
+        self.edit_hidden_branch.setStyleSheet(
+            "background-color: #141a22; border: 1px solid #2a3a4d; "
+            "border-radius: 3px; padding: 0 8px; color: #ffffff;"
+        )
+        input_row.addWidget(self.edit_hidden_branch)
 
         self.edit_beta_code = QLineEdit()
         self.edit_beta_code.setPlaceholderText(tr('placeholder_beta_code'))
-        self.edit_beta_code.setFixedHeight(26)
-        hidden_layout.addWidget(self.edit_beta_code)
+        self.edit_beta_code.setFixedHeight(30)
+        self.edit_beta_code.setStyleSheet(
+            "background-color: #141a22; border: 1px solid #2a3a4d; "
+            "border-radius: 3px; padding: 0 8px; color: #ffffff;"
+        )
+        input_row.addWidget(self.edit_beta_code)
 
         self.btn_check_beta_code = QPushButton(tr('btn_check_beta_code'))
+        self.btn_check_beta_code.setFixedHeight(30)
         self.btn_check_beta_code.setStyleSheet(
             "background-color: #214b6b; color: #ffffff; font-weight: bold; "
-            "padding: 2px 12px; border-radius: 3px;"
+            "padding: 0 16px; border-radius: 3px; border: 1px solid #2e6691;"
         )
-        self.btn_check_beta_code.setFixedHeight(26)
         self.btn_check_beta_code.clicked.connect(self.on_check_beta_code)
-        hidden_layout.addWidget(self.btn_check_beta_code)
+        input_row.addWidget(self.btn_check_beta_code)
 
-        self.btn_refresh_ver = QPushButton("🔄 " + tr('btn_reload'))
-        self.btn_refresh_ver.setFixedHeight(26)
+        self.btn_refresh_ver = QPushButton(tr('btn_reload'))
+        self.btn_refresh_ver.setFixedHeight(30)
+        self.btn_refresh_ver.setStyleSheet(
+            "background-color: #263342; color: #d0d0d0; "
+            "padding: 0 14px; border-radius: 3px; border: 1px solid #334458;"
+        )
         self.btn_refresh_ver.clicked.connect(self.refresh_server_versions)
-        hidden_layout.addWidget(self.btn_refresh_ver)
+        input_row.addWidget(self.btn_refresh_ver)
+
+        hl_vbox.addLayout(input_row)
 
         vl_ver.addWidget(hidden_box)
 
         self.lbl_beta_code_status = QLabel("")
-        self.lbl_beta_code_status.setStyleSheet("font-size: 11px; color: #8bc34a; font-weight: bold; padding-left: 4px;")
+        self.lbl_beta_code_status.setStyleSheet("font-size: 11px; color: #8bc34a; font-weight: bold; padding-left: 4px; background: transparent;")
         self.lbl_beta_code_status.setVisible(False)
         vl_ver.addWidget(self.lbl_beta_code_status)
 
@@ -263,37 +301,29 @@ class InstallTabMixin:
     def _create_steam_branch_row(self, b: dict, is_ru: bool) -> QWidget:
         row = QFrame()
         row.setObjectName("SteamBranchRow")
-        row.setFixedHeight(38)
+        row.setFixedHeight(50)
         row.setCursor(Qt.PointingHandCursor)
-        row.setStyleSheet("""
-            QFrame#SteamBranchRow {
-                background-color: #161c24;
-                border: 1px solid #212b38;
-                border-radius: 4px;
-            }
-            QFrame#SteamBranchRow:hover {
-                background-color: #1f2b38;
-                border-color: #2f455d;
-            }
-        """)
 
         layout = QHBoxLayout(row)
-        layout.setContentsMargins(12, 0, 12, 0)
-        layout.setSpacing(10)
+        layout.setContentsMargins(14, 6, 16, 6)
+        layout.setSpacing(14)
 
         radio = QRadioButton()
         radio.setCursor(Qt.PointingHandCursor)
         radio.setFixedSize(20, 20)
         radio.setStyleSheet("""
+            QRadioButton {
+                background: transparent;
+            }
             QRadioButton::indicator {
-                width: 16px;
-                height: 16px;
+                width: 14px;
+                height: 14px;
                 border-radius: 8px;
-                border: 2px solid #528cb8;
+                border: 2px solid #8f98a0;
                 background-color: #161c24;
             }
             QRadioButton::indicator:checked {
-                background-color: #67c1f5;
+                background-color: #54a5ff;
                 border: 2px solid #ffffff;
             }
             QRadioButton::indicator:hover {
@@ -304,8 +334,8 @@ class InstallTabMixin:
         branch_key = b['branch']
         self.branch_radio_map[branch_key] = radio
 
-        info_box = QHBoxLayout()
-        info_box.setSpacing(8)
+        info_box = QVBoxLayout()
+        info_box.setSpacing(2)
         info_box.setContentsMargins(0, 0, 0, 0)
 
         name_text = b.get('name_ru') if is_ru else b.get('name_en')
@@ -313,49 +343,74 @@ class InstallTabMixin:
         date_text = b.get('date_ru') if is_ru else b.get('date_en')
 
         lbl_name = QLabel(name_text or b.get('name', ''))
-        lbl_name.setStyleSheet("color: #ffffff; font-size: 12px; font-weight: bold;")
-        lbl_desc = QLabel(f"— {desc_text}" if desc_text else "")
-        lbl_desc.setStyleSheet("color: #8f98a0; font-size: 11px;")
+        lbl_name.setAttribute(Qt.WA_TranslucentBackground, True)
+        lbl_name.setStyleSheet("color: #ffffff; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+
+        lbl_desc = QLabel(desc_text or "")
+        lbl_desc.setAttribute(Qt.WA_TranslucentBackground, True)
+        lbl_desc.setStyleSheet("color: #8f98a0; font-size: 11px; background: transparent; border: none;")
 
         info_box.addWidget(lbl_name)
         info_box.addWidget(lbl_desc)
-        info_box.addStretch()
 
         layout.addWidget(radio)
         layout.addLayout(info_box, 1)
 
         lbl_date = QLabel(date_text or b.get('date_str', ''))
-        lbl_date.setStyleSheet("color: #8f98a0; font-size: 11px; font-weight: normal;")
+        lbl_date.setAttribute(Qt.WA_TranslucentBackground, True)
+        lbl_date.setStyleSheet("color: #8f98a0; font-size: 12px; font-weight: normal; background: transparent; border: none;")
         lbl_date.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         layout.addWidget(lbl_date)
 
-        def _on_toggle(checked):
-            if checked:
-                idx = self.combo_server_version.findData(branch_key)
-                if idx >= 0:
-                    self.combo_server_version.setCurrentIndex(idx)
+        def set_row_style(selected: bool):
+            if selected:
                 row.setStyleSheet("""
                     QFrame#SteamBranchRow {
-                        background-color: #1a334d;
-                        border: 1px solid #3d79b2;
-                        border-radius: 4px;
+                        background-color: #18283a;
+                        border: 1px solid #2a4768;
+                        border-left: 4px solid #54a5ff;
+                        border-radius: 3px;
                     }
                     QFrame#SteamBranchRow:hover {
-                        background-color: #213f5f;
+                        background-color: #1d3148;
+                    }
+                    QFrame#SteamBranchRow QLabel {
+                        background: transparent;
+                        border: none;
                     }
                 """)
+                lbl_name.setStyleSheet("color: #ffffff; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+                lbl_desc.setStyleSheet("color: #a4b6c9; font-size: 11px; background: transparent; border: none;")
+                lbl_date.setStyleSheet("color: #a4b6c9; font-size: 12px; background: transparent; border: none;")
             else:
                 row.setStyleSheet("""
                     QFrame#SteamBranchRow {
                         background-color: #161c24;
-                        border: 1px solid #212b38;
-                        border-radius: 4px;
+                        border: 1px solid #1e2632;
+                        border-left: 4px solid transparent;
+                        border-radius: 3px;
                     }
                     QFrame#SteamBranchRow:hover {
-                        background-color: #1f2b38;
-                        border-color: #2f455d;
+                        background-color: #1e2734;
+                        border-color: #2b3949;
+                    }
+                    QFrame#SteamBranchRow QLabel {
+                        background: transparent;
+                        border: none;
                     }
                 """)
+                lbl_name.setStyleSheet("color: #ffffff; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+                lbl_desc.setStyleSheet("color: #8f98a0; font-size: 11px; background: transparent; border: none;")
+                lbl_date.setStyleSheet("color: #8f98a0; font-size: 12px; background: transparent; border: none;")
+
+        set_row_style(False)
+
+        def _on_toggle(checked):
+            set_row_style(checked)
+            if checked:
+                idx = self.combo_server_version.findData(branch_key)
+                if idx >= 0:
+                    self.combo_server_version.setCurrentIndex(idx)
 
         radio.toggled.connect(_on_toggle)
 

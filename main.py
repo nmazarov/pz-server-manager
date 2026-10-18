@@ -241,6 +241,9 @@ def main():
             color: #ffffff;
             font-family: 'Exo 2', 'Segoe UI', -apple-system, sans-serif;
         }}
+        QLabel {{
+            background-color: transparent;
+        }}
         QTabWidget::pane {{
             border: 1px solid #3d3d3d;
             background-color: #2b2b2b;
