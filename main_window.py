@@ -188,6 +188,7 @@ class MainWindow(
             spin.setButtonSymbols(QAbstractSpinBox.NoButtons)
 
         self._setup_tray_icon()
+        QTimer.singleShot(300, self.check_existing_server_status)
         QTimer.singleShot(1500, self.check_server_update_on_startup)
 
     def update_target_server_build(self):
@@ -304,6 +305,19 @@ class MainWindow(
         help_menu.addAction(a)
 
     # ── Utilities & Lifecycle ───────────────────────────────────────
+
+    def check_existing_server_status(self):
+        """Check on startup if Project Zomboid dedicated server is already running."""
+        pid = self.server_process.detect_and_attach_running_server()
+        if pid:
+            self.on_server_ready()
+            is_ru = get_language() == 'ru'
+            msg = (
+                f"ℹ️ " + (f"Обнаружен работающий сервер Project Zomboid (PID: {pid}). Управление активно."
+                          if is_ru else
+                          f"Discovered active Project Zomboid server (PID: {pid}). Management attached.")
+            )
+            self.append_console_output(msg)
 
     def update_status(self):
         if self.server_process.is_running():

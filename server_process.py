@@ -101,6 +101,70 @@ class ServerProcess(QObject):
         self.output_reader: Optional[OutputReader] = None
         self._server_name = "servertest"
         self.is_ready = False
+        self._attached_pid: Optional[int] = None
+
+    def _is_pid_alive(self, pid: int) -> bool:
+        """Check if a specific PID is alive."""
+        if not pid or pid <= 0:
+            return False
+        try:
+            if os.name == 'nt':
+                import ctypes
+                kernel32 = ctypes.windll.kernel32
+                handle = kernel32.OpenProcess(0x100000, False, pid)  # SYNCHRONIZE
+                if handle:
+                    kernel32.CloseHandle(handle)
+                    return True
+                return False
+            else:
+                os.kill(pid, 0)
+                return True
+        except Exception:
+            return False
+
+    def _kill_pid(self, pid: int):
+        """Force terminate a process and its children by PID."""
+        try:
+            if os.name == 'nt':
+                subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], capture_output=True)
+            else:
+                os.kill(pid, signal.SIGKILL)
+        except Exception as e:
+            logger.error(f"Error killing PID {pid}: {e}")
+
+    def find_running_server_pids(self) -> list:
+        """Find running PZ server process PIDs by port or process name."""
+        pids = []
+        try:
+            if os.name == 'nt':
+                out = subprocess.check_output('netstat -ano -p UDP', shell=True, text=True, errors='ignore')
+                for line in out.splitlines():
+                    if ':16261' in line or ':16262' in line:
+                        parts = line.split()
+                        if len(parts) >= 4:
+                            try:
+                                p = int(parts[-1])
+                                if p > 0 and self._is_pid_alive(p):
+                                    pids.append(p)
+                            except ValueError:
+                                pass
+        except Exception as e:
+            logger.debug(f"find_running_server_pids error: {e}")
+        return list(set(pids))
+
+    def detect_and_attach_running_server(self) -> Optional[int]:
+        """Detect if PZ server is already running outside this manager session, and attach to it."""
+        if self.is_running():
+            return self.get_pid()
+        pids = self.find_running_server_pids()
+        if pids:
+            pid = pids[0]
+            logger.info(f"Discovered already running PZ server PID: {pid}")
+            self._attached_pid = pid
+            self.is_ready = True
+            self.server_ready.emit()
+            return pid
+        return None
 
     def start(self, server_name: str = "servertest", ram_gb: int = 6):
         """Start the game server."""
@@ -186,33 +250,47 @@ class ServerProcess(QObject):
             raise RuntimeError(f"Failed to start server: {e}")
 
     def stop(self, timeout: int = 30):
-        """Stop the game server gracefully."""
-        if not self.is_running():
-            logger.warning("Server is not running")
-            self.server_stopped.emit()
-            return
-
+        """Stop the game server gracefully or terminate attached/orphan server processes."""
         logger.info("Stopping server...")
 
-        try:
-            # Try to send quit command first
-            self.send_command("quit")
-
-            # Wait for process to end
+        # 1. Managed process
+        if self.process and self.process.poll() is None:
             try:
-                self.process.wait(timeout=10)
-                logger.info("Server stopped gracefully")
-            except subprocess.TimeoutExpired:
-                logger.warning("Server didn't respond to quit command, forcing termination...")
+                # Try to send quit command first
+                self.send_command("quit")
+                try:
+                    self.process.wait(timeout=10)
+                    logger.info("Server stopped gracefully")
+                except subprocess.TimeoutExpired:
+                    logger.warning("Server didn't respond to quit command, forcing termination...")
+                    self._force_terminate()
+            except Exception as e:
+                logger.error(f"Error stopping server: {e}")
                 self._force_terminate()
+            finally:
+                self._cleanup()
 
-        except Exception as e:
-            logger.error(f"Error stopping server: {e}")
-            self._force_terminate()
-        finally:
-            self._cleanup()
-            self.is_ready = False
-            self.server_stopped.emit()
+        # 2. Attached PID
+        if self._attached_pid and self._is_pid_alive(self._attached_pid):
+            logger.info(f"Terminating attached server process PID {self._attached_pid}")
+            self._kill_pid(self._attached_pid)
+            self._attached_pid = None
+
+        # 3. Kill any remaining server process on port 16261
+        for opid in self.find_running_server_pids():
+            logger.info(f"Terminating orphaned server process PID {opid}")
+            self._kill_pid(opid)
+
+        self.is_ready = False
+        self.server_stopped.emit()
+
+    def restart(self, server_name: Optional[str] = None, ram_gb: int = 6):
+        """Restart the game server."""
+        s_name = server_name or self._server_name
+        self.stop()
+        import time
+        time.sleep(2)
+        self.start(server_name=s_name, ram_gb=ram_gb)
 
     def _force_terminate(self):
         """Force terminate the server process."""
@@ -274,7 +352,12 @@ class ServerProcess(QObject):
 
     def is_running(self) -> bool:
         """Check if the server process is running."""
-        return self.process is not None and self.process.poll() is None
+        if self.process is not None and self.process.poll() is None:
+            return True
+        if self._attached_pid and self._is_pid_alive(self._attached_pid):
+            return True
+        self._attached_pid = None
+        return False
 
     def _find_server_executable(self) -> Optional[Path]:
         """Find the server executable (platform-aware)."""
@@ -338,6 +421,8 @@ class ServerProcess(QObject):
         """Get the server process ID."""
         if self.process:
             return self.process.pid
+        if self._attached_pid and self._is_pid_alive(self._attached_pid):
+            return self._attached_pid
         return None
 
     def get_memory_usage(self) -> Optional[int]:
@@ -345,7 +430,9 @@ class ServerProcess(QObject):
         if not self.is_running():
             return None
 
-        pid = self.process.pid
+        pid = self.get_pid()
+        if not pid:
+            return None
         system = platform.system()
 
         try:

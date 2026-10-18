@@ -22,11 +22,96 @@ from translations import tr, get_language
 from server_process import check_ports_in_use
 from config_manager import AppPreferences
 
-logger = logging.getLogger(__name__)
+START_BTN_STYLE = """
+QPushButton#start_btn {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2eb84d, stop:1 #208336);
+    border: 1px solid #1c6d2d;
+    border-radius: 6px;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 8px 20px;
+}
+QPushButton#start_btn:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3be060, stop:1 #269e40);
+    border: 1px solid #55ff88;
+}
+QPushButton#start_btn:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #186329, stop:1 #11471d);
+    border: 1px solid #0d3616;
+    padding-top: 10px;
+    padding-bottom: 6px;
+}
+QPushButton#start_btn:disabled {
+    background: #243026;
+    border: 1px solid #2d3d30;
+    color: #556b59;
+}
+"""
+
+STOP_BTN_STYLE = """
+QPushButton#stop_btn {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #d93838, stop:1 #a82222);
+    border: 1px solid #8f1c1c;
+    border-radius: 6px;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 8px 20px;
+}
+QPushButton#stop_btn:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #fa4d4d, stop:1 #c92828);
+    border: 1px solid #ff7575;
+}
+QPushButton#stop_btn:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7d1717, stop:1 #590f0f);
+    border: 1px solid #450b0b;
+    padding-top: 10px;
+    padding-bottom: 6px;
+}
+QPushButton#stop_btn:disabled {
+    background: #332424;
+    border: 1px solid #3d2b2b;
+    color: #6b5555;
+}
+"""
+
+RESTART_BTN_STYLE = """
+QPushButton#restart_btn {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2b6cb0, stop:1 #1d4e82);
+    border: 1px solid #163c63;
+    border-radius: 6px;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 13px;
+    padding: 8px 20px;
+}
+QPushButton#restart_btn:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b8be0, stop:1 #2463a6);
+    border: 1px solid #63b3ff;
+}
+QPushButton#restart_btn:pressed {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #143559, stop:1 #0e243d);
+    border: 1px solid #091829;
+    padding-top: 10px;
+    padding-bottom: 6px;
+}
+QPushButton#restart_btn:disabled {
+    background: #242930;
+    border: 1px solid #2d3440;
+    color: #555e6b;
+}
+"""
 
 
 class ServerTabMixin:
     """Mixin for the Server control tab and live console."""
+
+    def _animate_button_click(self, btn: QPushButton, base_style: str, glow_color: str):
+        """Play a smooth physical glow pulse animation when button is clicked."""
+        pulse_style = base_style + f"\nQPushButton {{ border: 2px solid {glow_color} !important; }}"
+        btn.setStyleSheet(pulse_style)
+        QTimer.singleShot(140, lambda: btn.setStyleSheet(base_style) if btn else None)
 
     def create_server_tab(self):
         tab = QWidget()
@@ -93,22 +178,37 @@ class ServerTabMixin:
 
         btn_row = QHBoxLayout()
         self.start_btn = QPushButton("▶ " + tr('btn_start_server'))
-        self.start_btn.setStyleSheet("background-color: #2b7b2b; color: white; font-weight: bold; padding: 6px 14px;")
+        self.start_btn.setObjectName("start_btn")
+        self.start_btn.setStyleSheet(START_BTN_STYLE)
+        self.start_btn.setCursor(Qt.PointingHandCursor)
+        self.start_btn.clicked.connect(lambda: self._animate_button_click(self.start_btn, START_BTN_STYLE, "#77ffaa"))
         self.start_btn.clicked.connect(self.start_server)
         btn_row.addWidget(self.start_btn)
 
         self.stop_btn = QPushButton("⏹ " + tr('btn_stop_server'))
-        self.stop_btn.setStyleSheet("background-color: #7b2b2b; color: white; font-weight: bold; padding: 6px 14px;")
+        self.stop_btn.setObjectName("stop_btn")
+        self.stop_btn.setStyleSheet(STOP_BTN_STYLE)
+        self.stop_btn.setCursor(Qt.PointingHandCursor)
+        self.stop_btn.clicked.connect(lambda: self._animate_button_click(self.stop_btn, STOP_BTN_STYLE, "#ff8888"))
         self.stop_btn.clicked.connect(self.stop_server)
         self.stop_btn.setEnabled(False)
         btn_row.addWidget(self.stop_btn)
 
         self.restart_btn = QPushButton("🔄 " + tr('btn_restart_server'))
+        self.restart_btn.setObjectName("restart_btn")
+        self.restart_btn.setStyleSheet(RESTART_BTN_STYLE)
+        self.restart_btn.setCursor(Qt.PointingHandCursor)
+        self.restart_btn.clicked.connect(lambda: self._animate_button_click(self.restart_btn, RESTART_BTN_STYLE, "#77bbff"))
         self.restart_btn.clicked.connect(self.restart_server)
         self.restart_btn.setEnabled(False)
         btn_row.addWidget(self.restart_btn)
 
         cl.addLayout(btn_row)
+
+        # Launch animation timer for pulsing status and dynamic dots
+        self._launch_anim_timer = QTimer(self)
+        self._launch_anim_frame = 0
+        self._launch_anim_timer.timeout.connect(self._step_launch_animation)
 
         del_save_btn = QPushButton("🗑️ " + ("Сбросить/Удалить сохранение этого мира" if get_language() == 'ru' else "Reset / Delete this World Save"))
         del_save_btn.setStyleSheet("background-color: #553333; color: #ffcccc; font-size: 11px;")
@@ -201,6 +301,15 @@ class ServerTabMixin:
         if hasattr(self, 'mod_manager'):
             self.mod_manager.set_server_name(name)
 
+    def _step_launch_animation(self):
+        dots = [".  ", ".. ", "...", " ..", "  .", "   "][self._launch_anim_frame % 6]
+        self._launch_anim_frame += 1
+        if hasattr(self, 'start_btn') and not self.start_btn.isEnabled():
+            self.start_btn.setText(f"⏳ {tr('btn_start_server')} {dots}")
+        if hasattr(self, 'status_indicator'):
+            icons = ["🟡", "🟠"]
+            self.status_indicator.setText(icons[self._launch_anim_frame % len(icons)])
+
     def start_server(self):
         if not self.server_installed:
             QMessageBox.warning(self, tr('server_not_installed'), tr('server_not_installed_msg'))
@@ -216,15 +325,38 @@ class ServerTabMixin:
 
             in_use = check_ports_in_use([g_p, s_p, r_p])
             if in_use:
-                res = QMessageBox.warning(
-                    self,
-                    tr('app_title'),
-                    tr('warn_ports_in_use', ports=", ".join(map(str, in_use))),
-                    QMessageBox.Yes | QMessageBox.No,
-                    QMessageBox.No
-                )
-                if res != QMessageBox.Yes:
-                    return
+                running_pid = self.server_process.detect_and_attach_running_server()
+                if running_pid:
+                    res = QMessageBox.question(
+                        self,
+                        tr('app_title'),
+                        ("Сервер Project Zomboid уже запущен (PID: %s)!\n\n"
+                         "Вы хотите остановить старый процесс и перезапустить сервер заново?" % running_pid)
+                        if get_language() == 'ru' else
+                        ("Project Zomboid server is already running (PID: %s)!\n\n"
+                         "Do you want to stop the existing process and restart fresh?" % running_pid),
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.Yes
+                    )
+                    if res == QMessageBox.Yes:
+                        self.append_console_output("⏹ " + ("Остановка предыдущего процесса сервера..." if get_language() == 'ru' else "Stopping previous server process..."))
+                        self.server_process.stop()
+                        self.on_server_stopped()
+                        QTimer.singleShot(1500, self.start_server)
+                        return
+                    else:
+                        self.on_server_ready()
+                        return
+                else:
+                    res = QMessageBox.warning(
+                        self,
+                        tr('app_title'),
+                        tr('warn_ports_in_use', ports=", ".join(map(str, in_use))),
+                        QMessageBox.Yes | QMessageBox.No,
+                        QMessageBox.No
+                    )
+                    if res != QMessageBox.Yes:
+                        return
         except Exception as e:
             logger.debug(f"Port check failed: {e}")
 
@@ -264,18 +396,25 @@ class ServerTabMixin:
             self.on_server_stopped()
 
     def stop_server(self):
-        self.append_console_output(tr('stopping_server'))
+        self.append_console_output("⏹ " + tr('stopping_server'))
         try:
             self.server_process.stop()
         except Exception as e:
             self.append_console_error(f"Failed to stop: {e}")
+        finally:
+            self.on_server_stopped()
 
     def restart_server(self):
-        self.append_console_output(tr('restarting_server'))
+        name = self.server_name_input.text().strip() or 'servertest'
+        ram_data = self.server_ram_combo.currentData() if hasattr(self, 'server_ram_combo') else 6
+        ram_gb = int(ram_data) if ram_data else 6
+        self.on_server_launching()
+        self.append_console_output(f"🔄 {tr('restarting_server')} '{name}' (RAM: {ram_gb} GB)...")
         try:
-            self.server_process.restart()
+            self.server_process.restart(name, ram_gb=ram_gb)
         except Exception as e:
             self.append_console_error(f"Failed to restart: {e}")
+            self.on_server_stopped()
 
     def send_console_command(self):
         cmd = self.cmd_input.text().strip()
@@ -303,6 +442,9 @@ class ServerTabMixin:
             self.stop_btn.setEnabled(True)
         if hasattr(self, 'restart_btn'):
             self.restart_btn.setEnabled(True)
+        if hasattr(self, '_launch_anim_timer'):
+            self._launch_anim_frame = 0
+            self._launch_anim_timer.start(350)
 
     def on_server_started(self):
         """Called when server process is spawned."""
@@ -313,6 +455,15 @@ class ServerTabMixin:
 
     def on_server_ready(self):
         """Called when server has finished loading and is ready for player connections."""
+        if hasattr(self, '_launch_anim_timer'):
+            self._launch_anim_timer.stop()
+        if hasattr(self, 'start_btn'):
+            self.start_btn.setText("▶ " + tr('btn_start_server'))
+            self.start_btn.setEnabled(False)
+        if hasattr(self, 'stop_btn'):
+            self.stop_btn.setEnabled(True)
+        if hasattr(self, 'restart_btn'):
+            self.restart_btn.setEnabled(True)
         if hasattr(self, 'status_indicator'):
             self.status_indicator.setText("🟢")
         if hasattr(self, 'status_label'):
@@ -321,12 +472,6 @@ class ServerTabMixin:
         if hasattr(self, 'status_detail_label'):
             detail_msg = "🟢 127.0.0.1:16261 • " + ("Готов к игре!" if get_language() == 'ru' else "Ready to join!")
             self.status_detail_label.setText(detail_msg)
-        if hasattr(self, 'start_btn'):
-            self.start_btn.setEnabled(False)
-        if hasattr(self, 'stop_btn'):
-            self.stop_btn.setEnabled(True)
-        if hasattr(self, 'restart_btn'):
-            self.restart_btn.setEnabled(True)
 
         # Sound Alert (Windows chime or beep)
         try:
@@ -357,6 +502,15 @@ class ServerTabMixin:
 
     def on_server_stopped(self):
         """Called when server process is terminated."""
+        if hasattr(self, '_launch_anim_timer'):
+            self._launch_anim_timer.stop()
+        if hasattr(self, 'start_btn'):
+            self.start_btn.setText("▶ " + tr('btn_start_server'))
+            self.start_btn.setEnabled(True)
+        if hasattr(self, 'stop_btn'):
+            self.stop_btn.setEnabled(False)
+        if hasattr(self, 'restart_btn'):
+            self.restart_btn.setEnabled(False)
         if hasattr(self, 'status_indicator'):
             self.status_indicator.setText("🔴")
         if hasattr(self, 'status_label'):
@@ -364,12 +518,6 @@ class ServerTabMixin:
             self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ff6666;")
         if hasattr(self, 'status_detail_label'):
             self.status_detail_label.setText("127.0.0.1:16261")
-        if hasattr(self, 'start_btn'):
-            self.start_btn.setEnabled(True)
-        if hasattr(self, 'stop_btn'):
-            self.stop_btn.setEnabled(False)
-        if hasattr(self, 'restart_btn'):
-            self.restart_btn.setEnabled(False)
         if hasattr(self, 'tray_icon') and self.tray_icon.isVisible():
             self.tray_icon.showMessage(tr('app_title'), tr('tray_server_stopped'), QSystemTrayIcon.Information, 3000)
 
