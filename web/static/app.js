@@ -507,21 +507,80 @@ async function saveMods() {
 }
 
 // ── Install & Updates ─────────────────────────────────────────────
+let currentBetaPassword = "";
+
 async function loadInstallInfo() {
   try {
     const res = await fetch('/api/install/branches', { headers: getHeaders() });
     const branches = await res.json();
-    const sel = document.getElementById('install-branch');
-    sel.innerHTML = '';
-    branches.forEach(b => {
-      const opt = document.createElement('option');
-      opt.value = b.branch;
-      opt.textContent = b.label;
-      sel.appendChild(opt);
+    const container = document.getElementById('steam-branch-rows');
+    if (!container) return;
+
+    container.innerHTML = '';
+    branches.forEach((b, idx) => {
+      const row = document.createElement('div');
+      row.className = 'steam-branch-row' + (idx === 0 ? ' selected' : '');
+      row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #212b38; cursor: pointer; transition: background 0.15s;';
+      if (idx === 0) {
+        row.style.background = '#1c2e42';
+        document.getElementById('install-branch').value = b.branch;
+      }
+
+      row.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <input type="radio" name="steam-branch-radio" value="${b.branch}" ${idx === 0 ? 'checked' : ''} style="cursor: pointer; width: 18px; height: 18px; accent-color: #67c1f5;">
+          <div>
+            <div style="font-weight: bold; font-size: 13px; color: #fff;">${b.name_ru || b.name}</div>
+            <div style="font-size: 11px; color: #8f98a0; margin-top: 2px;">${b.desc_ru || b.description}</div>
+          </div>
+        </div>
+        <div style="font-size: 12px; color: #8f98a0; font-weight: normal; text-align: right;">
+          ${b.date_ru || b.date_str || ''}
+        </div>
+      `;
+
+      row.addEventListener('click', () => {
+        const radio = row.querySelector('input[type="radio"]');
+        radio.checked = true;
+        document.querySelectorAll('.steam-branch-row').forEach(r => {
+          r.classList.remove('selected');
+          r.style.background = '#171d25';
+        });
+        row.classList.add('selected');
+        row.style.background = '#1c2e42';
+        document.getElementById('install-branch').value = b.branch;
+      });
+
+      row.addEventListener('mouseenter', () => {
+        if (!row.classList.contains('selected')) row.style.background = '#202b3a';
+      });
+      row.addEventListener('mouseleave', () => {
+        if (!row.classList.contains('selected')) row.style.background = '#171d25';
+      });
+
+      container.appendChild(row);
     });
   } catch (e) {
     console.error('Branches load error:', e);
   }
+}
+
+function checkBetaCode() {
+  const code = document.getElementById('beta-access-code').value.trim();
+  const hiddenBranch = document.getElementById('beta-hidden-branch').value.trim();
+  const msg = document.getElementById('beta-code-msg');
+
+  if (!code) {
+    alert('Пожалуйста, введите код доступа или пароль ветки');
+    return;
+  }
+
+  currentBetaPassword = code;
+  const branchName = hiddenBranch || 'private_beta';
+  document.getElementById('install-branch').value = branchName;
+
+  msg.textContent = `✓ Код доступа принят! Ветка: ${branchName}`;
+  msg.style.display = 'inline';
 }
 
 async function startInstallation() {
@@ -532,7 +591,7 @@ async function startInstallation() {
   await fetch('/api/install/start', {
     method: 'POST',
     headers: getHeaders(),
-    body: JSON.stringify({ branch: branch })
+    body: JSON.stringify({ branch: branch, password: currentBetaPassword })
   });
 
   pollInstallStatus();

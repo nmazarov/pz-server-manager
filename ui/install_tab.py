@@ -13,9 +13,10 @@ from pathlib import Path
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
     QComboBox, QProgressBar, QPlainTextEdit, QGroupBox, QFormLayout,
-    QMessageBox, QFileDialog, QSizePolicy
+    QMessageBox, QFileDialog, QSizePolicy, QButtonGroup, QRadioButton, QFrame
 )
 from PyQt5.QtGui import QFont
+from PyQt5.QtCore import Qt
 
 from translations import tr, get_language
 from server_installer import (
@@ -32,6 +33,7 @@ class InstallTabMixin:
         tab = QWidget()
         layout = QVBoxLayout(tab)
 
+        # ── Group 1: Installation Directory ──
         g = QGroupBox(tr('group_install_path'))
         pl = QHBoxLayout(g)
         self.install_path_edit = QLineEdit(str(self.paths['server_dir']))
@@ -41,29 +43,119 @@ class InstallTabMixin:
         pl.addWidget(b)
         layout.addWidget(g)
 
+        # ── Group 2: Steam Betas & Versions (Steam-accurate table) ──
         g_ver = QGroupBox(tr('group_server_version'))
-        vl = QFormLayout(g_ver)
+        vl_ver = QVBoxLayout(g_ver)
 
-        row_ver = QHBoxLayout()
+        # Steam header subtitle & note
+        lbl_ver_note = QLabel(
+            f"<b>{tr('lbl_selected_version_title')}</b><br>"
+            f"<span style='color:#8f98a0; font-size:11px;'>{tr('lbl_selected_version_note')}</span>"
+        )
+        lbl_ver_note.setWordWrap(True)
+        vl_ver.addWidget(lbl_ver_note)
+
+        # Steam table frame
+        self.steam_table_frame = QFrame()
+        self.steam_table_frame.setObjectName("SteamTableFrame")
+        self.steam_table_frame.setStyleSheet("""
+            QFrame#SteamTableFrame {
+                background-color: #171d25;
+                border: 1px solid #2a475e;
+                border-radius: 6px;
+            }
+        """)
+        table_vbox = QVBoxLayout(self.steam_table_frame)
+        table_vbox.setContentsMargins(0, 0, 0, 0)
+        table_vbox.setSpacing(0)
+
+        # Table Column Headers
+        hdr_frame = QFrame()
+        hdr_frame.setStyleSheet(
+            "background-color: #1f2b3b; border-bottom: 1px solid #2a475e; "
+            "border-top-left-radius: 5px; border-top-right-radius: 5px;"
+        )
+        hdr_layout = QHBoxLayout(hdr_frame)
+        hdr_layout.setContentsMargins(14, 7, 14, 7)
+
+        lbl_hdr_name = QLabel(tr('col_branch_name_desc'))
+        lbl_hdr_name.setStyleSheet("color: #8f98a0; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;")
+        hdr_layout.addWidget(lbl_hdr_name, 1)
+
+        lbl_hdr_date = QLabel(tr('col_branch_last_update'))
+        lbl_hdr_date.setStyleSheet("color: #8f98a0; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;")
+        lbl_hdr_date.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        hdr_layout.addWidget(lbl_hdr_date)
+
+        table_vbox.addWidget(hdr_frame)
+
+        # Dynamic rows container
+        self.rows_container = QWidget()
+        self.rows_layout = QVBoxLayout(self.rows_container)
+        self.rows_layout.setContentsMargins(0, 0, 0, 0)
+        self.rows_layout.setSpacing(1)
+        table_vbox.addWidget(self.rows_container)
+
+        vl_ver.addWidget(self.steam_table_frame)
+
+        # Button group and radio registry for exclusive branch selection
+        self.branch_button_group = QButtonGroup(tab)
+        self.branch_radio_map = {}
+        self.current_beta_password = ""
+
+        # Hidden synchronized combo box so existing code still works seamlessly
         self.combo_server_version = QComboBox()
-        self.combo_server_version.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        row_ver.addWidget(self.combo_server_version)
+        self.combo_server_version.setVisible(False)
+        vl_ver.addWidget(self.combo_server_version)
 
-        self.btn_refresh_ver = QPushButton(tr('btn_refresh_versions'))
+        # Section: Скрытые версии (Private / Password-protected Betas)
+        hidden_box = QFrame()
+        hidden_box.setStyleSheet(
+            "background-color: #1b2838; border: 1px solid #2a475e; "
+            "border-radius: 5px; padding: 10px; margin-top: 4px;"
+        )
+        hidden_layout = QVBoxLayout(hidden_box)
+        hidden_layout.setContentsMargins(10, 8, 10, 8)
+        hidden_layout.setSpacing(6)
+
+        lbl_hidden_title = QLabel(
+            f"<b>{tr('lbl_hidden_betas')}</b><br>"
+            f"<span style='color:#8f98a0; font-size:11px;'>{tr('lbl_hidden_betas_desc')}</span>"
+        )
+        lbl_hidden_title.setWordWrap(True)
+        hidden_layout.addWidget(lbl_hidden_title)
+
+        row_code = QHBoxLayout()
+        self.edit_hidden_branch = QLineEdit()
+        self.edit_hidden_branch.setPlaceholderText(tr('placeholder_hidden_branch'))
+        self.edit_hidden_branch.setMaximumWidth(190)
+        row_code.addWidget(self.edit_hidden_branch)
+
+        self.edit_beta_code = QLineEdit()
+        self.edit_beta_code.setPlaceholderText(tr('placeholder_beta_code'))
+        row_code.addWidget(self.edit_beta_code)
+
+        self.btn_check_beta_code = QPushButton(tr('btn_check_beta_code'))
+        self.btn_check_beta_code.setStyleSheet(
+            "background-color: #214b6b; color: #ffffff; font-weight: bold; "
+            "padding: 6px 14px; border-radius: 4px;"
+        )
+        self.btn_check_beta_code.clicked.connect(self.on_check_beta_code)
+        row_code.addWidget(self.btn_check_beta_code)
+
+        self.btn_refresh_ver = QPushButton("🔄 " + tr('btn_reload'))
         self.btn_refresh_ver.clicked.connect(self.refresh_server_versions)
-        row_ver.addWidget(self.btn_refresh_ver)
-        vl.addRow(tr('lbl_server_version'), row_ver)
+        row_code.addWidget(self.btn_refresh_ver)
 
-        self.edit_custom_branch = QLineEdit()
-        self.edit_custom_branch.setPlaceholderText("e.g. legacy41 or 42.19")
-        self.edit_custom_branch.setVisible(False)
-        vl.addRow(tr('lbl_custom_branch'), self.edit_custom_branch)
+        hidden_layout.addLayout(row_code)
 
-        def _on_ver_changed(index):
-            data = self.combo_server_version.currentData()
-            self.edit_custom_branch.setVisible(data == "custom")
+        self.lbl_beta_code_status = QLabel("")
+        self.lbl_beta_code_status.setStyleSheet("font-size: 11px; color: #8bc34a; font-weight: bold;")
+        self.lbl_beta_code_status.setVisible(False)
+        hidden_layout.addWidget(self.lbl_beta_code_status)
 
-        self.combo_server_version.currentIndexChanged.connect(_on_ver_changed)
+        vl_ver.addWidget(hidden_box)
+
         layout.addWidget(g_ver)
 
         self.refresh_server_versions()
@@ -116,28 +208,165 @@ class InstallTabMixin:
     def refresh_server_versions(self):
         """Fetch and populate current available server beta branches from Steam."""
         try:
+            # Clear existing rows
+            while self.rows_layout.count() > 0:
+                child = self.rows_layout.takeAt(0)
+                if child.widget():
+                    child.widget().deleteLater()
+
+            # Clear button group
+            for btn in self.branch_button_group.buttons():
+                self.branch_button_group.removeButton(btn)
+            self.branch_radio_map.clear()
+
             self.combo_server_version.blockSignals(True)
             current_choice = self.combo_server_version.currentData()
             self.combo_server_version.clear()
 
-            branches = fetch_available_server_branches()
+            is_ru = get_language() == 'ru'
+            branches = fetch_available_server_branches(lang='ru' if is_ru else 'en')
+
             for b in branches:
                 self.combo_server_version.addItem(b['label'], b['branch'])
+                row = self._create_steam_branch_row(b, is_ru)
+                self.rows_layout.addWidget(row)
 
-            if current_choice is not None:
-                idx = self.combo_server_version.findData(current_choice)
-                if idx >= 0:
-                    self.combo_server_version.setCurrentIndex(idx)
+            # Auto-select public branch or current choice
+            target_key = current_choice if current_choice is not None else ""
+            if target_key in self.branch_radio_map:
+                self.branch_radio_map[target_key].setChecked(True)
+            elif "" in self.branch_radio_map:
+                self.branch_radio_map[""].setChecked(True)
+
             self.combo_server_version.blockSignals(False)
 
-            data = self.combo_server_version.currentData()
-            self.edit_custom_branch.setVisible(data == "custom")
             self.statusBar.showMessage(
-                "Версии сервера из Steam обновлены" if get_language() == 'ru' else "Server branches refreshed from Steam",
+                "Версии сервера из Steam обновлены" if is_ru else "Server branches refreshed from Steam",
                 3000
             )
         except Exception as e:
             logger.error(f"Failed to refresh server versions: {e}")
+
+    def _create_steam_branch_row(self, b: dict, is_ru: bool) -> QWidget:
+        row = QFrame()
+        row.setObjectName("SteamBranchRow")
+        row.setCursor(Qt.PointingHandCursor)
+        row.setStyleSheet("""
+            QFrame#SteamBranchRow {
+                background-color: #171d25;
+                border-bottom: 1px solid #212b38;
+                padding: 10px 12px;
+            }
+            QFrame#SteamBranchRow:hover {
+                background-color: #202b3a;
+            }
+        """)
+
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(12)
+
+        radio = QRadioButton()
+        radio.setCursor(Qt.PointingHandCursor)
+        radio.setStyleSheet("""
+            QRadioButton::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 9px;
+                border: 2px solid #67c1f5;
+                background-color: #171d25;
+            }
+            QRadioButton::indicator:checked {
+                background-color: #67c1f5;
+                border: 2px solid #ffffff;
+            }
+            QRadioButton::indicator:hover {
+                border-color: #ffffff;
+            }
+        """)
+        self.branch_button_group.addButton(radio)
+        branch_key = b['branch']
+        self.branch_radio_map[branch_key] = radio
+
+        info_vbox = QVBoxLayout()
+        info_vbox.setSpacing(2)
+        info_vbox.setContentsMargins(0, 0, 0, 0)
+
+        name_text = b.get('name_ru') if is_ru else b.get('name_en')
+        desc_text = b.get('desc_ru') if is_ru else b.get('desc_en')
+        date_text = b.get('date_ru') if is_ru else b.get('date_en')
+
+        lbl_name = QLabel(name_text or b.get('name', ''))
+        lbl_name.setStyleSheet("color: #ffffff; font-size: 13px; font-weight: bold;")
+        lbl_desc = QLabel(desc_text or b.get('description', ''))
+        lbl_desc.setStyleSheet("color: #8f98a0; font-size: 11px;")
+
+        info_vbox.addWidget(lbl_name)
+        info_vbox.addWidget(lbl_desc)
+
+        layout.addWidget(radio)
+        layout.addLayout(info_vbox, 1)
+
+        lbl_date = QLabel(date_text or b.get('date_str', ''))
+        lbl_date.setStyleSheet("color: #8f98a0; font-size: 12px; font-weight: normal;")
+        lbl_date.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        layout.addWidget(lbl_date)
+
+        def _on_toggle(checked):
+            if checked:
+                idx = self.combo_server_version.findData(branch_key)
+                if idx >= 0:
+                    self.combo_server_version.setCurrentIndex(idx)
+                row.setStyleSheet("""
+                    QFrame#SteamBranchRow {
+                        background-color: #1c2e42;
+                        border-bottom: 1px solid #2a475e;
+                        padding: 10px 12px;
+                    }
+                    QFrame#SteamBranchRow:hover {
+                        background-color: #23374e;
+                    }
+                """)
+            else:
+                row.setStyleSheet("""
+                    QFrame#SteamBranchRow {
+                        background-color: #171d25;
+                        border-bottom: 1px solid #212b38;
+                        padding: 10px 12px;
+                    }
+                    QFrame#SteamBranchRow:hover {
+                        background-color: #202b3a;
+                    }
+                """)
+
+        radio.toggled.connect(_on_toggle)
+
+        def _mouse_press(event):
+            radio.setChecked(True)
+        row.mousePressEvent = _mouse_press
+
+        return row
+
+    def on_check_beta_code(self):
+        code = self.edit_beta_code.text().strip()
+        custom_branch = self.edit_hidden_branch.text().strip()
+        if not code:
+            QMessageBox.warning(self, tr('confirm'), tr('beta_code_empty'))
+            return
+
+        self.current_beta_password = code
+        branch_name = custom_branch if custom_branch else "private_beta"
+
+        # Add to combo box if not present
+        idx = self.combo_server_version.findData(branch_name)
+        if idx < 0:
+            label = f"{branch_name} — [Скрытая ветка / Private]"
+            self.combo_server_version.addItem(label, branch_name)
+            idx = self.combo_server_version.findData(branch_name)
+
+        self.combo_server_version.setCurrentIndex(idx)
+        self.lbl_beta_code_status.setText(f"{tr('beta_code_success')} ({branch_name})")
+        self.lbl_beta_code_status.setVisible(True)
 
     def start_installation(self):
         install_path = Path(self.install_path_edit.text())
@@ -164,13 +393,16 @@ class InstallTabMixin:
         self.paths['server_dir'] = install_path
         self.paths['steamcmd_dir'] = install_path / 'steamcmd'
         self.install_btn.setEnabled(False)
-        ver_data = self.combo_server_version.currentData()
-        if ver_data == "custom":
-            beta_branch = self.edit_custom_branch.text().strip()
-        else:
-            beta_branch = ver_data or ""
 
-        self.install_worker = InstallWorker(self.installer, self.paths, beta_branch=beta_branch)
+        ver_data = self.combo_server_version.currentData()
+        beta_branch = ver_data if ver_data is not None else ""
+        beta_password = getattr(self, 'current_beta_password', "")
+
+        self.install_worker = InstallWorker(
+            self.installer, self.paths,
+            beta_branch=beta_branch,
+            beta_password=beta_password
+        )
         self.install_worker.progress.connect(self.on_install_progress)
         self.install_worker.log.connect(self.on_install_log)
         self.install_worker.finished.connect(self.on_install_finished)

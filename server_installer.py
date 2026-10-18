@@ -18,6 +18,7 @@ import shutil
 import stat
 import platform
 import re
+import datetime
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -29,13 +30,71 @@ logger = logging.getLogger(__name__)
 PZ_APP_ID = "380870"  # Project Zomboid Dedicated Server
 
 
-def fetch_available_server_branches() -> list:
+def format_steam_date(timestamp: int or str, lang: str = "ru") -> str:
+    """Format UNIX timestamp in the exact Steam style: '28 сент. 2026 г.' or 'Sep 28, 2026'."""
+    try:
+        dt = datetime.datetime.fromtimestamp(int(timestamp))
+    except Exception:
+        return ""
+    ru_months = {
+        1: 'янв.', 2: 'февр.', 3: 'мар.', 4: 'апр.', 5: 'мая', 6: 'июн.',
+        7: 'июл.', 8: 'авг.', 9: 'сент.', 10: 'окт.', 11: 'нояб.', 12: 'дек.'
+    }
+    if lang == 'ru':
+        return f"{dt.day} {ru_months.get(dt.month, str(dt.month))} {dt.year} г."
+    return dt.strftime("%b %d, %Y")
+
+
+def fetch_available_server_branches(lang: str = "ru") -> list:
     """
     Fetch the currently available public beta branches and versions from Steam for App 380870.
-    Returns a list of dicts: [{'branch': '', 'key': 'public', 'label': '...', 'buildid': '...', 'description': '...'}]
+    Matches Steam's exact UI strings and layout:
+    - Name & Description (e.g. 'Стандартная общедоступная версия' / 'Самая распространённая версия игры')
+    - Last updated date (e.g. '28 сент. 2026 г.')
     """
     url = f"https://api.steamcmd.net/v1/info/{PZ_APP_ID}"
     branches_list = []
+
+    # Canonical metadata matching Steam's exact Russian & English UI
+    CANONICAL_META = {
+        'public': {
+            'order': 0,
+            'name_ru': 'Стандартная общедоступная версия',
+            'desc_ru': 'Самая распространённая версия игры',
+            'name_en': 'Default public version',
+            'desc_en': 'Most common version of the game',
+            'default_ts': 1790597203,
+            'default_buildid': '25485538',
+        },
+        'unstable': {
+            'order': 1,
+            'name_ru': 'unstable',
+            'desc_ru': 'Unstable',
+            'name_en': 'unstable',
+            'desc_en': 'Unstable',
+            'default_ts': 1790178694,
+            'default_buildid': '25485538',
+        },
+        '42.19': {
+            'order': 2,
+            'name_ru': '42.19',
+            'desc_ru': 'Build 42.19.2',
+            'name_en': '42.19',
+            'desc_en': 'Build 42.19.2',
+            'default_ts': 1787742952,
+            'default_buildid': '24929695',
+        },
+        'legacy41': {
+            'order': 3,
+            'name_ru': 'legacy41',
+            'desc_ru': 'Build 41.78.21',
+            'name_en': 'legacy41',
+            'desc_en': 'Build 41.78.21',
+            'default_ts': 1787742984,
+            'default_buildid': '24928750',
+        },
+    }
+
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=8) as resp:
@@ -45,48 +104,79 @@ def fetch_available_server_branches() -> list:
                 if b_info.get('pwdrequired') == '1':
                     continue
                 build_id = b_info.get('buildid', '')
-                desc = b_info.get('description', '')
+                desc_api = b_info.get('description', '')
+                ts = b_info.get('timeupdated') or b_info.get('timebuildupdated')
 
-                ver_num = buildid_to_game_version(build_id, b_key)
-                if b_key == 'public':
-                    label = f"Версия {ver_num} — Актуальная (Public Build)"
-                elif b_key == 'unstable':
-                    label = f"Версия {ver_num} — Unstable (Тестовая)"
-                elif b_key == '42.19':
-                    label = "Версия 42.19.2"
-                elif b_key == 'legacy41':
-                    label = "Версия 41.78.21 — Старая ветка (Legacy Build 41)"
-                elif desc:
-                    label = f"Версия {ver_num} — {desc}"
-                else:
-                    label = f"Версия {ver_num} ({b_key})"
+                meta = CANONICAL_META.get(b_key, {})
+                order = meta.get('order', 10)
+                name_ru = meta.get('name_ru', b_key)
+                name_en = meta.get('name_en', b_key)
+                desc_ru = meta.get('desc_ru', desc_api or f"Branch {b_key}")
+                desc_en = meta.get('desc_en', desc_api or f"Branch {b_key}")
+
+                if not ts:
+                    ts = meta.get('default_ts', 0)
+
+                date_ru = format_steam_date(ts, 'ru')
+                date_en = format_steam_date(ts, 'en')
+                date_str = date_ru if lang == 'ru' else date_en
+
+                name = name_ru if lang == 'ru' else name_en
+                desc = desc_ru if lang == 'ru' else desc_en
+
+                label = f"{name} — {desc} [{date_str}]" if date_str else f"{name} — {desc}"
 
                 branches_list.append({
                     'branch': '' if b_key == 'public' else b_key,
                     'key': b_key,
-                    'label': label,
-                    'buildid': build_id,
+                    'name': name,
+                    'name_ru': name_ru,
+                    'name_en': name_en,
                     'description': desc,
+                    'desc_ru': desc_ru,
+                    'desc_en': desc_en,
+                    'date_str': date_str,
+                    'date_ru': date_ru,
+                    'date_en': date_en,
+                    'timeupdated': int(ts) if ts else 0,
+                    'buildid': build_id,
+                    'label': label,
+                    'order': order,
                 })
         logger.info(f"Loaded {len(branches_list)} server branches from Steam for App {PZ_APP_ID}")
     except Exception as e:
         logger.warning(f"Failed to fetch live branches from api.steamcmd.net: {e}")
 
     if not branches_list:
-        branches_list = [
-            {'branch': '', 'key': 'public', 'label': 'Версия 42.21 — Актуальная (Public Build)', 'buildid': '', 'description': 'Public'},
-            {'branch': 'unstable', 'key': 'unstable', 'label': 'Версия 42.21 — Unstable (Тестовая)', 'buildid': '', 'description': 'Unstable'},
-            {'branch': '42.19', 'key': '42.19', 'label': 'Версия 42.19.2', 'buildid': '', 'description': 'Build 42.19'},
-            {'branch': 'legacy41', 'key': 'legacy41', 'label': 'Версия 41.78.21 — Старая ветка (Legacy Build 41)', 'buildid': '', 'description': 'Legacy 41'},
-        ]
+        # Fallback offline list matching Steam's exact layout and dates
+        for b_key, meta in CANONICAL_META.items():
+            ts = meta['default_ts']
+            date_ru = format_steam_date(ts, 'ru')
+            date_en = format_steam_date(ts, 'en')
+            date_str = date_ru if lang == 'ru' else date_en
+            name = meta['name_ru'] if lang == 'ru' else meta['name_en']
+            desc = meta['desc_ru'] if lang == 'ru' else meta['desc_en']
+            label = f"{name} — {desc} [{date_str}]"
+            branches_list.append({
+                'branch': '' if b_key == 'public' else b_key,
+                'key': b_key,
+                'name': name,
+                'name_ru': meta['name_ru'],
+                'name_en': meta['name_en'],
+                'description': desc,
+                'desc_ru': meta['desc_ru'],
+                'desc_en': meta['desc_en'],
+                'date_str': date_str,
+                'date_ru': date_ru,
+                'date_en': date_en,
+                'timeupdated': ts,
+                'buildid': meta['default_buildid'],
+                'label': label,
+                'order': meta['order'],
+            })
 
-    branches_list.append({
-        'branch': 'custom',
-        'key': 'custom',
-        'label': 'custom — Другая ветка (Custom Beta Branch)…',
-        'buildid': '',
-        'description': 'Custom branch'
-    })
+    # Sort strictly by Steam order
+    branches_list.sort(key=lambda x: (x.get('order', 10), -x.get('timeupdated', 0)))
 
     return branches_list
 
@@ -293,11 +383,12 @@ class InstallWorker(QThread):
     finished = pyqtSignal()  # Installation complete
     error = pyqtSignal(str)  # Error message
 
-    def __init__(self, installer: 'ServerInstaller', paths: dict, beta_branch: str = ""):
+    def __init__(self, installer: 'ServerInstaller', paths: dict, beta_branch: str = "", beta_password: str = ""):
         super().__init__()
         self.installer = installer
         self.paths = paths
         self.beta_branch = beta_branch
+        self.beta_password = beta_password
         # Sync installer directories with current paths chosen by user
         if 'server_dir' in paths:
             self.installer.server_dir = paths['server_dir']
@@ -355,6 +446,7 @@ class InstallWorker(QThread):
 
             self.installer.install_pz_server(
                 beta_branch=self.beta_branch,
+                beta_password=self.beta_password,
                 callback=lambda msg: self.log.emit(msg),
                 progress_callback=lambda p: self.progress.emit(50 + int(p * 0.45), "Downloading server files...")
             )
@@ -554,6 +646,7 @@ class ServerInstaller:
     def install_pz_server(
         self,
         beta_branch: str = "",
+        beta_password: str = "",
         callback: Optional[Callable[[str], None]] = None,
         progress_callback: Optional[Callable[[float], None]] = None
     ):
@@ -574,10 +667,18 @@ class ServerInstaller:
                 server_dir_str = server_dir_str.replace('/', '\\')
 
             branch_clean = beta_branch.strip()
-            beta_arg = f"-beta {branch_clean} " if branch_clean else ""
+            pwd_clean = beta_password.strip()
+
+            beta_arg = ""
+            if branch_clean:
+                beta_arg = f"-beta {branch_clean} "
+                if pwd_clean:
+                    beta_arg += f"-betapassword {pwd_clean} "
 
             if callback:
                 branch_msg = f" [Branch: {branch_clean}]" if branch_clean else " [Build 42 Public]"
+                if pwd_clean:
+                    branch_msg += " [Password Protected]"
                 callback(f"Installing PZ Dedicated Server (App ID: {PZ_APP_ID}){branch_msg}...")
                 callback(f"Install directory: {server_dir_str}")
 
@@ -871,3 +972,41 @@ echo "Update complete!"
             with open(version_file, 'r') as f:
                 return f.read().strip()
         return None
+
+    def install_or_update(
+        self,
+        beta_branch: str = "",
+        beta_password: str = "",
+        progress_callback: Optional[Callable[[int, str], None]] = None,
+        log_callback: Optional[Callable[[str], None]] = None
+    ):
+        """Full automated headless pipeline to download SteamCMD if needed, and install/update server."""
+        if log_callback:
+            log_callback("Checking disk space...")
+        has_space, free_gb = check_disk_space(self.server_dir, required_gb=3.0)
+        if not has_space:
+            raise RuntimeError(f"Insufficient disk space! Free: {free_gb:.2f} GB, Required: 3.0 GB")
+
+        steamcmd_exe = self._get_steamcmd_path()
+        if not steamcmd_exe.exists():
+            if progress_callback:
+                progress_callback(10, "Downloading SteamCMD...")
+            self.download_steamcmd(callback=log_callback)
+            if progress_callback:
+                progress_callback(25, "Extracting SteamCMD...")
+            self.extract_steamcmd()
+            if progress_callback:
+                progress_callback(35, "Initializing SteamCMD...")
+            self.initialize_steamcmd(callback=log_callback)
+
+        if progress_callback:
+            progress_callback(50, "Installing server files...")
+        self.install_pz_server(
+            beta_branch=beta_branch,
+            beta_password=beta_password,
+            callback=log_callback,
+            progress_callback=lambda p: progress_callback(50 + int(p * 45), "Downloading server files...") if progress_callback else None
+        )
+        if progress_callback:
+            progress_callback(100, "Installation complete!")
+

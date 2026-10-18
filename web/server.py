@@ -256,6 +256,7 @@ def create_app(paths: Dict[str, Path], auth_manager: Optional[AuthManager] = Non
 
     class InstallReq(BaseModel):
         branch: Optional[str] = ""
+        password: Optional[str] = ""
 
     # ── REST API Endpoints ──────────────────────────────────────────
 
@@ -533,8 +534,10 @@ def create_app(paths: Dict[str, Path], auth_manager: Optional[AuthManager] = Non
         def worker():
             try:
                 branch = req.branch.strip()
+                pwd = (req.password or "").strip()
                 installer.install_or_update(
                     beta_branch=branch,
+                    beta_password=pwd,
                     progress_callback=lambda v, m: (
                         install_state.update({"progress": v, "message": m})
                     ),

@@ -325,18 +325,52 @@
           <button class="btn btn-info" onclick="checkSteamUpdate()">🔍 Проверить обновления в Steam</button>
         </div>
 
-        <div class="row">
-          <div class="col" style="max-width: 320px;">
-            <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Ветка / Версия сервера в Steam:</label>
-            <select id="install-branch" class="form-control" style="margin-top: 6px;">
-              <option value="">Загрузка веток...</option>
-            </select>
+        <!-- Steam-styled Betas Container -->
+        <div class="steam-betas-container" style="background: #171d25; border: 1px solid #2a475e; border-radius: 6px; overflow: hidden; margin-top: 10px;">
+          <!-- Section Note -->
+          <div style="padding: 12px 14px; background: #13171e; border-bottom: 1px solid #2a475e;">
+            <div style="font-weight: bold; font-size: 14px; color: #fff;">Версии и бета-версии</div>
+            <div style="font-size: 11px; color: #8f98a0; margin-top: 3px; line-height: 1.4;">
+              <b>Выбранная версия</b><br>
+              Эти версии предоставлены разработчиком игры, и некоторые из них могут быть нестабильными тестовыми сборками или старыми версиями. Будьте осторожны.
+            </div>
           </div>
-          <div class="col" style="display: flex; align-items: flex-end;">
-            <button id="btn-do-install" class="btn btn-primary" onclick="startInstallation()" style="padding: 10px 20px;">
-              🚀 Установить / Обновить сервер
+
+          <!-- Table Header -->
+          <div style="display: flex; justify-content: space-between; padding: 7px 16px; background: #1f2b3b; border-bottom: 1px solid #2a475e; font-size: 11px; font-weight: bold; color: #8f98a0; letter-spacing: 0.5px;">
+            <span>НАЗВАНИЕ И ОПИСАНИЕ</span>
+            <span>ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ</span>
+          </div>
+
+          <!-- Branch Rows -->
+          <div id="steam-branch-rows" style="display: flex; flex-direction: column;">
+            <div style="padding: 16px; color: #8f98a0; font-size: 13px;">Загрузка версий из Steam...</div>
+          </div>
+        </div>
+
+        <!-- Hidden input for active branch -->
+        <input type="hidden" id="install-branch" value="">
+
+        <!-- Скрытые версии -->
+        <div style="background: #1b2838; border: 1px solid #2a475e; border-radius: 6px; padding: 12px 14px; margin-top: 10px;">
+          <div style="font-weight: bold; font-size: 13px; color: #fff;">Скрытые версии</div>
+          <div style="font-size: 11px; color: #8f98a0; margin: 3px 0 10px 0;">
+            Введите код доступа, чтобы разблокировать скрытую версию игры или бета-версию:
+          </div>
+          <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="beta-hidden-branch" class="form-control" placeholder="Название ветки (необязательно)" style="max-width: 220px;">
+            <input type="password" id="beta-access-code" class="form-control" placeholder="Код доступа или пароль" style="max-width: 260px;">
+            <button class="btn btn-secondary" onclick="checkBetaCode()" style="padding: 8px 16px; background: #214b6b; color: #fff; font-weight: bold;">
+              Проверить код
             </button>
+            <span id="beta-code-msg" style="font-size: 12px; color: #8bc34a; font-weight: bold; display: none;"></span>
           </div>
+        </div>
+
+        <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+          <button id="btn-do-install" class="btn btn-primary" onclick="startInstallation()" style="padding: 12px 26px; font-size: 14px;">
+            🚀 Установить / Обновить сервер
+          </button>
         </div>
 
         <div style="margin-top: 20px;">
