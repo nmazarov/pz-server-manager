@@ -49,15 +49,42 @@ class NetworkHelper:
 
     @staticmethod
     def get_local_ip() -> str:
-        """Get local LAN IP address."""
+        """Get local LAN IP address (guaranteed non-127 when network adapter is active)."""
+        # Method 1: Connect UDP socket towards Internet gateway
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.settimeout(0.5)
             s.connect(("8.8.8.8", 80))
             ip = s.getsockname()[0]
             s.close()
-            return ip
+            if ip and not ip.startswith("127."):
+                return ip
         except Exception:
-            return "127.0.0.1"
+            pass
+
+        # Method 2: Enumerate local host interface addresses
+        try:
+            hostname = socket.gethostname()
+            for info in socket.getaddrinfo(hostname, None):
+                cand = info[4][0]
+                if cand and not cand.startswith("127.") and ":" not in cand:
+                    return cand
+        except Exception:
+            pass
+
+        # Method 3: Windows ipconfig parsing fallback
+        if os.name == 'nt':
+            try:
+                import re
+                out = subprocess.check_output("ipconfig", text=True, timeout=1.0)
+                matches = re.findall(r"IPv4 Address[.\s]*:\s*([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)", out)
+                for cand in matches:
+                    if not cand.startswith("127."):
+                        return cand
+            except Exception:
+                pass
+
+        return "192.168.1.1"
 
     @staticmethod
     def check_local_port_binding(port: int, proto: str = "UDP") -> bool:

@@ -66,13 +66,21 @@ class SettingsTabMixin:
         right_col = QVBoxLayout()
         right_col.setSpacing(12)
 
+        LABEL_W = 220
+
         def _fmt_form(form):
             form.setContentsMargins(12, 12, 12, 12)
             form.setSpacing(8)
             form.setFieldGrowthPolicy(QFormLayout.FieldsStayAtSizeHint)
 
-        def _ctl_limit(ctl, w=260):
+        def _add_field(form, label_text, ctl, w=280):
             ctl.setMaximumWidth(w)
+            lbl = QLabel(label_text)
+            lbl.setFixedWidth(LABEL_W)
+            form.addRow(lbl, ctl)
+
+        def _add_chk(form, chk):
+            form.addRow(chk)
 
         # ── 1. Basic (Left) ──
         g_basic = QGroupBox(tr('group_basic'))
@@ -81,35 +89,29 @@ class SettingsTabMixin:
 
         self.setting_public_name = QLineEdit()
         self.setting_public_name.setPlaceholderText('My Zomboid Server')
-        _ctl_limit(self.setting_public_name, 280)
-        f.addRow(tr('lbl_server_name'), self.setting_public_name)
+        _add_field(f, tr('lbl_server_name'), self.setting_public_name, 280)
 
         self.setting_public_desc = QLineEdit()
         self.setting_public_desc.setPlaceholderText('A Project Zomboid server')
-        _ctl_limit(self.setting_public_desc, 280)
-        f.addRow(tr('lbl_description'), self.setting_public_desc)
+        _add_field(f, tr('lbl_description'), self.setting_public_desc, 280)
 
         self.setting_password = QLineEdit()
         self.setting_password.setEchoMode(QLineEdit.Password)
         self.setting_password.setPlaceholderText(tr('ph_empty_no_password'))
-        _ctl_limit(self.setting_password, 280)
-        f.addRow(tr('lbl_password'), self.setting_password)
+        _add_field(f, tr('lbl_password'), self.setting_password, 280)
 
         self.setting_max_players = QSpinBox()
         self.setting_max_players.setRange(1, 100)
         self.setting_max_players.setValue(16)
-        _ctl_limit(self.setting_max_players, 140)
-        f.addRow(tr('lbl_max_players'), self.setting_max_players)
+        _add_field(f, tr('lbl_max_players'), self.setting_max_players, 140)
 
         self.setting_map = QLineEdit('Muldraugh, KY')
         self.setting_map.setPlaceholderText(tr('ph_map'))
-        _ctl_limit(self.setting_map, 280)
-        f.addRow(tr('lbl_map'), self.setting_map)
+        _add_field(f, tr('lbl_map'), self.setting_map, 280)
 
         self.setting_welcome_msg = QLineEdit()
         self.setting_welcome_msg.setPlaceholderText(tr('ph_welcome_msg'))
-        _ctl_limit(self.setting_welcome_msg, 280)
-        f.addRow(tr('lbl_welcome_msg'), self.setting_welcome_msg)
+        _add_field(f, tr('lbl_welcome_msg'), self.setting_welcome_msg, 280)
 
         left_col.addWidget(g_basic)
 
@@ -120,46 +122,44 @@ class SettingsTabMixin:
 
         self.setting_pvp = QCheckBox(tr('chk_pvp'))
         self.setting_pvp.setChecked(True)
-        f.addRow('', self.setting_pvp)
+        _add_chk(f, self.setting_pvp)
 
         self.setting_pause_empty = QCheckBox(tr('chk_pause_empty'))
         self.setting_pause_empty.setChecked(True)
-        f.addRow('', self.setting_pause_empty)
+        _add_chk(f, self.setting_pause_empty)
 
         self.setting_allow_coop = QCheckBox(tr('chk_allow_coop'))
         self.setting_allow_coop.setChecked(True)
-        f.addRow('', self.setting_allow_coop)
+        _add_chk(f, self.setting_allow_coop)
 
         self.setting_sleep_allowed = QCheckBox(tr('chk_sleep_allowed'))
         self.setting_sleep_allowed.setChecked(False)
-        f.addRow('', self.setting_sleep_allowed)
+        _add_chk(f, self.setting_sleep_allowed)
 
         self.setting_sleep_needed = QCheckBox(tr('chk_sleep_needed'))
         self.setting_sleep_needed.setChecked(False)
-        f.addRow('', self.setting_sleep_needed)
+        _add_chk(f, self.setting_sleep_needed)
 
         self.setting_announce_death = QCheckBox(tr('chk_announce_death'))
         self.setting_announce_death.setChecked(False)
-        f.addRow('', self.setting_announce_death)
+        _add_chk(f, self.setting_announce_death)
 
         self.setting_no_fire = QCheckBox(tr('chk_no_fire'))
         self.setting_no_fire.setChecked(False)
-        f.addRow('', self.setting_no_fire)
+        _add_chk(f, self.setting_no_fire)
 
         self.setting_allow_destruction = QCheckBox(tr('chk_allow_destruction'))
         self.setting_allow_destruction.setChecked(True)
-        f.addRow('', self.setting_allow_destruction)
+        _add_chk(f, self.setting_allow_destruction)
 
         self.setting_drop_on_death = QComboBox()
         self.setting_drop_on_death.addItems(_combo_items(_DROP_DEATH))
         self.setting_drop_on_death.setCurrentIndex(1)
-        _ctl_limit(self.setting_drop_on_death, 260)
-        f.addRow(tr('lbl_drop_on_death'), self.setting_drop_on_death)
+        _add_field(f, tr('lbl_drop_on_death'), self.setting_drop_on_death, 240)
 
         self.setting_spawn_point = QLineEdit()
         self.setting_spawn_point.setPlaceholderText('0,0,0')
-        _ctl_limit(self.setting_spawn_point, 260)
-        f.addRow(tr('lbl_spawn_point'), self.setting_spawn_point)
+        _add_field(f, tr('lbl_spawn_point'), self.setting_spawn_point, 240)
 
         left_col.addWidget(g_gameplay)
 
@@ -169,17 +169,22 @@ class SettingsTabMixin:
         _fmt_form(f)
 
         self.setting_player_safehouse = QCheckBox(tr('chk_player_safehouse'))
-        f.addRow('', self.setting_player_safehouse)
+        _add_chk(f, self.setting_player_safehouse)
+
         self.setting_admin_safehouse = QCheckBox(tr('chk_admin_safehouse'))
-        f.addRow('', self.setting_admin_safehouse)
+        _add_chk(f, self.setting_admin_safehouse)
+
         self.setting_safehouse_trespassing = QCheckBox(tr('chk_safehouse_trespassing'))
-        f.addRow('', self.setting_safehouse_trespassing)
+        _add_chk(f, self.setting_safehouse_trespassing)
+
         self.setting_safehouse_fire = QCheckBox(tr('chk_safehouse_fire'))
-        f.addRow('', self.setting_safehouse_fire)
+        _add_chk(f, self.setting_safehouse_fire)
+
         self.setting_safehouse_loot = QCheckBox(tr('chk_safehouse_loot'))
-        f.addRow('', self.setting_safehouse_loot)
+        _add_chk(f, self.setting_safehouse_loot)
+
         self.setting_safehouse_respawn = QCheckBox(tr('chk_safehouse_respawn'))
-        f.addRow('', self.setting_safehouse_respawn)
+        _add_chk(f, self.setting_safehouse_respawn)
 
         left_col.addWidget(g_safehouse)
         left_col.addStretch()
@@ -192,41 +197,35 @@ class SettingsTabMixin:
         self.setting_port = QSpinBox()
         self.setting_port.setRange(1024, 65535)
         self.setting_port.setValue(16261)
-        _ctl_limit(self.setting_port, 140)
-        f.addRow(tr('lbl_game_port'), self.setting_port)
+        _add_field(f, tr('lbl_game_port'), self.setting_port, 140)
 
         self.setting_udp_port = QSpinBox()
         self.setting_udp_port.setRange(1024, 65535)
         self.setting_udp_port.setValue(16262)
-        _ctl_limit(self.setting_udp_port, 140)
-        f.addRow(tr('lbl_direct_port'), self.setting_udp_port)
+        _add_field(f, tr('lbl_direct_port'), self.setting_udp_port, 140)
 
         self.setting_steam_port = QSpinBox()
         self.setting_steam_port.setRange(1024, 65535)
         self.setting_steam_port.setValue(8766)
-        _ctl_limit(self.setting_steam_port, 140)
-        f.addRow(tr('lbl_steam_port1'), self.setting_steam_port)
+        _add_field(f, tr('lbl_steam_port1'), self.setting_steam_port, 140)
 
         self.setting_steam_port2 = QSpinBox()
         self.setting_steam_port2.setRange(1024, 65535)
         self.setting_steam_port2.setValue(8767)
-        _ctl_limit(self.setting_steam_port2, 140)
-        f.addRow(tr('lbl_steam_port2'), self.setting_steam_port2)
+        _add_field(f, tr('lbl_steam_port2'), self.setting_steam_port2, 140)
 
         self.setting_rcon_port = QSpinBox()
         self.setting_rcon_port.setRange(1024, 65535)
         self.setting_rcon_port.setValue(27015)
-        _ctl_limit(self.setting_rcon_port, 140)
-        f.addRow(tr('lbl_rcon_port'), self.setting_rcon_port)
+        _add_field(f, tr('lbl_rcon_port'), self.setting_rcon_port, 140)
 
         self.setting_rcon_password = QLineEdit()
         self.setting_rcon_password.setPlaceholderText('RCON password')
-        _ctl_limit(self.setting_rcon_password, 260)
-        f.addRow(tr('lbl_rcon_password'), self.setting_rcon_password)
+        _add_field(f, tr('lbl_rcon_password'), self.setting_rcon_password, 280)
 
         self.setting_public = QCheckBox(tr('chk_public'))
         self.setting_public.setChecked(True)
-        f.addRow('', self.setting_public)
+        _add_chk(f, self.setting_public)
 
         right_col.addWidget(g_network)
 
@@ -236,27 +235,25 @@ class SettingsTabMixin:
         _fmt_form(f)
 
         self.setting_secure_join = QCheckBox(tr('chk_secure_join'))
-        f.addRow('', self.setting_secure_join)
+        _add_chk(f, self.setting_secure_join)
 
         self.setting_non_ascii = QCheckBox(tr('chk_non_ascii'))
-        f.addRow('', self.setting_non_ascii)
+        _add_chk(f, self.setting_non_ascii)
 
         self.setting_auto_whitelist = QCheckBox(tr('chk_auto_whitelist'))
-        f.addRow('', self.setting_auto_whitelist)
+        _add_chk(f, self.setting_auto_whitelist)
 
         self.setting_max_accounts = QSpinBox()
         self.setting_max_accounts.setRange(0, 100)
         self.setting_max_accounts.setValue(0)
         self.setting_max_accounts.setSpecialValueText(tr('unlimited'))
-        _ctl_limit(self.setting_max_accounts, 140)
-        f.addRow(tr('lbl_max_accounts'), self.setting_max_accounts)
+        _add_field(f, tr('lbl_max_accounts'), self.setting_max_accounts, 140)
 
         self.setting_speed_limit = QSpinBox()
         self.setting_speed_limit.setRange(0, 250)
         self.setting_speed_limit.setValue(70)
         self.setting_speed_limit.setSuffix(' km/h')
-        _ctl_limit(self.setting_speed_limit, 140)
-        f.addRow(tr('lbl_speed_limit'), self.setting_speed_limit)
+        _add_field(f, tr('lbl_speed_limit'), self.setting_speed_limit, 140)
 
         right_col.addWidget(g_security)
 
@@ -267,29 +264,25 @@ class SettingsTabMixin:
 
         self.setting_admin_password = QLineEdit()
         self.setting_admin_password.setEchoMode(QLineEdit.Password)
-        _ctl_limit(self.setting_admin_password, 260)
-        f.addRow(tr('lbl_admin_password'), self.setting_admin_password)
+        _add_field(f, tr('lbl_admin_password'), self.setting_admin_password, 280)
 
         self.setting_auto_save = QSpinBox()
         self.setting_auto_save.setRange(1, 60)
         self.setting_auto_save.setValue(15)
         self.setting_auto_save.setSuffix(' min')
-        _ctl_limit(self.setting_auto_save, 140)
-        f.addRow(tr('lbl_auto_save'), self.setting_auto_save)
+        _add_field(f, tr('lbl_auto_save'), self.setting_auto_save, 140)
 
         self.setting_backups_count = QSpinBox()
         self.setting_backups_count.setRange(0, 50)
         self.setting_backups_count.setValue(5)
-        _ctl_limit(self.setting_backups_count, 140)
-        f.addRow(tr('lbl_backups_count'), self.setting_backups_count)
+        _add_field(f, tr('lbl_backups_count'), self.setting_backups_count, 140)
 
         self.setting_backups_period = QSpinBox()
         self.setting_backups_period.setRange(0, 720)
         self.setting_backups_period.setValue(0)
         self.setting_backups_period.setSpecialValueText('On start')
         self.setting_backups_period.setSuffix(' h')
-        _ctl_limit(self.setting_backups_period, 140)
-        f.addRow(tr('lbl_backups_period'), self.setting_backups_period)
+        _add_field(f, tr('lbl_backups_period'), self.setting_backups_period, 140)
 
         right_col.addWidget(g_admin)
 
@@ -300,39 +293,37 @@ class SettingsTabMixin:
 
         self.setting_global_chat = QCheckBox(tr('chk_global_chat'))
         self.setting_global_chat.setChecked(True)
-        f.addRow('', self.setting_global_chat)
+        _add_chk(f, self.setting_global_chat)
 
         self.setting_safety_system = QCheckBox(tr('chk_safety_system'))
         self.setting_safety_system.setChecked(True)
-        f.addRow('', self.setting_safety_system)
+        _add_chk(f, self.setting_safety_system)
 
         self.setting_show_safety = QCheckBox(tr('chk_show_safety'))
         self.setting_show_safety.setChecked(True)
-        f.addRow('', self.setting_show_safety)
+        _add_chk(f, self.setting_show_safety)
 
         self.setting_display_username = QCheckBox(tr('chk_display_username'))
         self.setting_display_username.setChecked(True)
-        f.addRow('', self.setting_display_username)
+        _add_chk(f, self.setting_display_username)
 
         self.setting_voice_enable = QCheckBox(tr('chk_voice_enable'))
         self.setting_voice_enable.setChecked(True)
-        f.addRow('', self.setting_voice_enable)
+        _add_chk(f, self.setting_voice_enable)
 
         self.setting_voice_3d = QCheckBox(tr('chk_voice_3d'))
         self.setting_voice_3d.setChecked(True)
-        f.addRow('', self.setting_voice_3d)
+        _add_chk(f, self.setting_voice_3d)
 
         self.setting_voice_min = QSpinBox()
         self.setting_voice_min.setRange(1, 500)
         self.setting_voice_min.setValue(10)
-        _ctl_limit(self.setting_voice_min, 140)
-        f.addRow(tr('lbl_voice_min'), self.setting_voice_min)
+        _add_field(f, tr('lbl_voice_min'), self.setting_voice_min, 140)
 
         self.setting_voice_max = QSpinBox()
         self.setting_voice_max.setRange(10, 10000)
         self.setting_voice_max.setValue(100)
-        _ctl_limit(self.setting_voice_max, 140)
-        f.addRow(tr('lbl_voice_max'), self.setting_voice_max)
+        _add_field(f, tr('lbl_voice_max'), self.setting_voice_max, 140)
 
         right_col.addWidget(g_chat)
         right_col.addStretch()

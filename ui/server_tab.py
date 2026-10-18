@@ -7,20 +7,23 @@ Handles server lifecycle, live console output, quick admin commands, and resourc
 
 import os
 import logging
+import threading
 from pathlib import Path
 from datetime import datetime
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
     QCheckBox, QComboBox, QPlainTextEdit, QGroupBox, QGridLayout, QMessageBox,
-    QInputDialog, QSizePolicy, QDialog, QListWidget, QSystemTrayIcon, QFrame
+    QInputDialog, QSizePolicy, QDialog, QListWidget, QSystemTrayIcon, QFrame,
+    QApplication, QToolTip
 )
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont
+from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont, QCursor
 
 from translations import tr, get_language
 from server_process import check_ports_in_use
 from config_manager import AppPreferences
+from network_helper import NetworkHelper
 
 START_BTN_STYLE = """
 QPushButton#start_btn {
@@ -133,9 +136,18 @@ class ServerTabMixin:
 
         sc_layout.addStretch()
 
-        self.status_detail_label = QLabel("127.0.0.1:16261")
-        self.status_detail_label.setStyleSheet("font-size: 12px; color: #999999; font-family: monospace;")
+        self.status_detail_label = QLabel()
+        self.status_detail_label.setStyleSheet(
+            "font-size: 13px; color: #a8c7fa; font-family: 'Segoe UI', monospace; "
+            "padding: 4px 10px; background-color: #1b2636; border: 1px solid #2d4263; border-radius: 4px; font-weight: 500;"
+        )
+        self.status_detail_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.status_detail_label.setCursor(Qt.PointingHandCursor)
+        self.status_detail_label.mousePressEvent = self._on_ip_label_clicked
         sc_layout.addWidget(self.status_detail_label)
+
+        self.update_connection_info('stopped')
+        self._async_fetch_public_ip()
 
         layout.addWidget(status_card)
 
@@ -469,9 +481,8 @@ class ServerTabMixin:
         if hasattr(self, 'status_label'):
             self.status_label.setText(tr('server_ready'))
             self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #00ff66;")
-        if hasattr(self, 'status_detail_label'):
-            detail_msg = "🟢 127.0.0.1:16261 • " + ("Готов к игре!" if get_language() == 'ru' else "Ready to join!")
-            self.status_detail_label.setText(detail_msg)
+        self._server_is_ready = True
+        self.update_connection_info('ready')
 
         # Sound Alert (Windows chime or beep)
         try:
@@ -479,7 +490,6 @@ class ServerTabMixin:
             winsound.MessageBeep(winsound.MB_ICONASTERISK)
         except Exception:
             try:
-                from PyQt5.QtWidgets import QApplication
                 QApplication.beep()
             except Exception:
                 pass
@@ -491,17 +501,31 @@ class ServerTabMixin:
         # Prominent highlight banner in server console
         is_ru = get_language() == 'ru'
         title_banner = "🎉 СЕРВЕР УСПЕШНО ЗАПУЩЕН И ГОТОВ К ИГРЕ!" if is_ru else "🎉 SERVER IS ONLINE AND READY TO PLAY!"
-        port_banner = "👉 Порт подключения: 127.0.0.1:16261 (для друзей: ваш внешний IP:16261)" if is_ru else "👉 Connect address: 127.0.0.1:16261 (friends: your external IP:16261)"
+        port = self.get_server_port()
+        pub_ip = getattr(self, '_cached_public_ip', None) or NetworkHelper.get_public_ip(timeout=1.0) or ("ваш_внешний_IP" if is_ru else "your_external_IP")
+        loc_ip = getattr(self, '_cached_local_ip', None) or NetworkHelper.get_local_ip()
+
+        if is_ru:
+            port_banner = (
+                f"👉 Подключение для друзей (через интернет): {pub_ip}:{port}\n"
+                f"👉 Подключение в локальной сети (LAN):       {loc_ip}:{port}"
+            )
+        else:
+            port_banner = (
+                f"👉 Connect address for friends (Internet): {pub_ip}:{port}\n"
+                f"👉 Connect address in Local Network (LAN):  {loc_ip}:{port}"
+            )
         ready_banner = (
-            f"\n{'=' * 65}\n"
+            f"\n{'=' * 68}\n"
             f"{title_banner}\n"
             f"{port_banner}\n"
-            f"{'=' * 65}"
+            f"{'=' * 68}"
         )
         self.append_console_output(ready_banner)
 
     def on_server_stopped(self):
         """Called when server process is terminated."""
+        self._server_is_ready = False
         if hasattr(self, '_launch_anim_timer'):
             self._launch_anim_timer.stop()
         if hasattr(self, 'start_btn'):
@@ -516,10 +540,95 @@ class ServerTabMixin:
         if hasattr(self, 'status_label'):
             self.status_label.setText(tr('server_stopped'))
             self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ff6666;")
-        if hasattr(self, 'status_detail_label'):
-            self.status_detail_label.setText("127.0.0.1:16261")
+        self.update_connection_info('stopped')
         if hasattr(self, 'tray_icon') and self.tray_icon.isVisible():
             self.tray_icon.showMessage(tr('app_title'), tr('tray_server_stopped'), QSystemTrayIcon.Information, 3000)
+
+    def get_server_port(self) -> int:
+        """Get the configured server UDP game port (default 16261)."""
+        if hasattr(self, 'setting_port') and self.setting_port is not None:
+            try:
+                return self.setting_port.value()
+            except Exception:
+                pass
+        return 16261
+
+    def _on_ip_label_clicked(self, event):
+        """Clicking the IP badge copies external join address to clipboard."""
+        try:
+            pub = getattr(self, '_cached_public_ip', None)
+            port = self.get_server_port()
+            if pub:
+                conn_str = f"{pub}:{port}"
+                QApplication.clipboard().setText(conn_str)
+                is_ru = (get_language() == 'ru')
+                msg = f"Скопировано: {conn_str}" if is_ru else f"Copied: {conn_str}"
+                QToolTip.showText(QCursor.pos(), msg, self.status_detail_label, msecDisplayTime=2000)
+        except Exception:
+            pass
+
+    def update_connection_info(self, status: str = 'stopped'):
+        """Update connection info with External IP (for friends) and Local IP (non-127)."""
+        if not hasattr(self, 'status_detail_label') or self.status_detail_label is None:
+            return
+
+        port = self.get_server_port()
+        if not hasattr(self, '_cached_local_ip') or not self._cached_local_ip or self._cached_local_ip.startswith("127."):
+            self._cached_local_ip = NetworkHelper.get_local_ip()
+
+        pub_ip = getattr(self, '_cached_public_ip', None)
+        loc_ip = self._cached_local_ip
+
+        is_ru = (get_language() == 'ru')
+        pub_str = f"{pub_ip}:{port}" if pub_ip else ("Определение..." if is_ru else "Resolving...")
+        loc_str = f"{loc_ip}:{port}"
+
+        if status == 'ready':
+            if is_ru:
+                text = f"🌐 Внешний IP: {pub_str}   |   🏠 Локальный IP: {loc_str}"
+            else:
+                text = f"🌐 Public IP: {pub_str}   |   🏠 Local IP: {loc_str}"
+            self.status_detail_label.setStyleSheet(
+                "font-size: 13px; color: #70f3a8; font-family: 'Segoe UI', monospace; "
+                "padding: 4px 10px; background-color: #123020; border: 1px solid #1e6b3b; border-radius: 4px; font-weight: bold;"
+            )
+        else:
+            if is_ru:
+                text = f"🌐 Внешний IP: {pub_str}   |   🏠 Локальный IP: {loc_str}"
+            else:
+                text = f"🌐 Public IP: {pub_str}   |   🏠 Local IP: {loc_str}"
+            self.status_detail_label.setStyleSheet(
+                "font-size: 13px; color: #a8c7fa; font-family: 'Segoe UI', monospace; "
+                "padding: 4px 10px; background-color: #1b2636; border: 1px solid #2d4263; border-radius: 4px; font-weight: 500;"
+            )
+
+        self.status_detail_label.setText(text)
+        tip = (
+            f"Внешний IP (для друзей через интернет): {pub_str}\n"
+            f"Локальный IP (для домашней сети LAN): {loc_str}\n\n"
+            f"Нажмите, чтобы скопировать внешний адрес подключения"
+            if is_ru else
+            f"Public IP (for friends over Internet): {pub_str}\n"
+            f"Local IP (for LAN): {loc_str}\n\n"
+            f"Click to copy external join address"
+        )
+        self.status_detail_label.setToolTip(tip)
+
+    def _async_fetch_public_ip(self):
+        """Fetch Public IP in background thread so startup remains instantaneous."""
+        def worker():
+            try:
+                ip = NetworkHelper.get_public_ip(timeout=3.0)
+                if ip:
+                    self._cached_public_ip = ip
+                    QTimer.singleShot(0, lambda: self.update_connection_info(
+                        'ready' if getattr(self, '_server_is_ready', False) else 'stopped'
+                    ))
+            except Exception as e:
+                logger.debug(f"Public IP background lookup error: {e}")
+
+        t = threading.Thread(target=worker, daemon=True)
+        t.start()
 
     def append_console_output(self, text: str):
         ts = datetime.now().strftime('%H:%M:%S')
