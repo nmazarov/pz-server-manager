@@ -532,3 +532,17 @@ class ServerTabMixin:
         else:
             self.server_metrics_lbl.setStyleSheet("color: #b0b0b0; font-weight: normal; padding-right: 12px;")
             self.server_metrics_lbl.setText(sys_ram_text)
+
+    @staticmethod
+    def _mono_font() -> str:
+        import platform
+        from PyQt5.QtGui import QFontDatabase
+        if 'JetBrains Mono' in QFontDatabase().families():
+            return 'JetBrains Mono'
+        system = platform.system()
+        if system == 'Windows':
+            return 'Consolas'
+        elif system == 'Darwin':
+            return 'Menlo'
+        else:
+            return 'DejaVu Sans Mono'

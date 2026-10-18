@@ -16,7 +16,7 @@ from pathlib import Path
 
 from PyQt5.QtWidgets import QApplication, QMessageBox, QSplashScreen
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtGui import QPixmap, QFont, QFontDatabase
 
 import traceback
 from main_window import MainWindow
@@ -153,8 +153,35 @@ def check_server_installed(paths: dict) -> bool:
     return any(c.exists() for c in candidates)
 
 
+def _load_custom_fonts():
+    """Load bundled Exo 2 and JetBrains Mono fonts into Qt font database."""
+    base_dirs = []
+    if getattr(sys, 'frozen', False):
+        if hasattr(sys, '_MEIPASS'):
+            base_dirs.append(Path(sys._MEIPASS))
+        base_dirs.append(Path(sys.executable).parent)
+    base_dirs.append(Path(__file__).resolve().parent)
+
+    exo_found = False
+    jb_found = False
+    for base in base_dirs:
+        if not exo_found:
+            exo_file = base / "assets" / "fonts" / "Exo2.ttf"
+            if exo_file.exists():
+                QFontDatabase.addApplicationFont(str(exo_file))
+                exo_found = True
+        if not jb_found:
+            jb_file = base / "assets" / "fonts" / "JetBrainsMono.ttf"
+            if jb_file.exists():
+                QFontDatabase.addApplicationFont(str(jb_file))
+                jb_found = True
+
+
 def _get_platform_font() -> QFont:
-    """Get appropriate font for the current platform."""
+    """Get Exo 2 font for Project Zomboid dark tactical aesthetic, with system fallbacks."""
+    families = QFontDatabase().families()
+    if "Exo 2" in families:
+        return QFont("Exo 2", 10)
     system = platform.system()
     if system == 'Windows':
         return QFont("Segoe UI", 10)
@@ -162,6 +189,20 @@ def _get_platform_font() -> QFont:
         return QFont("SF Pro Text", 11)
     else:
         return QFont("Noto Sans", 10)
+
+
+def _get_monospace_font() -> str:
+    """Get JetBrains Mono font for logs and console, with system fallbacks."""
+    families = QFontDatabase().families()
+    if "JetBrains Mono" in families:
+        return "JetBrains Mono"
+    system = platform.system()
+    if system == 'Windows':
+        return 'Consolas'
+    elif system == 'Darwin':
+        return 'Menlo'
+    else:
+        return 'DejaVu Sans Mono'
 
 
 def main():
@@ -183,24 +224,22 @@ def main():
     app.setApplicationName("PZ Server Manager")
     app.setOrganizationName("PZServerManager")
 
-    # Set application-wide font (platform-aware)
+    # Load custom fonts
+    _load_custom_fonts()
+
+    # Set application-wide font (Exo 2 tactical)
     font = _get_platform_font()
     app.setFont(font)
 
-    # Determine monospace font family for stylesheets
-    system = platform.system()
-    if system == 'Windows':
-        mono_font = 'Consolas'
-    elif system == 'Darwin':
-        mono_font = 'Menlo'
-    else:
-        mono_font = 'DejaVu Sans Mono'
+    # Determine monospace font family for stylesheets (JetBrains Mono)
+    mono_font = _get_monospace_font()
 
     # Apply dark theme stylesheet
     app.setStyleSheet(f"""
         QMainWindow, QWidget {{
             background-color: #2b2b2b;
             color: #ffffff;
+            font-family: 'Exo 2', 'Segoe UI', -apple-system, sans-serif;
         }}
         QTabWidget::pane {{
             border: 1px solid #3d3d3d;

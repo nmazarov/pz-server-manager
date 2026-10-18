@@ -501,6 +501,9 @@ class InstallTabMixin:
 
     @staticmethod
     def _mono_font() -> str:
+        from PyQt5.QtGui import QFontDatabase
+        if 'JetBrains Mono' in QFontDatabase().families():
+            return 'JetBrains Mono'
         system = platform.system()
         if system == 'Windows':
             return 'Consolas'

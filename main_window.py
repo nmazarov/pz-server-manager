@@ -95,12 +95,25 @@ class MainWindow(
         header_layout.setContentsMargins(12, 6, 12, 6)
 
         logo_lbl = QLabel()
-        app_root = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
-        icon_path = app_root / "assets" / "icon.png"
-        if not icon_path.exists():
-            icon_path = app_root / "icon.png"
+        base_dirs = []
+        if getattr(sys, 'frozen', False):
+            if hasattr(sys, '_MEIPASS'):
+                base_dirs.append(Path(sys._MEIPASS))
+            base_dirs.append(Path(sys.executable).parent)
+        base_dirs.append(Path(__file__).resolve().parent)
 
-        if icon_path.exists():
+        icon_path = None
+        for b in base_dirs:
+            p1 = b / "assets" / "icon.png"
+            if p1.exists():
+                icon_path = p1
+                break
+            p2 = b / "icon.png"
+            if p2.exists():
+                icon_path = p2
+                break
+
+        if icon_path and icon_path.exists():
             pix = QPixmap(str(icon_path)).scaled(34, 34, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             logo_lbl.setPixmap(pix)
             logo_lbl.setStyleSheet("border-radius: 6px;")
