@@ -12,6 +12,8 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+cd /d "%~dp0\.."
+
 python -c "import fastapi, uvicorn" >nul 2>&1
 if %errorlevel% neq 0 (
     echo Установка необходимых библиотек (FastAPI, Uvicorn, Pydantic)...

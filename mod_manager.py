@@ -48,9 +48,11 @@ class ModManager:
     
     def __init__(self, paths: dict):
         self.paths = paths
-        self.server_config_dir = paths['server_config_dir']
+        self.server_config_dir = paths.get('server_config_dir')
         self.mods: List[ModInfo] = []
-        self._mods_file = Path('pz_mods.json')
+        self._mods_file = Path('data') / 'pz_mods.json'
+        if not self._mods_file.exists() and Path('pz_mods.json').exists():
+            self._mods_file = Path('pz_mods.json')
         self._server_name = "servertest"
         self._steam_details_cache: Dict[str, dict] = {}
 
@@ -176,7 +178,13 @@ class ModManager:
         logger.info("Cleared all mods")
 
     def _find_local_mod_infos(self, workshop_id: str) -> List[dict]:
-        """Scan server workshop folder for mod.info files and map folders."""
+        """Scan server workshop folder for mod.info files and map folders (cached)."""
+        if not hasattr(self, '_local_mod_info_cache'):
+            self._local_mod_info_cache = {}
+        wid_str = str(workshop_id)
+        if wid_str in self._local_mod_info_cache:
+            return self._local_mod_info_cache[wid_str]
+
         results = []
         server_dir = self.paths.get('server_dir')
         if not server_dir:
@@ -223,6 +231,7 @@ class ModManager:
                         results.append(data)
                 except Exception as e:
                     logger.warning(f"Error reading {mod_info_path}: {e}")
+        self._local_mod_info_cache[wid_str] = results
         return results
 
     def _fetch_batch_steam_details(self, workshop_ids: List[str]) -> Dict[str, dict]:

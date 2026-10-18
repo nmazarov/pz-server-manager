@@ -194,15 +194,14 @@ class MainWindow(
     def update_target_server_build(self):
         """Update target build (42 or 41) based on user's selected branch and installed server."""
         branch = getattr(self, 'selected_branch_key', 'public') or 'public'
-        if '41' in branch.lower():
-            self.target_server_build = 41
-        else:
-            self.target_server_build = 42
+        new_build = 41 if '41' in branch.lower() else 42
+        build_changed = (getattr(self, 'target_server_build', None) != new_build)
+        self.target_server_build = new_build
 
-        # Refresh mods tab banner and mod list
+        # Refresh mods tab banner and mod list only when changed or initial
         if hasattr(self, 'update_mods_server_status_banner'):
             self.update_mods_server_status_banner()
-        if hasattr(self, 'load_mods_list'):
+        if build_changed and hasattr(self, 'load_mods_list'):
             self.load_mods_list()
 
     # ── Tray ────────────────────────────────────────────────────────

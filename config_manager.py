@@ -56,10 +56,14 @@ class ConfigManager:
         # Restore last saved server name if available
         prefs = AppPreferences.load(paths)
         self._server_name = prefs.get('last_server_name', 'servertest')
+        self._ini_cache = None
         
     def set_server_name(self, name: str):
         """Set the server name (config folder name)."""
-        self._server_name = name
+        if self._server_name != name:
+            self._server_name = name
+            self._ini_cache = None
+            self._sandbox_cache = None
         
     def get_ini_path(self) -> Path:
         """Get path to the server .ini file."""
@@ -135,6 +139,9 @@ class ConfigManager:
     
     def load_server_ini(self, create_if_missing: bool = True) -> Dict[str, str]:
         """Load server settings from .ini file or provide defaults if missing."""
+        if getattr(self, '_ini_cache', None) is not None:
+            return dict(self._ini_cache)
+
         ini_path = self.get_ini_path()
         defaults = self.get_default_server_ini()
         
@@ -145,7 +152,8 @@ class ConfigManager:
                     self.save_server_ini(defaults)
                 except Exception as e:
                     logger.warning(f"Could not auto-create default INI: {e}")
-            return defaults
+            self._ini_cache = dict(defaults)
+            return dict(defaults)
         
         config = dict(defaults)
         
@@ -160,7 +168,8 @@ class ConfigManager:
                         config[key.strip()] = value.strip()
                         
             logger.info(f"Loaded {len(config)} settings from {ini_path}")
-            return config
+            self._ini_cache = dict(config)
+            return dict(config)
             
         except Exception as e:
             logger.error(f"Failed to load INI file, falling back to defaults: {e}")
@@ -168,6 +177,7 @@ class ConfigManager:
             
     def save_server_ini(self, settings: Dict[str, str]):
         """Save server settings to .ini file, preserving comments and order."""
+        self._ini_cache = None
         ini_path = self.get_ini_path()
         ini_path.parent.mkdir(parents=True, exist_ok=True)
         
@@ -178,6 +188,7 @@ class ConfigManager:
             
         # Also ensure spawn points are present
         self.ensure_spawn_files()
+        self._ini_cache = dict(settings)
         logger.info(f"Saved settings to {ini_path}")
         
     def _update_ini_file(self, path: Path, settings: Dict[str, str]):
@@ -427,25 +438,6 @@ Mods=
             'SleepingEvent': 1,
         }
 
-    def load_sandbox_vars_full(self, create_if_missing: bool = True) -> tuple:
-        """
-        Load sandbox variables and metadata comments from SandboxVars.lua.
-        Returns (vars_dict, meta_comments).
-        Supports root-level variables, vanilla sub-tables (ZombieLore, ZombieConfig, Map),
-        and any custom mod tables (CommonSense, MoreTraits, CompanionDogs, VFE, etc.).
-        """
-        lua_path = self.get_sandbox_path()
-        defaults = self.get_default_sandbox_vars()
-
-        if not lua_path.exists():
-            logger.info(f"Sandbox file not found at {lua_path}. Using standard defaults.")
-            if create_if_missing:
-                try:
-                    self.save_sandbox_vars(defaults)
-                except Exception as e:
-                    logger.warning(f"Could not auto-create default sandbox vars: {e}")
-            return defaults, {}
-
     def _parse_lua_content(self, content: str) -> tuple:
         """Parse Lua content into (vars_dict, meta_comments)."""
         vars_dict = {}
@@ -505,6 +497,9 @@ Mods=
         Supports root-level variables, vanilla sub-tables (ZombieLore, ZombieConfig, Map),
         and any custom mod tables (CommonSense, MoreTraits, CompanionDogs, VFE, etc.).
         """
+        if getattr(self, '_sandbox_cache', None) is not None:
+            return self._sandbox_cache
+
         lua_path = self.get_sandbox_path()
         defaults = self.get_default_sandbox_vars()
 
@@ -549,6 +544,7 @@ Mods=
                         logger.warning(f"Failed to inherit mod tables from {cand}: {ex}")
 
             logger.info(f"Loaded sandbox vars from {lua_path} ({len(vars_dict)} root/table keys)")
+            self._sandbox_cache = (vars_dict, meta_comments)
             return vars_dict, meta_comments
 
         except Exception as e:
@@ -566,6 +562,7 @@ Mods=
         Preserves all 1400+ lines of Russian/English comments, formatting, table structure,
         and all installed mod tables without overwriting unknown settings.
         """
+        self._sandbox_cache = None
         lua_path = self.get_sandbox_path()
         lua_path.parent.mkdir(parents=True, exist_ok=True)
 

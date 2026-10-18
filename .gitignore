@@ -47,3 +47,5 @@ web_auth.json
 
 # Mod cache (regenerated)
 pz_mods.json
+data/pz_mods.json
+data/*.json
