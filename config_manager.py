@@ -7,6 +7,7 @@ Handles reading and writing server configuration files (.ini and .lua).
 
 import os
 import re
+import json
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, List
@@ -15,13 +16,46 @@ from configparser import ConfigParser
 logger = logging.getLogger(__name__)
 
 
+class AppPreferences:
+    """Persistent user preferences across launches (last server name, ram, backup, etc.)."""
+    @staticmethod
+    def _prefs_path(paths: dict) -> Path:
+        zomboid_dir = paths.get('zomboid_dir', Path.home() / 'Zomboid')
+        return zomboid_dir / 'pz_manager_prefs.json'
+
+    @classmethod
+    def load(cls, paths: dict) -> dict:
+        p = cls._prefs_path(paths)
+        if p.exists():
+            try:
+                with open(p, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.warning(f"Failed to load preferences: {e}")
+        return {}
+
+    @classmethod
+    def save(cls, paths: dict, data: dict):
+        p = cls._prefs_path(paths)
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            current = cls.load(paths)
+            current.update(data)
+            with open(p, 'w', encoding='utf-8') as f:
+                json.dump(current, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.warning(f"Failed to save preferences: {e}")
+
+
 class ConfigManager:
     """Manages server configuration files."""
     
     def __init__(self, paths: dict):
         self.paths = paths
         self.server_config_dir = paths['server_config_dir']
-        self._server_name = "servertest"
+        # Restore last saved server name if available
+        prefs = AppPreferences.load(paths)
+        self._server_name = prefs.get('last_server_name', 'servertest')
         
     def set_server_name(self, name: str):
         """Set the server name (config folder name)."""

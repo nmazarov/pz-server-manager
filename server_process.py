@@ -89,6 +89,8 @@ class ServerProcess(QObject):
     output_received = pyqtSignal(str)
     error_received = pyqtSignal(str)
     server_started = pyqtSignal()
+    server_launching = pyqtSignal()
+    server_ready = pyqtSignal()
     server_stopped = pyqtSignal()
 
     def __init__(self, paths: dict):
@@ -98,6 +100,7 @@ class ServerProcess(QObject):
         self.process: Optional[subprocess.Popen] = None
         self.output_reader: Optional[OutputReader] = None
         self._server_name = "servertest"
+        self.is_ready = False
 
     def start(self, server_name: str = "servertest", ram_gb: int = 6):
         """Start the game server."""
@@ -172,8 +175,10 @@ class ServerProcess(QObject):
             self.output_reader.finished.connect(self._handle_process_ended)
             self.output_reader.start()
 
-            # Emit started signal
+            # Emit launching and started signal
+            self.is_ready = False
             logger.info(f"Server process started with PID: {self.process.pid}")
+            self.server_launching.emit()
             self.server_started.emit()
 
         except Exception as e:
@@ -206,6 +211,7 @@ class ServerProcess(QObject):
             self._force_terminate()
         finally:
             self._cleanup()
+            self.is_ready = False
             self.server_stopped.emit()
 
     def _force_terminate(self):
@@ -304,9 +310,11 @@ class ServerProcess(QObject):
         if line.strip():
             self.output_received.emit(line)
 
-            # Check for important messages
-            if "Server started" in line or "SERVER STARTED" in line:
-                logger.info("Server reports as started")
+            # Check for server readiness
+            if not self.is_ready and ("server started" in line.lower() or "*** server started" in line.lower()):
+                self.is_ready = True
+                logger.info("Server is READY and accepting player connections")
+                self.server_ready.emit()
             elif "error" in line.lower():
                 self.error_received.emit(line)
 
@@ -318,6 +326,7 @@ class ServerProcess(QObject):
     def _handle_process_ended(self):
         """Handle when the server process ends."""
         logger.info("Server process ended")
+        self.is_ready = False
         self.process = None
         if self.output_reader:
             reader = self.output_reader

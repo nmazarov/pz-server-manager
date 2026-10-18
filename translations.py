@@ -19,8 +19,11 @@ TRANSLATIONS = {
 
         # ── Server Control Tab ───────────────────────────────────
         'server_status':         'Server Status',
+        'server_launching':      'Starting & Loading Server...',
         'server_running':        'Server Running',
+        'server_ready':          'Server Online & Ready to Play!',
         'server_stopped':        'Server Stopped',
+        'tray_server_ready':     'Project Zomboid Server is online and ready to join! (127.0.0.1:16261)',
         'server_name':           'Server Name:',
         'server_name_tooltip':   'Name of the server configuration (folder name in Zomboid/Server/)',
         'controls':              'Controls',
@@ -418,8 +421,11 @@ TRANSLATIONS = {
 
         # ── Server Control Tab ───────────────────────────────────
         'server_status':       'Статус сервера',
+        'server_launching':    'Запуск и загрузка сервера...',
         'server_running':      'Сервер запущен',
+        'server_ready':        'Сервер запущен и готов к игре!',
         'server_stopped':      'Сервер остановлен',
+        'tray_server_ready':   'Сервер Project Zomboid успешно запущен и готов к игре! (127.0.0.1:16261)',
         'server_name':         'Имя сервера:',
         'server_name_tooltip': 'Имя конфигурации (имя папки в Zomboid/Server/)',
         'controls':            'Управление',

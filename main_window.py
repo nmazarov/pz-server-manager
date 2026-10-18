@@ -20,7 +20,7 @@ from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QPixmap
 
 from translations import tr, set_language, get_language
-from config_manager import ConfigManager
+from config_manager import ConfigManager, AppPreferences
 from server_process import ServerProcess
 from mod_manager import ModManager
 from server_installer import ServerInstaller
@@ -58,9 +58,17 @@ class MainWindow(
         self.selected_branch_key = "public"
         self.target_server_build = 42
 
+        # Restore saved server name from preferences
+        prefs = AppPreferences.load(paths)
+        saved_name = prefs.get('last_server_name', 'servertest')
+        self.config_manager.set_server_name(saved_name)
+        self.mod_manager.set_server_name(saved_name)
+
         self.server_process.output_received.connect(self.append_console_output)
         self.server_process.error_received.connect(self.append_console_error)
+        self.server_process.server_launching.connect(self.on_server_launching)
         self.server_process.server_started.connect(self.on_server_started)
+        self.server_process.server_ready.connect(self.on_server_ready)
         self.server_process.server_stopped.connect(self.on_server_stopped)
 
         self.init_ui()
@@ -299,9 +307,12 @@ class MainWindow(
 
     def update_status(self):
         if self.server_process.is_running():
-            self.statusBar.showMessage(tr('status_running'))
+            if getattr(self.server_process, 'is_ready', False):
+                self.statusBar.showMessage(tr('server_ready'))
+            else:
+                self.statusBar.showMessage(tr('server_launching'))
         else:
-            self.statusBar.showMessage(tr('status_stopped'))
+            self.statusBar.showMessage(tr('server_stopped'))
 
     def change_language(self, language: str):
         if get_language() == language:

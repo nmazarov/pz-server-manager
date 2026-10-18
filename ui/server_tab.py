@@ -20,6 +20,7 @@ from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont
 
 from translations import tr, get_language
 from server_process import check_ports_in_use
+from config_manager import AppPreferences
 
 logger = logging.getLogger(__name__)
 
@@ -31,16 +32,44 @@ class ServerTabMixin:
         tab = QWidget()
         layout = QVBoxLayout(tab)
 
+        # ── Status Banner Card ─────────────────────────────────────────
+        status_card = QFrame()
+        status_card.setStyleSheet("background-color: #252526; border: 1px solid #3c3c3c; border-radius: 6px;")
+        sc_layout = QHBoxLayout(status_card)
+        sc_layout.setContentsMargins(14, 8, 14, 8)
+
+        self.status_indicator = QLabel("🔴")
+        self.status_indicator.setStyleSheet("font-size: 22px;")
+        sc_layout.addWidget(self.status_indicator)
+
+        self.status_label = QLabel(tr('server_stopped'))
+        self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ff6666;")
+        sc_layout.addWidget(self.status_label)
+
+        sc_layout.addStretch()
+
+        self.status_detail_label = QLabel("127.0.0.1:16261")
+        self.status_detail_label.setStyleSheet("font-size: 12px; color: #999999; font-family: monospace;")
+        sc_layout.addWidget(self.status_detail_label)
+
+        layout.addWidget(status_card)
+
         # ── Group: Server Controls ─────────────────────────────────────
         controls_group = QGroupBox(tr('group_server_control'))
         cl = QVBoxLayout(controls_group)
+
+        # Load persistent user preferences
+        prefs = AppPreferences.load(self.paths)
+        saved_server_name = prefs.get('last_server_name', 'servertest')
+        saved_ram = prefs.get('last_ram_gb', 6)
+        saved_auto_backup = prefs.get('auto_backup', True)
 
         row_top = QHBoxLayout()
         name_lbl = QLabel(tr('lbl_server_name'))
         name_lbl.setStyleSheet("font-weight: bold;")
         row_top.addWidget(name_lbl)
 
-        self.server_name_input = QLineEdit("servertest")
+        self.server_name_input = QLineEdit(saved_server_name)
         self.server_name_input.setPlaceholderText("e.g. servertest")
         self.server_name_input.textChanged.connect(self.on_server_name_changed)
         row_top.addWidget(self.server_name_input)
@@ -50,9 +79,13 @@ class ServerTabMixin:
         row_top.addWidget(ram_lbl)
 
         self.server_ram_combo = QComboBox()
-        for gb in [4, 6, 8, 10, 12, 16, 20, 24, 32]:
+        default_ram_idx = 1
+        for idx, gb in enumerate([4, 6, 8, 10, 12, 16, 20, 24, 32]):
             self.server_ram_combo.addItem(f"{gb} GB", gb)
-        self.server_ram_combo.setCurrentIndex(1)  # Default 6 GB
+            if gb == saved_ram:
+                default_ram_idx = idx
+        self.server_ram_combo.setCurrentIndex(default_ram_idx)
+        self.server_ram_combo.currentIndexChanged.connect(self._on_ram_changed)
         self.server_ram_combo.setToolTip("Выделение оперативной памяти для сервера (-Xms / -Xmx)" if get_language() == 'ru' else "Allocate RAM for dedicated server")
         row_top.addWidget(self.server_ram_combo)
 
@@ -84,7 +117,8 @@ class ServerTabMixin:
         cl.addWidget(del_save_btn)
 
         self.auto_backup_checkbox = QCheckBox("📦 " + ("Авто-бэкап мира перед запуском" if get_language() == 'ru' else "Auto-backup world on launch"))
-        self.auto_backup_checkbox.setChecked(True)
+        self.auto_backup_checkbox.setChecked(saved_auto_backup)
+        self.auto_backup_checkbox.toggled.connect(self._on_auto_backup_toggled)
         self.auto_backup_checkbox.setToolTip("Автоматически создавать резервную копию файлов сохранения мира перед каждым стартом" if get_language() == 'ru' else "Automatically backup world save before starting")
         cl.addWidget(self.auto_backup_checkbox)
 
@@ -150,8 +184,20 @@ class ServerTabMixin:
         layout.addWidget(console_group)
         self.tabs.addTab(tab, tr('tab_server'))
 
+    def _on_ram_changed(self):
+        if hasattr(self, 'server_ram_combo'):
+            ram = self.server_ram_combo.currentData()
+            if ram:
+                AppPreferences.save(self.paths, {'last_ram_gb': int(ram)})
+
+    def _on_auto_backup_toggled(self, checked: bool):
+        AppPreferences.save(self.paths, {'auto_backup': bool(checked)})
+
     def on_server_name_changed(self, text: str):
         name = text.strip() or 'servertest'
+        AppPreferences.save(self.paths, {'last_server_name': name})
+        if hasattr(self, 'config_manager'):
+            self.config_manager.set_server_name(name)
         if hasattr(self, 'mod_manager'):
             self.mod_manager.set_server_name(name)
 
@@ -183,9 +229,19 @@ class ServerTabMixin:
             logger.debug(f"Port check failed: {e}")
 
         name = self.server_name_input.text().strip() or 'servertest'
+        ram_data = self.server_ram_combo.currentData() if hasattr(self, 'server_ram_combo') else 6
+        ram_gb = int(ram_data) if ram_data else 6
+        auto_bkp = self.auto_backup_checkbox.isChecked() if hasattr(self, 'auto_backup_checkbox') else True
+
+        # Save all settings to preferences permanently
+        AppPreferences.save(self.paths, {
+            'last_server_name': name,
+            'last_ram_gb': ram_gb,
+            'auto_backup': auto_bkp
+        })
 
         # Auto-backup before start if enabled
-        if hasattr(self, 'auto_backup_checkbox') and self.auto_backup_checkbox.isChecked():
+        if auto_bkp:
             try:
                 from backup_manager import BackupManager
                 bm = BackupManager(self.paths, server_name=name)
@@ -199,13 +255,13 @@ class ServerTabMixin:
                 logger.error(f"Pre-launch backup error: {e}")
                 self.append_console_error(f"⚠️ Pre-launch backup warning: {e}")
 
-        ram_data = self.server_ram_combo.currentData() if hasattr(self, 'server_ram_combo') else 6
-        ram_gb = int(ram_data) if ram_data else 6
-        self.append_console_output(f"{tr('starting_server')} '{name}' (RAM: {ram_gb} GB)…")
+        self.on_server_launching()
+        self.append_console_output(f"🟡 {tr('starting_server')} '{name}' (RAM: {ram_gb} GB)...")
         try:
             self.server_process.start(name, ram_gb=ram_gb)
         except Exception as e:
             self.append_console_error(f"Failed to start: {e}")
+            self.on_server_stopped()
 
     def stop_server(self):
         self.append_console_output(tr('stopping_server'))
@@ -232,25 +288,82 @@ class ServerTabMixin:
     def send_command(self):
         self.send_console_command()
 
-    def on_server_started(self):
+    def on_server_launching(self):
+        """Called when server process is initiated and loading mods/world."""
         if hasattr(self, 'status_indicator'):
-            self.status_indicator.setStyleSheet('color:#44ff44;font-size:24px;')
+            self.status_indicator.setText("🟡")
         if hasattr(self, 'status_label'):
-            self.status_label.setText(tr('server_running'))
+            self.status_label.setText(tr('server_launching'))
+            self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffcc00;")
+        if hasattr(self, 'status_detail_label'):
+            self.status_detail_label.setText("Загрузка модов и мира..." if get_language() == 'ru' else "Loading mods & world...")
         if hasattr(self, 'start_btn'):
             self.start_btn.setEnabled(False)
         if hasattr(self, 'stop_btn'):
             self.stop_btn.setEnabled(True)
         if hasattr(self, 'restart_btn'):
             self.restart_btn.setEnabled(True)
+
+    def on_server_started(self):
+        """Called when server process is spawned."""
+        if getattr(self.server_process, 'is_ready', False):
+            self.on_server_ready()
+        else:
+            self.on_server_launching()
+
+    def on_server_ready(self):
+        """Called when server has finished loading and is ready for player connections."""
+        if hasattr(self, 'status_indicator'):
+            self.status_indicator.setText("🟢")
+        if hasattr(self, 'status_label'):
+            self.status_label.setText(tr('server_ready'))
+            self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #00ff66;")
+        if hasattr(self, 'status_detail_label'):
+            detail_msg = "🟢 127.0.0.1:16261 • " + ("Готов к игре!" if get_language() == 'ru' else "Ready to join!")
+            self.status_detail_label.setText(detail_msg)
+        if hasattr(self, 'start_btn'):
+            self.start_btn.setEnabled(False)
+        if hasattr(self, 'stop_btn'):
+            self.stop_btn.setEnabled(True)
+        if hasattr(self, 'restart_btn'):
+            self.restart_btn.setEnabled(True)
+
+        # Sound Alert (Windows chime or beep)
+        try:
+            import winsound
+            winsound.MessageBeep(winsound.MB_ICONASTERISK)
+        except Exception:
+            try:
+                from PyQt5.QtWidgets import QApplication
+                QApplication.beep()
+            except Exception:
+                pass
+
+        # Tray alert balloon
         if hasattr(self, 'tray_icon') and self.tray_icon.isVisible():
-            self.tray_icon.showMessage(tr('app_title'), tr('tray_server_started'), QSystemTrayIcon.Information, 3000)
+            self.tray_icon.showMessage(tr('app_title'), tr('tray_server_ready'), QSystemTrayIcon.Information, 5000)
+
+        # Prominent highlight banner in server console
+        is_ru = get_language() == 'ru'
+        title_banner = "🎉 СЕРВЕР УСПЕШНО ЗАПУЩЕН И ГОТОВ К ИГРЕ!" if is_ru else "🎉 SERVER IS ONLINE AND READY TO PLAY!"
+        port_banner = "👉 Порт подключения: 127.0.0.1:16261 (для друзей: ваш внешний IP:16261)" if is_ru else "👉 Connect address: 127.0.0.1:16261 (friends: your external IP:16261)"
+        ready_banner = (
+            f"\n{'=' * 65}\n"
+            f"{title_banner}\n"
+            f"{port_banner}\n"
+            f"{'=' * 65}"
+        )
+        self.append_console_output(ready_banner)
 
     def on_server_stopped(self):
+        """Called when server process is terminated."""
         if hasattr(self, 'status_indicator'):
-            self.status_indicator.setStyleSheet('color:#ff4444;font-size:24px;')
+            self.status_indicator.setText("🔴")
         if hasattr(self, 'status_label'):
             self.status_label.setText(tr('server_stopped'))
+            self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ff6666;")
+        if hasattr(self, 'status_detail_label'):
+            self.status_detail_label.setText("127.0.0.1:16261")
         if hasattr(self, 'start_btn'):
             self.start_btn.setEnabled(True)
         if hasattr(self, 'stop_btn'):
