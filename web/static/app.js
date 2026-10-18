@@ -520,19 +520,17 @@ async function loadInstallInfo() {
     branches.forEach((b, idx) => {
       const row = document.createElement('div');
       row.className = 'steam-branch-row' + (idx === 0 ? ' selected' : '');
-      row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #212b38; cursor: pointer; transition: background 0.15s;';
+      row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 9px 16px; border-bottom: 1px solid #212b38; cursor: pointer; transition: background 0.15s;';
       if (idx === 0) {
         row.style.background = '#1c2e42';
         document.getElementById('install-branch').value = b.branch;
       }
 
       row.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 14px;">
-          <input type="radio" name="steam-branch-radio" value="${b.branch}" ${idx === 0 ? 'checked' : ''} style="cursor: pointer; width: 18px; height: 18px; accent-color: #67c1f5;">
-          <div>
-            <div style="font-weight: bold; font-size: 13px; color: #fff;">${b.name_ru || b.name}</div>
-            <div style="font-size: 11px; color: #8f98a0; margin-top: 2px;">${b.desc_ru || b.description}</div>
-          </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="radio" name="steam-branch-radio" value="${b.branch}" ${idx === 0 ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: #67c1f5;">
+          <div style="font-weight: bold; font-size: 13px; color: #fff;">${b.name_ru || b.name}</div>
+          <div style="font-size: 12px; color: #8f98a0;">— ${b.desc_ru || b.description}</div>
         </div>
         <div style="font-size: 12px; color: #8f98a0; font-weight: normal; text-align: right;">
           ${b.date_ru || b.date_str || ''}
