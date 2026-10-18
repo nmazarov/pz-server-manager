@@ -45,13 +45,16 @@ else
 fi
 
 # 3. Activate venv and install dependencies
-echo "[3/4] Installing dependencies from requirements.txt..."
+echo "[3/4] Installing dependencies from requirements.txt and requirements-web.txt..."
 source venv/bin/activate
 pip install --upgrade pip --quiet
 pip install -r requirements.txt --quiet
+if [ -f "requirements-web.txt" ]; then
+    pip install -r requirements-web.txt --quiet
+fi
 
 # 4. Make scripts executable
-chmod +x run.sh build.sh setup.sh 2>/dev/null || true
+chmod +x run.sh run-web.sh build.sh setup.sh 2>/dev/null || true
 
 # 5. Create optional desktop launcher
 DESKTOP_FILE="$HOME/.local/share/applications/pz-server-manager.desktop"

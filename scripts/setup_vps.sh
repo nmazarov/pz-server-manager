@@ -21,7 +21,14 @@ echo "╚═══════════════════════�
 echo -e "${NC}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+if [ -f "$SCRIPT_DIR/web_main.py" ]; then
+    ROOT_DIR="$SCRIPT_DIR"
+elif [ -f "$SCRIPT_DIR/../web_main.py" ]; then
+    ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+else
+    ROOT_DIR="$SCRIPT_DIR"
+fi
+cd "$ROOT_DIR"
 
 # 1. Require root or sudo
 if [ "$EUID" -ne 0 ]; then
@@ -53,10 +60,10 @@ if [ ! -d "venv" ]; then
     sudo -u "$REAL_USER" python3 -m venv venv
 fi
 
-sudo -u "$REAL_USER" "$SCRIPT_DIR/venv/bin/pip" install --upgrade pip --quiet
-sudo -u "$REAL_USER" "$SCRIPT_DIR/venv/bin/pip" install -r requirements.txt --quiet
+sudo -u "$REAL_USER" "$ROOT_DIR/venv/bin/pip" install --upgrade pip --quiet
+sudo -u "$REAL_USER" "$ROOT_DIR/venv/bin/pip" install -r requirements.txt --quiet
 if [ -f "requirements-web.txt" ]; then
-    sudo -u "$REAL_USER" "$SCRIPT_DIR/venv/bin/pip" install -r requirements-web.txt --quiet
+    sudo -u "$REAL_USER" "$ROOT_DIR/venv/bin/pip" install -r requirements-web.txt --quiet
 fi
 
 echo -e "${GREEN}✓ Python dependencies installed.${NC}"
@@ -75,7 +82,7 @@ if [ -z "$ADMIN_PW" ]; then
 fi
 
 # Initialize web auth configuration
-sudo -u "$REAL_USER" "$SCRIPT_DIR/venv/bin/python3" web_main.py --password "$ADMIN_PW" --port 8080 > /dev/null 2>&1 &
+sudo -u "$REAL_USER" "$ROOT_DIR/venv/bin/python3" web_main.py --password "$ADMIN_PW" --port 8080 > /dev/null 2>&1 &
 INIT_PID=$!
 sleep 2
 kill $INIT_PID 2>/dev/null || true
@@ -104,8 +111,8 @@ After=network.target
 [Service]
 Type=simple
 User=$REAL_USER
-WorkingDirectory=$SCRIPT_DIR
-ExecStart=$SCRIPT_DIR/venv/bin/python3 $SCRIPT_DIR/web_main.py --host 0.0.0.0 --port 8080
+WorkingDirectory=$ROOT_DIR
+ExecStart=$ROOT_DIR/venv/bin/python3 $ROOT_DIR/web_main.py --host 0.0.0.0 --port 8080
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1

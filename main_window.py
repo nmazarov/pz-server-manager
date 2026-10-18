@@ -24,6 +24,9 @@ from config_manager import ConfigManager, AppPreferences
 from server_process import ServerProcess
 from mod_manager import ModManager
 from server_installer import ServerInstaller
+from backup_manager import BackupManager
+from player_manager import PlayerManager
+from watchdog_manager import WatchdogManager
 
 from ui import (
     DialogsMixin, create_zombie_app_icon, ensure_firewall_rules,
@@ -64,12 +67,23 @@ class MainWindow(
         self.config_manager.set_server_name(saved_name)
         self.mod_manager.set_server_name(saved_name)
 
+        self.backup_manager = BackupManager(paths, saved_name)
+        self.player_manager = PlayerManager(paths, saved_name)
+        self.watchdog       = WatchdogManager(self)
+        self.web_process    = None
+
         self.server_process.output_received.connect(self.append_console_output)
+        self.server_process.output_received.connect(self.player_manager.parse_console_line)
         self.server_process.error_received.connect(self.append_console_error)
         self.server_process.server_launching.connect(self.on_server_launching)
         self.server_process.server_started.connect(self.on_server_started)
         self.server_process.server_ready.connect(self.on_server_ready)
         self.server_process.server_stopped.connect(self.on_server_stopped)
+        self.server_process.process_exited.connect(self.on_server_process_exited)
+
+        self.player_manager.players_updated.connect(self.on_players_updated)
+        self.watchdog.log_message.connect(self.append_console_output)
+        self.watchdog.restart_requested.connect(self.restart_server)
 
         self.init_ui()
         self.setup_menu()
@@ -152,6 +166,18 @@ class MainWindow(
         )
         share_btn.clicked.connect(self.share_server_info_action)
         header_layout.addWidget(share_btn)
+
+        self.backup_btn = QPushButton("📦 " + ("Бэкапы" if get_language() == 'ru' else "Backups"))
+        self.backup_btn.setStyleSheet("background-color: #5c4018; color: #ffffff; padding: 4px 10px; font-weight: bold;")
+        self.backup_btn.setToolTip(tr('backup_mgr_title'))
+        self.backup_btn.clicked.connect(self.open_backup_manager)
+        header_layout.addWidget(self.backup_btn)
+
+        self.web_btn = QPushButton("🌐 " + ("Веб-панель" if get_language() == 'ru' else "Web Dashboard"))
+        self.web_btn.setStyleSheet("background-color: #4a287a; color: #ffffff; padding: 4px 10px; font-weight: bold;")
+        self.web_btn.setToolTip(tr('web_dashboard_tooltip'))
+        self.web_btn.clicked.connect(self.toggle_web_dashboard)
+        header_layout.addWidget(self.web_btn)
 
         main_layout.addWidget(header)
 
@@ -249,10 +275,63 @@ class MainWindow(
             else:
                 self.show_normal_and_raise()
 
+    def toggle_web_dashboard(self):
+        """Toggle or open the FastAPI Web Dashboard."""
+        import webbrowser
+        is_ru = get_language() == 'ru'
+
+        if hasattr(self, 'web_process') and self.web_process and self.web_process.poll() is None:
+            res = QMessageBox.question(
+                self,
+                tr('web_dashboard_title'),
+                f"{tr('web_dashboard_running', url='http://localhost:8080')}\n\n" +
+                ("Желаете открыть в браузере или остановить веб-сервер?" if is_ru else "Do you want to open in browser or stop web server?"),
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
+            )
+            if res == QMessageBox.Yes:
+                webbrowser.open("http://localhost:8080")
+            elif res == QMessageBox.No:
+                try:
+                    self.web_process.terminate()
+                    self.web_process = None
+                    if hasattr(self, 'web_btn'):
+                        self.web_btn.setStyleSheet("background-color: #4a287a; color: #ffffff; padding: 4px 10px; font-weight: bold;")
+                        self.web_btn.setText("🌐 " + ("Веб-панель" if is_ru else "Web Dashboard"))
+                    QMessageBox.information(self, tr('web_dashboard_title'), tr('web_dashboard_stopped'))
+                except Exception as e:
+                    logger.error(f"Failed to stop web process: {e}")
+            return
+
+        # Start Web Dashboard process
+        root_dir = Path(__file__).resolve().parent
+        venv_py = root_dir / "venv" / "Scripts" / "python.exe" if os.name == 'nt' else root_dir / "venv" / "bin" / "python"
+        py_bin = str(venv_py) if venv_py.exists() else sys.executable
+
+        try:
+            self.web_process = subprocess.Popen(
+                [py_bin, str(root_dir / "web_main.py"), "--port", "8080"],
+                cwd=str(root_dir),
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            )
+            if hasattr(self, 'web_btn'):
+                self.web_btn.setStyleSheet("background-color: #1e6b3b; color: #ffffff; padding: 4px 10px; font-weight: bold;")
+                self.web_btn.setText("🌐 " + ("Веб-панель (8080: Онлайн)" if is_ru else "Web Dashboard (8080: Online)"))
+
+            QTimer.singleShot(1000, lambda: webbrowser.open("http://localhost:8080"))
+            self.statusBar.showMessage("🌐 Web Dashboard running on http://localhost:8080", 5000)
+        except Exception as e:
+            logger.error(f"Failed to launch Web Dashboard: {e}")
+            QMessageBox.critical(self, tr('error'), f"Failed to start Web Dashboard: {e}")
+
     def quit_app(self):
         """Force application exit."""
         if hasattr(self, 'tray_icon'):
             self.tray_icon.hide()
+        if hasattr(self, 'web_process') and self.web_process and self.web_process.poll() is None:
+            try:
+                self.web_process.terminate()
+            except Exception:
+                pass
         if self.server_process.is_running():
             self.server_process.stop()
         QApplication.quit()
@@ -276,6 +355,7 @@ class MainWindow(
             ('menu_validate',      self.validate_server),
             ('menu_update',        self.update_server),
             ('btn_manage_backups', self.open_backup_manager),
+            ('btn_web_dashboard',  self.toggle_web_dashboard),
             (None,                 None),
             ('menu_open_config',   self.open_config_folder),
             ('menu_open_server',   self.open_server_folder),

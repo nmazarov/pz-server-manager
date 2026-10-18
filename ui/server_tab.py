@@ -10,12 +10,13 @@ import logging
 import threading
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
     QCheckBox, QComboBox, QPlainTextEdit, QGroupBox, QGridLayout, QMessageBox,
-    QInputDialog, QSizePolicy, QDialog, QListWidget, QSystemTrayIcon, QFrame,
-    QApplication, QToolTip
+    QInputDialog, QSizePolicy, QDialog, QListWidget, QListWidgetItem,
+    QSystemTrayIcon, QFrame, QApplication, QToolTip, QMenu
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont, QCursor
@@ -228,24 +229,37 @@ class ServerTabMixin:
         del_save_btn.clicked.connect(self.delete_save_world_action)
         cl.addWidget(del_save_btn)
 
+        chk_row = QHBoxLayout()
         self.auto_backup_checkbox = QCheckBox("📦 " + ("Авто-бэкап мира перед запуском" if get_language() == 'ru' else "Auto-backup world on launch"))
         self.auto_backup_checkbox.setChecked(saved_auto_backup)
         self.auto_backup_checkbox.toggled.connect(self._on_auto_backup_toggled)
         self.auto_backup_checkbox.setToolTip("Автоматически создавать резервную копию файлов сохранения мира перед каждым стартом" if get_language() == 'ru' else "Automatically backup world save before starting")
-        cl.addWidget(self.auto_backup_checkbox)
+        chk_row.addWidget(self.auto_backup_checkbox)
+
+        self.watchdog_checkbox = QCheckBox("🛡️ " + tr('chk_watchdog'))
+        self.watchdog_checkbox.setChecked(prefs.get('watchdog_enabled', True))
+        self.watchdog_checkbox.toggled.connect(self._on_watchdog_toggled)
+        self.watchdog_checkbox.setToolTip(tr('watchdog_tooltip'))
+        chk_row.addWidget(self.watchdog_checkbox)
+        chk_row.addStretch()
+        cl.addLayout(chk_row)
 
         layout.addWidget(controls_group)
 
-        # ── Group: Console Output ──────────────────────────────────────
+        # ── Group: Console Output & Live Players Dashboard ─────────────
         console_group = QGroupBox(tr('group_console'))
         conl = QVBoxLayout(console_group)
 
+        split_layout = QHBoxLayout()
+        split_layout.setSpacing(12)
+
+        left_vbox = QVBoxLayout()
         self.console_output = QPlainTextEdit()
         self.console_output.setReadOnly(True)
         self.console_output.setMaximumBlockCount(3000)
         self.console_output.setFont(QFont(self._mono_font(), 9))
         self.console_output.setStyleSheet("background-color: #1e1e1e; color: #d4d4d4;")
-        conl.addWidget(self.console_output)
+        left_vbox.addWidget(self.console_output)
 
         self._console_buffer = []
         self._console_timer = QTimer(self)
@@ -262,7 +276,7 @@ class ServerTabMixin:
         send_btn = QPushButton(tr('btn_send'))
         send_btn.clicked.connect(self.send_console_command)
         cmd_row.addWidget(send_btn)
-        conl.addLayout(cmd_row)
+        left_vbox.addLayout(cmd_row)
 
         # ── Quick Actions Row ──────────────────────────────────────────
         quick_row = QHBoxLayout()
@@ -270,28 +284,118 @@ class ServerTabMixin:
         quick_lbl.setStyleSheet("font-weight: bold; color: #5294e2;")
         quick_row.addWidget(quick_lbl)
 
-        btn_save_world = QPushButton("💾 " + ("Сохранить мир" if get_language() == 'ru' else "Save World"))
+        btn_save_world = QPushButton("💾 " + ("Сохранить" if get_language() == 'ru' else "Save"))
         btn_save_world.setToolTip("Отправить команду 'save' для немедленного сохранения мира" if get_language() == 'ru' else "Send 'save' command")
         btn_save_world.clicked.connect(lambda: self.send_quick_server_cmd("save"))
         quick_row.addWidget(btn_save_world)
 
-        btn_rain = QPushButton("🌧️ " + ("Дождь Вкл/Выкл" if get_language() == 'ru' else "Toggle Rain"))
+        btn_rain = QPushButton("🌧️ " + ("Дождь" if get_language() == 'ru' else "Rain"))
         btn_rain.setToolTip("Вызвать или остановить дождь на сервере" if get_language() == 'ru' else "Start or stop rain")
         btn_rain.clicked.connect(self.toggle_rain_action)
         quick_row.addWidget(btn_rain)
 
-        btn_heli = QPushButton("🚁 " + ("Вызвать вертолет" if get_language() == 'ru' else "Trigger Heli"))
+        btn_heli = QPushButton("🚁 " + ("Вертолет" if get_language() == 'ru' else "Heli"))
         btn_heli.setToolTip("Запустить вертолетное событие над случайным игроком" if get_language() == 'ru' else "Trigger helicopter event")
         btn_heli.clicked.connect(lambda: self.send_quick_server_cmd("chopper"))
         quick_row.addWidget(btn_heli)
 
-        btn_broadcast = QPushButton("📢 " + ("Объявление в чат" if get_language() == 'ru' else "Broadcast Msg"))
+        btn_broadcast = QPushButton("📢 " + ("Объявление" if get_language() == 'ru' else "Broadcast"))
         btn_broadcast.setToolTip("Отправить глобальное системное сообщение всем игрокам в чат" if get_language() == 'ru' else "Send global server message to all players")
         btn_broadcast.clicked.connect(self.broadcast_message_action)
         quick_row.addWidget(btn_broadcast)
 
         quick_row.addStretch()
-        conl.addLayout(quick_row)
+        left_vbox.addLayout(quick_row)
+        split_layout.addLayout(left_vbox, 4)
+
+        # ── Right Side: Live Player Dashboard Panel ────────────────────
+        players_panel = QFrame()
+        players_panel.setMinimumWidth(230)
+        players_panel.setMaximumWidth(280)
+        players_panel.setStyleSheet("""
+            QFrame {
+                background-color: #252526;
+                border: 1px solid #3c3c3c;
+                border-radius: 6px;
+            }
+        """)
+        pl_layout = QVBoxLayout(players_panel)
+        pl_layout.setContentsMargins(10, 8, 10, 8)
+        pl_layout.setSpacing(6)
+
+        self.lbl_players_count = QLabel(tr('lbl_online_players', count=0))
+        self.lbl_players_count.setStyleSheet("font-size: 13px; font-weight: bold; color: #40ff40; padding: 2px 0;")
+        pl_layout.addWidget(self.lbl_players_count)
+
+        self.players_list = QListWidget()
+        self.players_list.setStyleSheet("""
+            QListWidget {
+                background-color: #1e1e1e;
+                color: #e0e0e0;
+                border: 1px solid #333333;
+                border-radius: 4px;
+                padding: 4px;
+                font-size: 12px;
+            }
+            QListWidget::item {
+                padding: 5px 8px;
+                border-radius: 3px;
+                margin-bottom: 2px;
+            }
+            QListWidget::item:hover {
+                background-color: #2d2d30;
+            }
+            QListWidget::item:selected {
+                background-color: #1e4b7a;
+                color: #ffffff;
+                font-weight: bold;
+            }
+        """)
+        self.players_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.players_list.customContextMenuRequested.connect(self._show_player_context_menu)
+        pl_layout.addWidget(self.players_list, 1)
+
+        self._set_empty_players_placeholder()
+
+        # Action palette buttons
+        p_btns_row1 = QHBoxLayout()
+        btn_kick = QPushButton(tr('btn_kick'))
+        btn_kick.setStyleSheet("background-color: #6b3333; color: #ffcccc; font-size: 11px; padding: 4px;")
+        btn_kick.clicked.connect(self.kick_selected_player)
+        p_btns_row1.addWidget(btn_kick)
+
+        btn_ban = QPushButton(tr('btn_ban'))
+        btn_ban.setStyleSheet("background-color: #8b1111; color: #ffffff; font-size: 11px; font-weight: bold; padding: 4px;")
+        btn_ban.clicked.connect(self.ban_selected_player)
+        p_btns_row1.addWidget(btn_ban)
+        pl_layout.addLayout(p_btns_row1)
+
+        p_btns_row2 = QHBoxLayout()
+        btn_tp = QPushButton(tr('btn_teleport'))
+        btn_tp.setStyleSheet("background-color: #2b4b6f; color: #ffffff; font-size: 11px; padding: 4px;")
+        btn_tp.clicked.connect(self.teleport_selected_player)
+        p_btns_row2.addWidget(btn_tp)
+
+        btn_admin = QPushButton(tr('btn_admin'))
+        btn_admin.setStyleSheet("background-color: #5b4b1a; color: #ffeb99; font-size: 11px; padding: 4px;")
+        btn_admin.clicked.connect(self.admin_selected_player)
+        p_btns_row2.addWidget(btn_admin)
+        pl_layout.addLayout(p_btns_row2)
+
+        p_btns_row3 = QHBoxLayout()
+        btn_wl = QPushButton(tr('btn_whitelist'))
+        btn_wl.setStyleSheet("background-color: #1e5e3a; color: #ffffff; font-size: 11px; padding: 4px;")
+        btn_wl.clicked.connect(self.whitelist_selected_player)
+        p_btns_row3.addWidget(btn_wl)
+
+        btn_ref = QPushButton(tr('btn_refresh_players'))
+        btn_ref.setStyleSheet("background-color: #3a3a3c; color: #ffffff; font-size: 11px; padding: 4px;")
+        btn_ref.clicked.connect(self.refresh_players_list)
+        p_btns_row3.addWidget(btn_ref)
+        pl_layout.addLayout(p_btns_row3)
+
+        split_layout.addWidget(players_panel)
+        conl.addLayout(split_layout)
 
         layout.addWidget(console_group)
         self.tabs.addTab(tab, tr('tab_server'))
@@ -305,6 +409,11 @@ class ServerTabMixin:
     def _on_auto_backup_toggled(self, checked: bool):
         AppPreferences.save(self.paths, {'auto_backup': bool(checked)})
 
+    def _on_watchdog_toggled(self, checked: bool):
+        if hasattr(self, 'watchdog'):
+            self.watchdog.auto_restart_on_crash = bool(checked)
+        AppPreferences.save(self.paths, {'watchdog_enabled': bool(checked)})
+
     def on_server_name_changed(self, text: str):
         name = text.strip() or 'servertest'
         AppPreferences.save(self.paths, {'last_server_name': name})
@@ -312,6 +421,153 @@ class ServerTabMixin:
             self.config_manager.set_server_name(name)
         if hasattr(self, 'mod_manager'):
             self.mod_manager.set_server_name(name)
+        if hasattr(self, 'backup_manager'):
+            self.backup_manager.set_server_name(name)
+        if hasattr(self, 'player_manager'):
+            self.player_manager.set_server_name(name)
+
+    def on_server_process_exited(self, exit_code: int):
+        """Called when server process terminates; triggers watchdog auto-restart if unexpected."""
+        name = self.server_name_input.text().strip() or 'servertest'
+        if hasattr(self, 'watchdog') and hasattr(self, 'watchdog_checkbox') and self.watchdog_checkbox.isChecked():
+            self.watchdog.on_server_process_ended(exit_code, name)
+
+    # ── Live Player Dashboard Handlers ────────────────────────────
+
+    def _set_empty_players_placeholder(self):
+        if not hasattr(self, 'players_list'):
+            return
+        self.players_list.clear()
+        it = QListWidgetItem("ℹ️ " + tr('no_players_online'))
+        it.setFlags(it.flags() & ~Qt.ItemIsSelectable)
+        it.setForeground(QColor("#777777"))
+        self.players_list.addItem(it)
+
+    def on_players_updated(self, players: list):
+        """Update live players UI when player manager detects joins/leaves."""
+        if hasattr(self, 'lbl_players_count'):
+            self.lbl_players_count.setText(tr('lbl_online_players', count=len(players)))
+        if not hasattr(self, 'players_list'):
+            return
+
+        self.players_list.clear()
+        if not players:
+            self._set_empty_players_placeholder()
+            return
+
+        for p in sorted(players):
+            it = QListWidgetItem(f"👤 {p}")
+            it.setData(Qt.UserRole, p)
+            self.players_list.addItem(it)
+
+    def _get_selected_player_name(self) -> Optional[str]:
+        if not hasattr(self, 'players_list'):
+            return None
+        item = self.players_list.currentItem()
+        if not item:
+            return None
+        data = item.data(Qt.UserRole)
+        return str(data).strip() if data else None
+
+    def _show_player_context_menu(self, pos):
+        player = self._get_selected_player_name()
+        if not player:
+            return
+        menu = QMenu(self)
+        a_kick = menu.addAction(f"👢 {tr('btn_kick')} ({player})")
+        a_kick.triggered.connect(self.kick_selected_player)
+
+        a_ban = menu.addAction(f"🚫 {tr('btn_ban')} ({player})")
+        a_ban.triggered.connect(self.ban_selected_player)
+
+        a_tp = menu.addAction(f"🌀 {tr('btn_teleport')}...")
+        a_tp.triggered.connect(self.teleport_selected_player)
+
+        a_admin = menu.addAction(f"👑 {tr('btn_admin')}")
+        a_admin.triggered.connect(self.admin_selected_player)
+
+        a_wl = menu.addAction(f"📜 {tr('btn_whitelist')}")
+        a_wl.triggered.connect(self.whitelist_selected_player)
+
+        menu.exec_(self.players_list.mapToGlobal(pos))
+
+    def kick_selected_player(self):
+        player = self._get_selected_player_name()
+        if not player:
+            QMessageBox.information(self, tr('player_actions'), tr('no_players_online'))
+            return
+        reason, ok = QInputDialog.getText(self, tr('btn_kick'), f"{tr('kick_reason_prompt')} ({player}):", text="Kicked by Administrator")
+        if ok:
+            reason = reason.strip() or "Kicked by Administrator"
+            cmd = self.player_manager.cmd_kick(player, reason) if hasattr(self, 'player_manager') else f'kickuser "{player}" -r "{reason}"'
+            self.send_quick_server_cmd(cmd)
+            self.append_console_output(f"👢 {tr('player_kicked_success', player=player)}")
+
+    def ban_selected_player(self):
+        player = self._get_selected_player_name()
+        if not player:
+            QMessageBox.information(self, tr('player_actions'), tr('no_players_online'))
+            return
+        res = QMessageBox.warning(
+            self,
+            tr('btn_ban'),
+            f"Are you sure you want to ban player '{player}'?" if get_language() == 'en' else f"Вы уверены, что хотите забанить игрока '{player}'?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if res == QMessageBox.Yes:
+            reason, ok = QInputDialog.getText(self, tr('btn_ban'), f"{tr('ban_reason_prompt')} ({player}):", text="Banned by Administrator")
+            if ok:
+                reason = reason.strip() or "Banned by Administrator"
+                cmd = self.player_manager.cmd_ban(player, reason) if hasattr(self, 'player_manager') else f'banuser "{player}" -r "{reason}"'
+                self.send_quick_server_cmd(cmd)
+                self.append_console_output(f"🚫 {tr('player_banned_success', player=player)}")
+
+    def teleport_selected_player(self):
+        player = self._get_selected_player_name()
+        if not player:
+            QMessageBox.information(self, tr('player_actions'), tr('no_players_online'))
+            return
+        all_players = self.player_manager.get_online_players() if hasattr(self, 'player_manager') else []
+        candidates = [p for p in all_players if p != player]
+        if not candidates:
+            target, ok = QInputDialog.getText(self, tr('btn_teleport'), tr('teleport_target_prompt', player=player))
+        else:
+            target, ok = QInputDialog.getItem(self, tr('btn_teleport'), tr('teleport_target_prompt', player=player), candidates, 0, False)
+        if ok and target.strip():
+            cmd = self.player_manager.cmd_teleport(player, target.strip()) if hasattr(self, 'player_manager') else f'teleport "{player}" "{target.strip()}"'
+            self.send_quick_server_cmd(cmd)
+            self.append_console_output(f"🌀 Teleported {player} to {target.strip()}")
+
+    def admin_selected_player(self):
+        player = self._get_selected_player_name()
+        if not player:
+            QMessageBox.information(self, tr('player_actions'), tr('no_players_online'))
+            return
+        res = QMessageBox.question(
+            self,
+            tr('btn_admin'),
+            f"Grant Administrator permissions to '{player}'?" if get_language() == 'en' else f"Предоставить права Администратора игроку '{player}'?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if res == QMessageBox.Yes:
+            cmd = self.player_manager.cmd_set_access(player, 'admin') if hasattr(self, 'player_manager') else f'setaccesslevel "{player}" "admin"'
+            self.send_quick_server_cmd(cmd)
+            self.append_console_output(f"👑 {tr('player_admin_success', player=player)}")
+
+    def whitelist_selected_player(self):
+        player = self._get_selected_player_name()
+        if not player:
+            QMessageBox.information(self, tr('player_actions'), tr('no_players_online'))
+            return
+        if hasattr(self, 'player_manager'):
+            self.player_manager.add_to_whitelist(player)
+        self.send_quick_server_cmd(f'addusertowhitelist "{player}"')
+        QMessageBox.information(self, tr('btn_whitelist'), tr('player_whitelist_success', player=player))
+        self.append_console_output(f"📜 {tr('player_whitelist_success', player=player)}")
+
+    def refresh_players_list(self):
+        self.send_quick_server_cmd("players")
+        self.append_console_output("🔄 Sent 'players' query to server console...")
 
     def _step_launch_animation(self):
         dots = [".  ", ".. ", "...", " ..", "  .", "   "][self._launch_anim_frame % 6]
@@ -399,6 +655,9 @@ class ServerTabMixin:
                 logger.error(f"Pre-launch backup error: {e}")
                 self.append_console_error(f"⚠️ Pre-launch backup warning: {e}")
 
+        if hasattr(self, 'watchdog'):
+            self.watchdog.on_server_starting()
+
         self.on_server_launching()
         self.append_console_output(f"🟡 {tr('starting_server')} '{name}' (RAM: {ram_gb} GB)...")
         try:
@@ -408,6 +667,9 @@ class ServerTabMixin:
             self.on_server_stopped()
 
     def stop_server(self):
+        name = self.server_name_input.text().strip() or 'servertest'
+        if hasattr(self, 'watchdog'):
+            self.watchdog.on_server_manual_stop(name)
         self.append_console_output("⏹ " + tr('stopping_server'))
         try:
             self.server_process.stop()
@@ -522,10 +784,15 @@ class ServerTabMixin:
             f"{'=' * 68}"
         )
         self.append_console_output(ready_banner)
+        name = self.server_name_input.text().strip() or 'servertest'
+        if hasattr(self, 'watchdog'):
+            self.watchdog.on_server_started_ok(name, str(pub_ip), str(port))
 
     def on_server_stopped(self):
         """Called when server process is terminated."""
         self._server_is_ready = False
+        if hasattr(self, 'player_manager'):
+            self.player_manager.clear_online_players()
         if hasattr(self, '_launch_anim_timer'):
             self._launch_anim_timer.stop()
         if hasattr(self, 'start_btn'):

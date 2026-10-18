@@ -92,6 +92,7 @@ class ServerProcess(QObject):
     server_launching = pyqtSignal()
     server_ready = pyqtSignal()
     server_stopped = pyqtSignal()
+    process_exited = pyqtSignal(int)
 
     def __init__(self, paths: dict):
         super().__init__()
@@ -408,7 +409,15 @@ class ServerProcess(QObject):
 
     def _handle_process_ended(self):
         """Handle when the server process ends."""
-        logger.info("Server process ended")
+        exit_code = 0
+        if self.process:
+            try:
+                exit_code = self.process.poll()
+                if exit_code is None:
+                    exit_code = 0
+            except Exception:
+                exit_code = 0
+        logger.info(f"Server process ended (exit code: {exit_code})")
         self.is_ready = False
         self.process = None
         if self.output_reader:
@@ -416,6 +425,7 @@ class ServerProcess(QObject):
             self.output_reader = None
             reader.deleteLater()
         self.server_stopped.emit()
+        self.process_exited.emit(exit_code)
 
     def get_pid(self) -> Optional[int]:
         """Get the server process ID."""

@@ -14,7 +14,8 @@ from pathlib import Path
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
     QCheckBox, QComboBox, QMessageBox, QDialog, QApplication,
-    QFileDialog, QListWidget, QAbstractSpinBox
+    QFileDialog, QListWidget, QAbstractSpinBox, QTableWidget, QTableWidgetItem,
+    QHeaderView, QFrame
 )
 from PyQt5.QtCore import Qt, QEvent, QObject, QRect
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QBrush, QPen, QColor
@@ -206,58 +207,173 @@ class DialogsMixin:
         QMessageBox.information(self, title, info_msg)
 
     def open_backup_manager(self):
-        """Show backup manager dialog to list and restore config backups."""
-        backups = self.config_manager.list_backups()
-        if not backups:
-            QMessageBox.information(self, tr('backup_title'), tr('no_backups_found'))
-            return
+        """Show graphical backup manager dialog to create, inspect, restore, and delete world backups."""
+        if not hasattr(self, 'backup_manager'):
+            from backup_manager import BackupManager
+            name = self.server_name_input.text().strip() or 'servertest' if hasattr(self, 'server_name_input') else 'servertest'
+            self.backup_manager = BackupManager(self.paths, name)
 
         dialog = QDialog(self)
-        dialog.setWindowTitle(tr('backup_title'))
-        dialog.resize(500, 350)
+        dialog.setWindowTitle("📦 " + tr('backup_mgr_title'))
+        dialog.resize(750, 480)
         vlayout = QVBoxLayout(dialog)
+        vlayout.setContentsMargins(14, 14, 14, 14)
+        vlayout.setSpacing(10)
 
-        lbl = QLabel(tr('backup_title'))
-        vlayout.addWidget(lbl)
+        # Header info
+        header_frame = QFrame()
+        header_frame.setStyleSheet("background-color: #252526; border: 1px solid #3c3c3c; border-radius: 6px; padding: 6px;")
+        hl = QHBoxLayout(header_frame)
+        hl.setContentsMargins(8, 4, 8, 4)
+        info_lbl = QLabel(f"📂 <b>{tr('col_filename')}:</b> {self.backup_manager.backup_dir}")
+        info_lbl.setStyleSheet("color: #a0ffa0; font-size: 11px;")
+        hl.addWidget(info_lbl)
+        hl.addStretch()
+        open_folder_btn = QPushButton("📂 " + tr('btn_open_backup_folder'))
+        open_folder_btn.setStyleSheet("padding: 4px 10px; font-size: 11px;")
+        open_folder_btn.clicked.connect(lambda: self._open_folder(self.backup_manager.backup_dir))
+        hl.addWidget(open_folder_btn)
+        vlayout.addWidget(header_frame)
 
-        list_widget = QListWidget()
-        for b_path in backups:
-            list_widget.addItem(b_path.name)
-        vlayout.addWidget(list_widget)
+        # Table
+        table = QTableWidget()
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels([tr('col_filename'), tr('col_size'), tr('col_date')])
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setSelectionMode(QTableWidget.SingleSelection)
+        table.setAlternatingRowColors(True)
+        table.setStyleSheet("""
+            QTableWidget {
+                background-color: #1e1e1e;
+                alternate-background-color: #252526;
+                color: #e0e0e0;
+                gridline-color: #333333;
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+            }
+            QHeaderView::section {
+                background-color: #2d2d30;
+                color: #cccccc;
+                padding: 6px;
+                font-weight: bold;
+                border: 1px solid #3c3c3c;
+            }
+            QTableWidget::item:selected {
+                background-color: #264f78;
+                color: #ffffff;
+            }
+        """)
+        vlayout.addWidget(table, 1)
 
+        def refresh_table():
+            backups = self.backup_manager.list_backups()
+            table.setRowCount(len(backups))
+            for row_idx, b in enumerate(backups):
+                item_name = QTableWidgetItem("📦 " + b['filename'])
+                item_name.setData(Qt.UserRole, b['filepath'])
+                item_size = QTableWidgetItem(f"{b['size_mb']} MB")
+                item_size.setTextAlignment(Qt.AlignCenter)
+                item_date = QTableWidgetItem(b['modified'])
+                item_date.setTextAlignment(Qt.AlignCenter)
+
+                table.setItem(row_idx, 0, item_name)
+                table.setItem(row_idx, 1, item_size)
+                table.setItem(row_idx, 2, item_date)
+
+        refresh_table()
+
+        # Action Buttons Row
         btn_row = QHBoxLayout()
-        restore_btn = QPushButton(tr('btn_restore'))
+        create_btn = QPushButton("➕ " + tr('btn_create_backup'))
+        create_btn.setStyleSheet("background-color: #1e6b3b; color: #ffffff; font-weight: bold; padding: 6px 14px;")
+        btn_row.addWidget(create_btn)
+
+        restore_btn = QPushButton("🔄 " + tr('btn_restore_backup'))
+        restore_btn.setStyleSheet("background-color: #1e4b7a; color: #ffffff; font-weight: bold; padding: 6px 14px;")
         btn_row.addWidget(restore_btn)
 
-        close_btn = QPushButton("Закрыть")
-        close_btn.clicked.connect(dialog.reject)
+        del_btn = QPushButton("🗑️ " + tr('btn_delete_backup'))
+        del_btn.setStyleSheet("background-color: #6b2020; color: #ffffff; padding: 6px 14px;")
+        btn_row.addWidget(del_btn)
+
+        btn_row.addStretch()
+
+        close_btn = QPushButton(tr('btn_close'))
+        close_btn.setStyleSheet("padding: 6px 14px;")
+        close_btn.clicked.connect(dialog.accept)
         btn_row.addWidget(close_btn)
         vlayout.addLayout(btn_row)
 
+        def do_create():
+            tag, ok = QInputDialog.getText(dialog, tr('btn_create_backup'), tr('prompt_backup_tag'))
+            if ok:
+                tag = tag.strip() or 'manual'
+                try:
+                    p = self.backup_manager.create_backup(tag=tag)
+                    QMessageBox.information(dialog, tr('success'), tr('backup_created_success', path=p))
+                    refresh_table()
+                except Exception as e:
+                    QMessageBox.critical(dialog, tr('error'), f"Failed to create backup: {e}")
+
         def do_restore():
-            sel = list_widget.currentItem()
-            if not sel:
+            row = table.currentRow()
+            if row < 0:
+                QMessageBox.warning(dialog, tr('warning'), "Please select a backup from the list to restore.")
                 return
-            chosen_name = sel.text()
-            chosen_path = next((b for b in backups if b.name == chosen_name), None)
-            if not chosen_path:
+            item = table.item(row, 0)
+            if not item:
                 return
-            res = QMessageBox.question(
-                dialog, tr('confirm'),
-                f"Восстановить конфигурацию из архива:\n{chosen_name}?",
+            filepath = item.data(Qt.UserRole)
+            filename = item.text().replace("📦 ", "")
+            res = QMessageBox.warning(
+                dialog,
+                tr('confirm'),
+                tr('backup_restore_confirm', name=filename),
                 QMessageBox.Yes | QMessageBox.No
             )
             if res == QMessageBox.Yes:
-                ok = self.config_manager.restore_backup(chosen_path)
+                ok = self.backup_manager.restore_backup(filepath)
                 if ok:
-                    QMessageBox.information(dialog, tr('success'), "Конфигурация успешно восстановлена!")
-                    self.load_settings()
-                    self.load_sandbox_settings()
+                    QMessageBox.information(dialog, tr('success'), tr('backup_restore_success'))
+                    if hasattr(self, 'load_settings'):
+                        self.load_settings()
+                    if hasattr(self, 'load_sandbox_settings'):
+                        self.load_sandbox_settings()
                     dialog.accept()
                 else:
-                    QMessageBox.critical(dialog, tr('error'), "Не удалось восстановить бэкап.")
+                    QMessageBox.critical(dialog, tr('error'), "Failed to restore backup.")
 
+        def do_delete():
+            row = table.currentRow()
+            if row < 0:
+                QMessageBox.warning(dialog, tr('warning'), "Please select a backup from the list to delete.")
+                return
+            item = table.item(row, 0)
+            if not item:
+                return
+            filepath = item.data(Qt.UserRole)
+            filename = item.text().replace("📦 ", "")
+            res = QMessageBox.question(
+                dialog,
+                tr('confirm'),
+                tr('backup_delete_confirm', name=filename),
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if res == QMessageBox.Yes:
+                try:
+                    Path(filepath).unlink(missing_ok=True)
+                    QMessageBox.information(dialog, tr('success'), tr('backup_delete_success'))
+                    refresh_table()
+                except Exception as e:
+                    QMessageBox.critical(dialog, tr('error'), f"Failed to delete backup: {e}")
+
+        create_btn.clicked.connect(do_create)
         restore_btn.clicked.connect(do_restore)
+        del_btn.clicked.connect(do_delete)
+
         dialog.exec_()
 
     def delete_save_world_action(self):

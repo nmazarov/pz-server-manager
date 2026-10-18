@@ -444,6 +444,59 @@ TRANSLATIONS = {
         'backup_restored': 'Configuration restored successfully!',
         'no_backups_found': 'No backups found for this server.',
 
+        # Live Players
+        'live_players': 'Online Players',
+        'lbl_online_players': '👥 Online Players ({count})',
+        'btn_kick': '👢 Kick',
+        'btn_ban': '🚫 Ban',
+        'btn_teleport': '🌀 Teleport',
+        'btn_admin': '👑 Admin',
+        'btn_whitelist': '📜 Whitelist',
+        'btn_refresh_players': '🔄 Refresh',
+        'no_players_online': 'No players online',
+        'player_actions': 'Player Actions',
+        'kick_reason_prompt': 'Enter kick reason:',
+        'ban_reason_prompt': 'Enter ban reason:',
+        'teleport_target_prompt': 'Teleport {player} to which player?',
+        'player_kicked_success': 'Kicked player {player}',
+        'player_banned_success': 'Banned player {player}',
+        'player_whitelist_success': 'Added {player} to whitelist',
+        'player_admin_success': 'Granted Admin permissions to {player}',
+
+        # Watchdog
+        'chk_watchdog': 'Auto-restart on crash (Watchdog)',
+        'watchdog_tooltip': 'Supervises server process and automatically restarts it if it crashes unexpectedly',
+        'watchdog_crashed': '⚠️ Watchdog detected crash. Restarting in {sec}s...',
+
+        # Search
+        'search_sandbox_ph': 'Search settings across all categories...',
+        'search_mods_ph': 'Search installed mods...',
+        'search_matches_found': 'Matches: {count}',
+
+        # Backup Manager GUI
+        'backup_mgr_title': 'World & Configuration Backup Manager',
+        'btn_create_backup': 'Create Backup Now',
+        'btn_restore_backup': 'Restore Selected Backup',
+        'btn_delete_backup': 'Delete Backup',
+        'btn_open_backup_folder': 'Open Backups Folder',
+        'col_filename': 'Backup Archive',
+        'col_size': 'Size (MB)',
+        'col_date': 'Date Created',
+        'prompt_backup_tag': 'Enter backup note / tag (e.g. before_wipe):',
+        'backup_created_success': 'Backup created successfully:\n{path}',
+        'backup_restore_confirm': 'Are you sure you want to restore backup "{name}"?\nCurrent world save and configurations will be overwritten!',
+        'backup_restore_success': 'Backup restored successfully!\nPlease reload or restart the server.',
+        'backup_delete_confirm': 'Delete backup archive "{name}"?',
+        'backup_delete_success': 'Backup deleted successfully.',
+
+        # Web Dashboard
+        'btn_web_dashboard': 'Web Dashboard',
+        'web_dashboard_title': 'Web Dashboard (VPS Remote Access)',
+        'web_dashboard_running': 'Web Dashboard is running at:\n{url}\n\nOpen in your browser now?',
+        'web_dashboard_running_btn': 'Web Dashboard (Online: 8080)',
+        'web_dashboard_stopped': 'Web Dashboard stopped.',
+        'web_dashboard_tooltip': 'Toggle local FastAPI Web Dashboard to manage the server via browser or mobile',
+
         # Tray
         'tray_show': 'Show Manager',
         'tray_hide': 'Hide to Tray',
@@ -889,6 +942,10 @@ TRANSLATIONS = {
         'preset_label': 'Предустановка сложности:',
         'preset_select': '-- Выберите пресет --',
         'preset_beginner': 'Начинающий (Легкий)',
+        # Presets
+        'preset_label': 'Пресет / Сложность:',
+        'preset_select': '-- Выберите пресет --',
+        'preset_beginner': 'Начинающий (Легкий)',
         'preset_survival': 'Выживание (Стандарт)',
         'preset_hardcore': 'Хардкор (Сложный)',
         'preset_horde': 'Орда Zomboid',
@@ -901,6 +958,59 @@ TRANSLATIONS = {
         'btn_restore': 'Восстановить выбранную',
         'backup_restored': 'Конфигурация успешно восстановлена!',
         'no_backups_found': 'Резервных копий для этого сервера не найдено.',
+
+        # Live Players
+        'live_players': 'Онлайн-игроки',
+        'lbl_online_players': '👥 Игроки онлайн ({count})',
+        'btn_kick': '👢 Кик',
+        'btn_ban': '🚫 Бан',
+        'btn_teleport': '🌀 Телепорт',
+        'btn_admin': '👑 Админ',
+        'btn_whitelist': '📜 В вайтлист',
+        'btn_refresh_players': '🔄 Обновить',
+        'no_players_online': 'Нет игроков онлайн',
+        'player_actions': 'Действия с игроком',
+        'kick_reason_prompt': 'Укажите причину кика:',
+        'ban_reason_prompt': 'Укажите причину бана:',
+        'teleport_target_prompt': 'Телепортировать {player} к какому игроку?',
+        'player_kicked_success': 'Игрок {player} кикнут с сервера',
+        'player_banned_success': 'Игрок {player} заблокирован (бан)',
+        'player_whitelist_success': 'Игрок {player} добавлен в вайтлист',
+        'player_admin_success': 'Игроку {player} выданы права администратора',
+
+        # Watchdog
+        'chk_watchdog': 'Авто-перезапуск при краше (Watchdog)',
+        'watchdog_tooltip': 'Следит за процессом сервера и автоматически перезапускает его при аварийном завершении/сбое',
+        'watchdog_crashed': '⚠️ Watchdog обнаружил сбой сервера. Перезапуск через {sec}с...',
+
+        # Search
+        'search_sandbox_ph': 'Поиск по всем категориям настроек...',
+        'search_mods_ph': 'Поиск по установленным модам...',
+        'search_matches_found': 'Найдено: {count}',
+
+        # Backup Manager GUI
+        'backup_mgr_title': 'Менеджер бэкапов мира и конфигурации',
+        'btn_create_backup': 'Создать бэкап сейчас',
+        'btn_restore_backup': 'Восстановить выбранный бэкап',
+        'btn_delete_backup': 'Удалить бэкап',
+        'btn_open_backup_folder': 'Открыть папку бэкапов',
+        'col_filename': 'Архив бэкапа',
+        'col_size': 'Размер (МБ)',
+        'col_date': 'Дата создания',
+        'prompt_backup_tag': 'Введите метку / заметку к бэкапу (напр. перед_вайпом):',
+        'backup_created_success': 'Бэкап успешно создан:\n{path}',
+        'backup_restore_confirm': 'Вы уверены, что хотите восстановить бэкап "{name}"?\nТекущее сохранение мира и конфигурация будут перезаписаны!',
+        'backup_restore_success': 'Бэкап успешно восстановлен!\nПожалуйста, перезагрузите настройки или перезапустите сервер.',
+        'backup_delete_confirm': 'Удалить архив бэкапа "{name}"?',
+        'backup_delete_success': 'Бэкап успешно удален.',
+
+        # Web Dashboard
+        'btn_web_dashboard': 'Веб-панель',
+        'web_dashboard_title': 'Веб-панель (Удаленный доступ VPS)',
+        'web_dashboard_running': 'Веб-панель запущена по адресу:\n{url}\n\nОткрыть в браузере?',
+        'web_dashboard_running_btn': 'Веб-панель (Онлайн: 8080)',
+        'web_dashboard_stopped': 'Веб-панель остановлена.',
+        'web_dashboard_tooltip': 'Включить локальный веб-сервер FastAPI для управления сервером через браузер или со смартфона',
 
         # Tray
         'tray_show': 'Показать приложение',

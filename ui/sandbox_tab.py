@@ -153,6 +153,15 @@ class SandboxTabMixin:
         top_bar.addWidget(b_reload)
 
         top_bar.addStretch()
+
+        self.sandbox_search = QLineEdit()
+        self.sandbox_search.setPlaceholderText("🔍 " + tr('search_sandbox_ph'))
+        self.sandbox_search.setClearButtonEnabled(True)
+        self.sandbox_search.setMinimumWidth(240)
+        self.sandbox_search.setMaximumWidth(340)
+        self.sandbox_search.textChanged.connect(self.filter_sandbox_settings)
+        top_bar.addWidget(self.sandbox_search)
+
         layout.addLayout(top_bar)
 
         # ── Central Subtabs ──
@@ -164,21 +173,114 @@ class SandboxTabMixin:
             QTabBar::tab:hover { background: #2c2c2c; color: #fff; }
         """)
 
+        self._sandbox_subtab_names = [
+            tr('subtab_zombies'), tr('subtab_loot'), tr('subtab_world'),
+            tr('subtab_vehicles'), tr('subtab_character'), tr('subtab_mods')
+        ]
+
         # Tab 1: Zombies & Population (2 Columns)
-        self.sandbox_subtabs.addTab(self._create_zombies_subtab(), tr('subtab_zombies'))
+        self.sandbox_subtabs.addTab(self._create_zombies_subtab(), self._sandbox_subtab_names[0])
         # Tab 2: Loot & Resources (2 Columns)
-        self.sandbox_subtabs.addTab(self._create_loot_subtab(), tr('subtab_loot'))
+        self.sandbox_subtabs.addTab(self._create_loot_subtab(), self._sandbox_subtab_names[1])
         # Tab 3: World & Time (2 Columns)
-        self.sandbox_subtabs.addTab(self._create_world_subtab(), tr('subtab_world'))
+        self.sandbox_subtabs.addTab(self._create_world_subtab(), self._sandbox_subtab_names[2])
         # Tab 4: Vehicles (2 Columns)
-        self.sandbox_subtabs.addTab(self._create_vehicles_subtab(), tr('subtab_vehicles'))
+        self.sandbox_subtabs.addTab(self._create_vehicles_subtab(), self._sandbox_subtab_names[3])
         # Tab 5: Character & Skills (2 Columns)
-        self.sandbox_subtabs.addTab(self._create_character_subtab(), tr('subtab_character'))
+        self.sandbox_subtabs.addTab(self._create_character_subtab(), self._sandbox_subtab_names[4])
         # Tab 6: Mod Sandbox Options (Clean Informative Card Table)
-        self.sandbox_subtabs.addTab(self._create_mods_subtab(), tr('subtab_mods'))
+        self.sandbox_subtabs.addTab(self._create_mods_subtab(), self._sandbox_subtab_names[5])
 
         layout.addWidget(self.sandbox_subtabs)
         self.tabs.addTab(tab, tr('tab_sandbox'))
+
+    def filter_sandbox_settings(self, query: str):
+        """Filter visible settings rows across all sandbox subtabs dynamically."""
+        q = (query or "").lower().strip()
+        subtab_names = getattr(self, '_sandbox_subtab_names', None)
+        if not subtab_names:
+            subtab_names = [
+                tr('subtab_zombies'), tr('subtab_loot'), tr('subtab_world'),
+                tr('subtab_vehicles'), tr('subtab_character'), tr('subtab_mods')
+            ]
+            self._sandbox_subtab_names = subtab_names
+
+        if not q:
+            for idx in range(self.sandbox_subtabs.count()):
+                if idx < len(subtab_names):
+                    self.sandbox_subtabs.setTabText(idx, subtab_names[idx])
+                w = self.sandbox_subtabs.widget(idx)
+                if w:
+                    for gb in w.findChildren(QGroupBox):
+                        gb.setVisible(True)
+                        for form in gb.findChildren(QFormLayout):
+                            for r in range(form.rowCount()):
+                                item_lbl = form.itemAt(r, QFormLayout.LabelRole)
+                                item_fld = form.itemAt(r, QFormLayout.FieldRole)
+                                if item_lbl and item_lbl.widget():
+                                    item_lbl.widget().setVisible(True)
+                                if item_fld and item_fld.widget():
+                                    item_fld.widget().setVisible(True)
+                        for cb in gb.findChildren(QCheckBox):
+                            cb.setVisible(True)
+            return
+
+        first_match_idx = -1
+        for idx in range(self.sandbox_subtabs.count()):
+            subtab_w = self.sandbox_subtabs.widget(idx)
+            orig_name = subtab_names[idx] if idx < len(subtab_names) else self.sandbox_subtabs.tabText(idx)
+            tab_matches = 0
+
+            if subtab_w:
+                for gb in subtab_w.findChildren(QGroupBox):
+                    gb_title_match = q in gb.title().lower()
+                    gb_has_visible_child = False
+
+                    for form in gb.findChildren(QFormLayout):
+                        for r in range(form.rowCount()):
+                            item_lbl = form.itemAt(r, QFormLayout.LabelRole)
+                            item_fld = form.itemAt(r, QFormLayout.FieldRole)
+                            row_lbl = item_lbl.widget() if item_lbl else None
+                            row_fld = item_fld.widget() if item_fld else None
+
+                            lbl_text = (row_lbl.text() if row_lbl and hasattr(row_lbl, 'text') else "")
+                            tip_text = (row_lbl.toolTip() if row_lbl else "") or (row_fld.toolTip() if row_fld else "")
+                            fld_match = False
+                            if row_fld and hasattr(row_fld, 'currentText'):
+                                fld_match = q in row_fld.currentText().lower()
+
+                            row_match = gb_title_match or (q in lbl_text.lower()) or (q in tip_text.lower()) or fld_match
+
+                            if row_lbl:
+                                row_lbl.setVisible(row_match)
+                            if row_fld:
+                                row_fld.setVisible(row_match)
+
+                            if row_match:
+                                tab_matches += 1
+                                gb_has_visible_child = True
+
+                    for cb in gb.findChildren(QCheckBox):
+                        cb_text = cb.text() or ""
+                        cb_tip = cb.toolTip() or ""
+                        cb_match = gb_title_match or (q in cb_text.lower()) or (q in cb_tip.lower())
+                        cb.setVisible(cb_match)
+                        if cb_match:
+                            tab_matches += 1
+                            gb_has_visible_child = True
+
+                    gb.setVisible(gb_has_visible_child)
+
+            if tab_matches > 0:
+                self.sandbox_subtabs.setTabText(idx, f"{orig_name} ({tab_matches})")
+                if first_match_idx == -1:
+                    first_match_idx = idx
+            else:
+                self.sandbox_subtabs.setTabText(idx, f"{orig_name} (0)")
+
+        current_idx = self.sandbox_subtabs.currentIndex()
+        if first_match_idx != -1 and self.sandbox_subtabs.tabText(current_idx).endswith("(0)"):
+            self.sandbox_subtabs.setCurrentIndex(first_match_idx)
 
     # ── Subtab 1: Zombies & Population (2 Columns) ────────────────────
     def _create_zombies_subtab(self) -> QWidget:
