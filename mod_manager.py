@@ -72,6 +72,18 @@ class ModManager:
                 with open(self._mods_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.mods = [ModInfo.from_dict(m) for m in data]
+                    for m in self.mods:
+                        if m.workshop_id:
+                            self._steam_details_cache[str(m.workshop_id)] = {
+                                'name': m.name or f"Mod {m.workshop_id}",
+                                'mod_ids': m.mod_ids or ([m.mod_id] if m.mod_id else []),
+                                'requires': m.requires or [],
+                                'required_workshop_ids': m.required_workshop_ids or [],
+                                'map_folders': m.map_folders or [],
+                                'description': m.description or '',
+                                'tags': m.tags or [],
+                                'time_updated': m.time_updated or 0
+                            }
                 logger.info(f"Loaded {len(self.mods)} mods from cache")
             except Exception as e:
                 logger.error(f"Failed to load mods cache: {e}")
@@ -135,7 +147,7 @@ class ModManager:
                 logger.info(f"Mod {workshop_id} already exists")
                 return mod.to_dict()
 
-        mod_info = self.analyze_mod(workshop_id)
+        mod_info = self.analyze_mod(workshop_id, allow_web_scrape=True)
         if mod_id:
             mod_info.mod_id = mod_id
             if mod_id not in mod_info.mod_ids:
@@ -228,7 +240,7 @@ class ModManager:
                 try:
                     b_data = urllib.parse.urlencode(params).encode('utf-8')
                     b_req = urllib.request.Request(url_files, data=b_data, headers={'User-Agent': 'Valve/Steam'})
-                    with urllib.request.urlopen(b_req, timeout=15) as b_resp:
+                    with urllib.request.urlopen(b_req, timeout=6) as b_resp:
                         b_res = json.loads(b_resp.read().decode('utf-8'))
                         for item in b_res.get('response', {}).get('publishedfiledetails', []):
                             wid_str = str(item.get('publishedfileid'))
@@ -269,7 +281,7 @@ class ModManager:
                 results[wid_str] = self._steam_details_cache[wid_str]
         return results
 
-    def _fetch_steam_details(self, workshop_id: str) -> dict:
+    def _fetch_steam_details(self, workshop_id: str, allow_web_scrape: bool = False) -> dict:
         """Fetch title, mod IDs, requirements, tags, and map names from Steam Web API or cache."""
         wid_str = str(workshop_id)
         if wid_str in self._steam_details_cache:
@@ -279,7 +291,7 @@ class ModManager:
         if wid_str in batch_res:
             return batch_res[wid_str]
 
-        # Fallback to single web page scrape if not in Web API
+        # Fallback to single web page scrape ONLY if explicitly requested (e.g. single mod addition)
         info = {
             'name': f"Mod {workshop_id}",
             'mod_ids': [],
@@ -290,11 +302,15 @@ class ModManager:
             'tags': [],
             'time_updated': 0
         }
+        if not allow_web_scrape:
+            self._steam_details_cache[wid_str] = info
+            return info
+
         try:
             url = f"https://steamcommunity.com/sharedfiles/filedetails/?id={workshop_id}"
             request = urllib.request.Request(url)
             request.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
-            with urllib.request.urlopen(request, timeout=10) as response:
+            with urllib.request.urlopen(request, timeout=4) as response:
                 html = response.read().decode('utf-8', errors='ignore')
 
             title_m = re.search(r'<div class="workshopItemTitle">([^<]+)</div>', html)
@@ -334,10 +350,10 @@ class ModManager:
         self._steam_details_cache[wid_str] = info
         return info
 
-    def analyze_mod(self, workshop_id: str, existing_mod: Optional[ModInfo] = None) -> ModInfo:
+    def analyze_mod(self, workshop_id: str, existing_mod: Optional[ModInfo] = None, allow_web_scrape: bool = False) -> ModInfo:
         """Deep analysis of a mod from local files and Steam Workshop."""
         local_infos = self._find_local_mod_infos(workshop_id)
-        steam_info = self._fetch_steam_details(workshop_id)
+        steam_info = self._fetch_steam_details(workshop_id, allow_web_scrape=allow_web_scrape)
 
         name = steam_info['name']
         description = steam_info.get('description', '')

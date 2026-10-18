@@ -496,6 +496,7 @@ class InstallTabMixin:
         self.install_worker.progress.connect(self.on_install_progress)
         self.install_worker.log.connect(self.on_install_log)
         self.install_worker.finished.connect(self.on_install_finished)
+        self.install_worker.finished.connect(self.install_worker.deleteLater)
         self.install_worker.error.connect(self.on_install_error)
         self.install_worker.start()
 
@@ -538,6 +539,7 @@ class InstallTabMixin:
 
         self.update_checker = ServerUpdateCheckerWorker(Path(server_dir), beta_branch=beta_branch or "")
         self.update_checker.update_found.connect(self.on_server_update_detected)
+        self.update_checker.finished.connect(self.update_checker.deleteLater)
         self.update_checker.start()
 
     def on_server_update_detected(self, update_info: dict):

@@ -63,16 +63,19 @@ class OutputReader(QThread):
     def run(self):
         """Read output from the process."""
         try:
-            while self._running and self.process.poll() is None:
-                # Read stdout
-                if self.process.stdout:
-                    line = self.process.stdout.readline()
-                    if line:
-                        self.output_received.emit(line.strip())
-
+            while self._running:
+                if not self.process or not self.process.stdout:
+                    break
+                line = self.process.stdout.readline()
+                if line:
+                    self.output_received.emit(line.strip())
+                else:
+                    # Pipe reached EOF / server process closed
+                    break
         except Exception as e:
             logger.error(f"Error reading process output: {e}")
         finally:
+            self._running = False
             self.process_ended.emit()
 
     def stop(self):
@@ -142,6 +145,8 @@ class ServerProcess(QObject):
                 'stderr': subprocess.STDOUT,
                 'stdin': subprocess.PIPE,
                 'text': True,
+                'encoding': 'utf-8',
+                'errors': 'replace',
                 'bufsize': 1,
                 'cwd': str(self.server_dir),
                 'env': env,
@@ -164,7 +169,7 @@ class ServerProcess(QObject):
             self.output_reader = OutputReader(self.process)
             self.output_reader.output_received.connect(self._handle_output)
             self.output_reader.error_received.connect(self._handle_error)
-            self.output_reader.process_ended.connect(self._handle_process_ended)
+            self.output_reader.finished.connect(self._handle_process_ended)
             self.output_reader.start()
 
             # Emit started signal
@@ -235,9 +240,15 @@ class ServerProcess(QObject):
     def _cleanup(self):
         """Clean up process resources."""
         if self.output_reader:
-            self.output_reader.stop()
-            self.output_reader.wait(2000)  # Wait up to 2 seconds
+            reader = self.output_reader
             self.output_reader = None
+            try:
+                if reader.isRunning():
+                    reader.stop()
+                    reader.wait(1500)
+            except Exception:
+                pass
+            reader.deleteLater()
 
         self.process = None
 
@@ -307,7 +318,11 @@ class ServerProcess(QObject):
     def _handle_process_ended(self):
         """Handle when the server process ends."""
         logger.info("Server process ended")
-        self._cleanup()
+        self.process = None
+        if self.output_reader:
+            reader = self.output_reader
+            self.output_reader = None
+            reader.deleteLater()
         self.server_stopped.emit()
 
     def get_pid(self) -> Optional[int]:

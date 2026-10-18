@@ -446,6 +446,15 @@ class ServerTabMixin:
             root_pid = self.server_process.get_pid()
             if root_pid and os.name == 'nt':
                 try:
+                    kernel32 = ctypes.windll.kernel32
+                    psapi = ctypes.windll.psapi
+                    kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+                    kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+                    kernel32.OpenProcess.restype = wintypes.HANDLE
+                    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+                    kernel32.CloseHandle.restype = wintypes.BOOL
+                    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+
                     class PROCESSENTRY32(ctypes.Structure):
                         _fields_ = [
                             ('dwSize', wintypes.DWORD),
@@ -459,31 +468,6 @@ class ServerTabMixin:
                             ('dwFlags', wintypes.DWORD),
                             ('szExeFile', ctypes.c_char * 260)
                         ]
-
-                    pids_to_check = {root_pid}
-                    hSnapshot = ctypes.windll.kernel32.CreateToolhelp32Snapshot(0x00000002, 0)
-                    if hSnapshot != -1:
-                        pe = PROCESSENTRY32()
-                        pe.dwSize = ctypes.sizeof(PROCESSENTRY32)
-                        all_procs = []
-                        if ctypes.windll.kernel32.Process32First(hSnapshot, ctypes.byref(pe)):
-                            while True:
-                                exe_name = pe.szExeFile.decode('latin1', errors='ignore').lower()
-                                all_procs.append((pe.th32ProcessID, pe.th32ParentProcessID, exe_name))
-                                if not ctypes.windll.kernel32.Process32Next(hSnapshot, ctypes.byref(pe)):
-                                    break
-                        ctypes.windll.kernel32.CloseHandle(hSnapshot)
-
-                        # Recursive children collection
-                        added_new = True
-                        while added_new:
-                            added_new = False
-                            for cpid, ppid, pname in all_procs:
-                                if ppid in pids_to_check and cpid not in pids_to_check:
-                                    pids_to_check.add(cpid)
-                                    added_new = True
-                                elif ('zomboid' in pname or 'java' in pname) and cpid not in pids_to_check:
-                                    pids_to_check.add(cpid)
 
                     class PROCESS_MEMORY_COUNTERS_EX(ctypes.Structure):
                         _fields_ = [
@@ -500,14 +484,39 @@ class ServerTabMixin:
                             ('PrivateUsage', ctypes.c_size_t),
                         ]
 
+                    pids_to_check = {root_pid}
+                    # Check cached java child pid if still alive to avoid repeated full snapshots
+                    cached_child = getattr(self, '_cached_server_child_pid', None)
+                    if cached_child:
+                        test_handle = kernel32.OpenProcess(0x0400, False, cached_child)
+                        if test_handle:
+                            kernel32.CloseHandle(test_handle)
+                            pids_to_check.add(cached_child)
+                        else:
+                            self._cached_server_child_pid = None
+
+                    if len(pids_to_check) == 1:
+                        hSnapshot = kernel32.CreateToolhelp32Snapshot(0x00000002, 0)
+                        if hSnapshot and hSnapshot != -1 and hSnapshot != wintypes.HANDLE(-1).value:
+                            pe = PROCESSENTRY32()
+                            pe.dwSize = ctypes.sizeof(PROCESSENTRY32)
+                            if kernel32.Process32First(hSnapshot, ctypes.byref(pe)):
+                                while True:
+                                    if pe.th32ParentProcessID == root_pid:
+                                        pids_to_check.add(pe.th32ProcessID)
+                                        self._cached_server_child_pid = pe.th32ProcessID
+                                    if not kernel32.Process32Next(hSnapshot, ctypes.byref(pe)):
+                                        break
+                            kernel32.CloseHandle(hSnapshot)
+
                     for p in pids_to_check:
-                        handle = ctypes.windll.kernel32.OpenProcess(0x0410, False, p)
+                        handle = kernel32.OpenProcess(0x0410, False, p)
                         if handle:
                             counters = PROCESS_MEMORY_COUNTERS_EX()
                             counters.cb = ctypes.sizeof(PROCESS_MEMORY_COUNTERS_EX)
-                            if ctypes.windll.psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb):
+                            if psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb):
                                 srv_ram_mb += counters.WorkingSetSize // (1024 * 1024)
-                            ctypes.windll.kernel32.CloseHandle(handle)
+                            kernel32.CloseHandle(handle)
                 except Exception as e:
                     logger.debug(f"Metrics collection exception: {e}")
             elif root_pid and os.name != 'nt':

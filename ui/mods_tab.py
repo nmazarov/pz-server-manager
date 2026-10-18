@@ -426,9 +426,11 @@ class ModsTabMixin:
             f"Checking compatibility of {len(self.mod_manager.mods)} mods with Steam Workshop...",
             10000
         )
+        QApplication.processEvents()
 
         try:
             report = self.mod_manager.check_all_mods_compatibility(target_build=target_version)
+            QApplication.processEvents()
             self.load_mods_list()
         finally:
             QApplication.restoreOverrideCursor()
@@ -538,11 +540,16 @@ class ModsTabMixin:
     def analyze_mods(self):
         """Run deep analyzer on all mods and present dependency & load-order report."""
         try:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
             self.statusBar.showMessage("Анализ модов и зависимостей..." if get_language() == 'ru' else "Analyzing mod dependencies...", 5000)
+            QApplication.processEvents()
             name = self.server_name_input.text().strip() or 'servertest'
             self.mod_manager.set_server_name(name)
             report = self.mod_manager.analyze_and_order_mods()
+            QApplication.processEvents()
             self.load_mods_list()
+        finally:
+            QApplication.restoreOverrideCursor()
 
             msg_parts = []
             if report.get('missing_workshop_ids'):

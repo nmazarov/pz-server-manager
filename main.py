@@ -24,6 +24,14 @@ from server_installer import ServerInstaller, find_existing_server_installations
 from config_manager import ConfigManager
 from translations import set_language, tr, get_language
 
+# Reconfigure standard streams to UTF-8
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 # Ensure logs directory exists
 LOGS_DIR = Path('logs')
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
