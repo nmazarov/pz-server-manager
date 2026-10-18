@@ -20,9 +20,9 @@ from PyQt5.QtGui import QPixmap, QFont, QFontDatabase
 
 import traceback
 from main_window import MainWindow
-from server_installer import ServerInstaller, find_existing_server_installations
+from server_installer import ServerInstaller, find_existing_server_installations, get_installed_server_buildid, buildid_to_game_version
 from config_manager import ConfigManager
-from translations import set_language, tr
+from translations import set_language, tr, get_language
 
 # Ensure logs directory exists
 LOGS_DIR = Path('logs')
@@ -390,10 +390,15 @@ def main():
             existing = find_existing_server_installations()
             if existing:
                 detected_path = existing[0]
+                installed_id = get_installed_server_buildid(detected_path)
+                ver_name = buildid_to_game_version(installed_id)
+                msg_text = tr('server_detected_msg', path=str(detected_path))
+                if ver_name:
+                    msg_text += f"\n\nВерсия игры: Build {ver_name}" if get_language() == 'ru' else f"\n\nGame version: Build {ver_name}"
                 res = QMessageBox.question(
                     None,
                     tr('server_detected_title'),
-                    tr('server_detected_msg', path=str(detected_path)),
+                    msg_text,
                     QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.Yes
                 )

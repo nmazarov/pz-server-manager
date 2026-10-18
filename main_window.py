@@ -55,6 +55,8 @@ class MainWindow(
         self.server_process = ServerProcess(paths)
         self.mod_manager    = ModManager(paths)
         self.installer      = ServerInstaller(paths)
+        self.selected_branch_key = "public"
+        self.target_server_build = 42
 
         self.server_process.output_received.connect(self.append_console_output)
         self.server_process.error_received.connect(self.append_console_error)
@@ -166,6 +168,7 @@ class MainWindow(
         self.create_mods_tab()
         self.create_install_tab()
 
+        self.update_target_server_build()
         self.update_status()
 
         # Disable mouse wheel scrolling on controls & hide spinbox arrows
@@ -178,6 +181,20 @@ class MainWindow(
 
         self._setup_tray_icon()
         QTimer.singleShot(1500, self.check_server_update_on_startup)
+
+    def update_target_server_build(self):
+        """Update target build (42 or 41) based on user's selected branch and installed server."""
+        branch = getattr(self, 'selected_branch_key', 'public') or 'public'
+        if '41' in branch.lower():
+            self.target_server_build = 41
+        else:
+            self.target_server_build = 42
+
+        # Refresh mods tab banner and mod list
+        if hasattr(self, 'update_mods_server_status_banner'):
+            self.update_mods_server_status_banner()
+        if hasattr(self, 'load_mods_list'):
+            self.load_mods_list()
 
     # ── Tray ────────────────────────────────────────────────────────
 

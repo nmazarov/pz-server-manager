@@ -12,7 +12,8 @@ from pathlib import Path
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
     QListWidget, QListWidgetItem, QGroupBox, QMessageBox, QInputDialog,
-    QFileDialog, QApplication, QDialog, QRadioButton, QButtonGroup, QCheckBox
+    QFileDialog, QApplication, QDialog, QRadioButton, QButtonGroup, QCheckBox,
+    QFrame
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
@@ -28,6 +29,35 @@ class ModsTabMixin:
     def create_mods_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
+
+        # Server readiness & target build status banner
+        self.mods_server_status_banner = QFrame()
+        self.mods_server_status_banner.setObjectName("ModsServerStatusBanner")
+        banner_layout = QHBoxLayout(self.mods_server_status_banner)
+        banner_layout.setContentsMargins(14, 10, 14, 10)
+        banner_layout.setSpacing(12)
+
+        self.lbl_mods_banner_icon = QLabel("🟢")
+        self.lbl_mods_banner_icon.setStyleSheet("font-size: 20px; background: transparent;")
+        banner_layout.addWidget(self.lbl_mods_banner_icon)
+
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(3)
+        self.lbl_mods_banner_title = QLabel("")
+        self.lbl_mods_banner_title.setWordWrap(True)
+        text_layout.addWidget(self.lbl_mods_banner_title)
+
+        self.lbl_mods_banner_desc = QLabel("")
+        self.lbl_mods_banner_desc.setWordWrap(True)
+        text_layout.addWidget(self.lbl_mods_banner_desc)
+        banner_layout.addLayout(text_layout, 1)
+
+        self.btn_mods_banner_action = QPushButton("")
+        self.btn_mods_banner_action.setCursor(Qt.PointingHandCursor)
+        self.btn_mods_banner_action.clicked.connect(self.show_install_tab)
+        banner_layout.addWidget(self.btn_mods_banner_action)
+
+        layout.addWidget(self.mods_server_status_banner)
 
         info = QLabel(
             '💡 '
@@ -105,9 +135,115 @@ class ModsTabMixin:
         layout.addLayout(row_save)
 
         self.tabs.addTab(tab, tr('tab_mods'))
+        self.update_mods_server_status_banner()
+
+    def update_mods_server_status_banner(self):
+        """Update the server readiness banner at the top of the Mods tab."""
+        if not hasattr(self, 'mods_server_status_banner'):
+            return
+
+        from server_installer import get_installed_server_buildid, buildid_to_game_version
+        from main import check_server_installed
+
+        is_installed = check_server_installed(self.paths)
+        target_build = self.get_current_server_target_version()
+        installed_id = get_installed_server_buildid(self.paths['server_dir'])
+        installed_ver = buildid_to_game_version(installed_id) if installed_id else None
+
+        lang = get_language()
+        is_ru = (lang == 'ru')
+
+        # Case 1: Server NOT installed
+        if not is_installed:
+            self.mods_server_status_banner.setStyleSheet("""
+                QFrame#ModsServerStatusBanner {
+                    background-color: #2b2214;
+                    border: 1px solid #734e16;
+                    border-radius: 6px;
+                }
+                QFrame#ModsServerStatusBanner QLabel { background: transparent; border: none; }
+            """)
+            self.lbl_mods_banner_icon.setText("⚠️")
+            self.lbl_mods_banner_title.setText(
+                f"Сервер ещё не установлен (целевая версия для модов: Build {target_build})"
+                if is_ru else
+                f"Server is not installed yet (target build for mods: Build {target_build})"
+            )
+            self.lbl_mods_banner_title.setStyleSheet("color: #ffb74d; font-size: 13px; font-weight: bold; background: transparent;")
+            self.lbl_mods_banner_desc.setText(
+                "Сначала скачайте и установите актуальную версию сервера на вкладке «Установка». "
+                "После установки сервер сможет автоматически загружать моды из Steam Workshop."
+                if is_ru else
+                "Please download and install the server first on the 'Install' tab. "
+                "After installation, the server will download mods from Steam Workshop automatically."
+            )
+            self.lbl_mods_banner_desc.setStyleSheet("color: #e0d0b8; font-size: 11px; background: transparent;")
+            self.btn_mods_banner_action.setText("📥 " + ("Установить сервер" if is_ru else "Install Server"))
+            self.btn_mods_banner_action.setStyleSheet("background-color: #c67d12; color: #ffffff; font-weight: bold; padding: 6px 14px; border-radius: 4px; font-size: 12px;")
+            self.btn_mods_banner_action.setVisible(True)
+
+        # Case 2: Server installed, but version mismatch (e.g. installed B41, target B42)
+        elif installed_ver and installed_ver.startswith('41') and target_build == 42:
+            self.mods_server_status_banner.setStyleSheet("""
+                QFrame#ModsServerStatusBanner {
+                    background-color: #2d1818;
+                    border: 1px solid #7a2828;
+                    border-radius: 6px;
+                }
+                QFrame#ModsServerStatusBanner QLabel { background: transparent; border: none; }
+            """)
+            self.lbl_mods_banner_icon.setText("🔴")
+            self.lbl_mods_banner_title.setText(
+                f"Несоответствие версий: На диске установлен {installed_ver} (Build 41), а выбрана ветка Build 42"
+                if is_ru else
+                f"Version Mismatch: Installed is {installed_ver} (Build 41), but target is Build 42"
+            )
+            self.lbl_mods_banner_title.setStyleSheet("color: #ff6b6b; font-size: 13px; font-weight: bold; background: transparent;")
+            self.lbl_mods_banner_desc.setText(
+                "Моды Build 42 не запустятся на сервере Build 41! Обновите сервер на вкладке «Установка»."
+                if is_ru else
+                "Build 42 mods will not run on a Build 41 server! Update the server on the Install tab."
+            )
+            self.lbl_mods_banner_desc.setStyleSheet("color: #e0b8b8; font-size: 11px; background: transparent;")
+            self.btn_mods_banner_action.setText("⚡ " + ("Обновить до Build 42" if is_ru else "Update to Build 42"))
+            self.btn_mods_banner_action.setStyleSheet("background-color: #b71c1c; color: #ffffff; font-weight: bold; padding: 6px 14px; border-radius: 4px; font-size: 12px;")
+            self.btn_mods_banner_action.setVisible(True)
+
+        # Case 3: Server installed and ready
+        else:
+            ver_text = f"Build {installed_ver}" if installed_ver else f"Build {target_build}"
+            self.mods_server_status_banner.setStyleSheet("""
+                QFrame#ModsServerStatusBanner {
+                    background-color: #1a251e;
+                    border: 1px solid #285433;
+                    border-radius: 6px;
+                }
+                QFrame#ModsServerStatusBanner QLabel { background: transparent; border: none; }
+            """)
+            self.lbl_mods_banner_icon.setText("🟢")
+            self.lbl_mods_banner_title.setText(
+                f"Сервер готов: {ver_text} | Проверка совместимости модов: Build {target_build}"
+                if is_ru else
+                f"Server Ready: {ver_text} | Mod Compatibility Target: Build {target_build}"
+            )
+            self.lbl_mods_banner_title.setStyleSheet("color: #69f0ae; font-size: 13px; font-weight: bold; background: transparent;")
+            self.lbl_mods_banner_desc.setText(
+                f"Папка сервера: {self.paths.get('server_dir')}"
+                if is_ru else
+                f"Server directory: {self.paths.get('server_dir')}"
+            )
+            self.lbl_mods_banner_desc.setStyleSheet("color: #9e9e9e; font-size: 11px; background: transparent;")
+            self.btn_mods_banner_action.setVisible(False)
 
     def get_current_server_target_version(self) -> int:
         """Determine whether the target server is Build 42 or Build 41."""
+        if hasattr(self, 'target_server_build') and self.target_server_build in (41, 42):
+            return self.target_server_build
+
+        branch = getattr(self, 'selected_branch_key', '')
+        if branch:
+            return 41 if '41' in str(branch).lower() else 42
+
         try:
             from server_installer import get_installed_server_buildid, buildid_to_game_version
             installed_id = get_installed_server_buildid(self.paths['server_dir'])
@@ -120,14 +256,11 @@ class ModsTabMixin:
         except Exception:
             pass
 
-        if hasattr(self, 'combo_server_version') and self.combo_server_version.count() > 0:
-            branch = str(self.combo_server_version.currentData() or "")
-            if '41' in branch.lower():
-                return 41
-
         return 42
 
     def load_mods_list(self):
+        if hasattr(self, 'update_mods_server_status_banner'):
+            self.update_mods_server_status_banner()
         self.mods_list.clear()
         target_version = self.get_current_server_target_version()
         try:
@@ -177,6 +310,30 @@ class ModsTabMixin:
             if not cid:
                 QMessageBox.warning(self, tr('warning'), 'Не удалось распознать Workshop ID или URL.')
                 return
+
+            from main import check_server_installed
+            if not check_server_installed(self.paths):
+                target_build = self.get_current_server_target_version()
+                is_ru = (get_language() == 'ru')
+                proceed = QMessageBox.question(
+                    self,
+                    "Сервер не установлен" if is_ru else "Server Not Installed",
+                    f"Сервер ещё не установлен в папке:\n{self.paths['server_dir']}\n\n"
+                    f"Мод будет добавлен в список под целевую версию Build {target_build}.\n"
+                    f"Однако чтобы сервер скачал файлы мода из Steam Workshop и они заработали, "
+                    f"сначала необходимо скачать сам сервер на вкладке «Установка».\n\n"
+                    f"Продолжить добавление?"
+                    if is_ru else
+                    f"The server is not yet installed in:\n{self.paths['server_dir']}\n\n"
+                    f"The mod will be added for target Build {target_build}.\n"
+                    f"However, for the server to download Workshop files and run them, "
+                    f"you need to download the server first on the 'Install' tab.\n\n"
+                    f"Continue adding?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes
+                )
+                if proceed != QMessageBox.Yes:
+                    return
 
             # Check if this ID is a collection
             col_mods = self.mod_manager.get_collection_mods(cid)
@@ -402,7 +559,22 @@ class ModsTabMixin:
             self.mod_manager.set_server_name(name)
             report = self.mod_manager.save_to_config()
             self.load_mods_list()
-            QMessageBox.information(self, tr('success'), tr('mods_saved'))
+
+            from main import check_server_installed
+            if not check_server_installed(self.paths):
+                QMessageBox.information(
+                    self,
+                    tr('success'),
+                    "Конфигурация модов сохранена!\n\n"
+                    "⚠️ Напоминание: сервер ещё не установлен в папке сервера. "
+                    "Чтобы игра скачала эти моды из Steam Workshop, перейдите на вкладку «Установка» и установите сервер."
+                    if get_language() == 'ru' else
+                    "Mod configuration saved!\n\n"
+                    "⚠️ Reminder: Server is not yet installed in the server directory. "
+                    "Please switch to the 'Install' tab and install the server so Steam Workshop mods are downloaded."
+                )
+            else:
+                QMessageBox.information(self, tr('success'), tr('mods_saved'))
         except Exception as e:
             QMessageBox.critical(self, tr('error'), f"Failed to save mods: {e}")
 

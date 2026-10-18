@@ -215,39 +215,6 @@ def check_disk_space(target_path: Path, required_gb: float = 5.0) -> tuple:
         return (True, 999.0)
 
 
-def find_existing_server_installations() -> list:
-    """Scan common paths for an existing Project Zomboid Dedicated Server."""
-    program_data = os.environ.get("ProgramData", "C:\\ProgramData")
-    app_root = Path(sys.executable).parent.resolve() if getattr(sys, 'frozen', False) else Path(__file__).parent.resolve()
-
-    candidates = [
-        app_root / "servertest",
-        app_root / "PZServer",
-        Path("C:/PZServer"),
-        Path("C:/Program Files (x86)/Steam/steamapps/common/Project Zomboid Dedicated Server"),
-        Path("C:/Program Files/Steam/steamapps/common/Project Zomboid Dedicated Server"),
-        Path("D:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
-        Path("E:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
-        Path("F:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
-        Path("G:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
-        Path("H:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
-        Path(program_data) / "PZServer",
-        Path.home() / "pzserver",
-    ]
-    found = []
-    for c in candidates:
-        try:
-            if c.exists() and (
-                (c / "StartServer64.bat").exists() or 
-                (c / "ProjectZomboid64.exe").exists() or 
-                (c / "start-server.sh").exists()
-            ):
-                found.append(c)
-        except Exception:
-            pass
-    return found
-
-
 KNOWN_BUILD_VERSIONS = {
     '25485538': '42.21',
     '25485521': '42.21',
@@ -302,6 +269,49 @@ def get_installed_server_buildid(server_dir: Path) -> Optional[str]:
             except Exception as e:
                 logger.debug(f"Could not read {acf_path}: {e}")
     return None
+
+
+def find_existing_server_installations() -> list:
+    """Scan common paths for an existing Project Zomboid Dedicated Server, sorted by newest build first."""
+    program_data = os.environ.get("ProgramData", "C:\\ProgramData")
+    app_root = Path(sys.executable).parent.resolve() if getattr(sys, 'frozen', False) else Path(__file__).parent.resolve()
+
+    candidates = [
+        app_root / "servertest",
+        app_root / "PZServer",
+        Path("C:/PZServer"),
+        Path("C:/Program Files (x86)/Steam/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("C:/Program Files/Steam/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("D:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("E:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("F:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("G:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("H:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
+        Path(program_data) / "PZServer",
+        Path.home() / "pzserver",
+    ]
+    found = []
+    for c in candidates:
+        try:
+            if c.exists() and (
+                (c / "StartServer64.bat").exists() or 
+                (c / "ProjectZomboid64.exe").exists() or 
+                (c / "start-server.sh").exists()
+            ):
+                found.append(c)
+        except Exception:
+            pass
+
+    # Sort so that newer builds (Build 42) come before older legacy builds (Build 41)
+    def _sort_key(p):
+        bid = get_installed_server_buildid(p)
+        try:
+            return int(bid) if bid else 0
+        except Exception:
+            return 0
+
+    found.sort(key=_sort_key, reverse=True)
+    return found
 
 
 def check_server_update_available(server_dir: Path, beta_branch: str = "") -> dict:

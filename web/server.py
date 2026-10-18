@@ -409,6 +409,10 @@ def create_app(paths: Dict[str, Path], auth_manager: Optional[AuthManager] = Non
     @app.get("/api/mods")
     def api_get_mods(token: str = Depends(get_token)):
         target_version = get_target_build_version()
+        is_installed = any((paths['server_dir'] / exe).exists() for exe in ["ProjectZomboid64.exe", "StartServer64.bat", "start-server.sh", "ProjectZomboid64"])
+        bid = get_installed_server_buildid(paths['server_dir'])
+        installed_version = buildid_to_game_version(bid) if bid else None
+
         mods_data = []
         for mod in mod_manager.get_mods():
             status_code, reason = mod_manager.check_compatibility(mod, target_build=target_version)
@@ -421,6 +425,8 @@ def create_app(paths: Dict[str, Path], auth_manager: Optional[AuthManager] = Non
                 "reason": reason
             })
         return {
+            "server_installed": is_installed,
+            "installed_version": installed_version,
             "target_version": target_version,
             "mods": mods_data
         }

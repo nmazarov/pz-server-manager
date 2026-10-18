@@ -246,7 +246,12 @@ class InstallTabMixin:
         self.tabs.addTab(scroll, tr('tab_install'))
 
     def show_install_tab(self):
-        self.tabs.setCurrentIndex(4)
+        for i in range(self.tabs.count()):
+            text = self.tabs.tabText(i).lower()
+            if 'install' in text or 'установ' in text:
+                self.tabs.setCurrentIndex(i)
+                return
+        self.tabs.setCurrentIndex(self.tabs.count() - 1)
 
     def browse_install_path(self):
         path = QFileDialog.getExistingDirectory(
@@ -255,6 +260,12 @@ class InstallTabMixin:
             self.install_path_edit.setText(path)
             self.paths['server_dir'] = Path(path)
             self.paths['steamcmd_dir'] = Path(path) / 'steamcmd'
+            from main import check_server_installed
+            self.server_installed = check_server_installed(self.paths)
+            if hasattr(self, 'update_status'):
+                self.update_status()
+            if hasattr(self, 'update_target_server_build'):
+                self.update_target_server_build()
 
     def refresh_server_versions(self):
         """Fetch and populate current available server beta branches from Steam."""
@@ -411,6 +422,9 @@ class InstallTabMixin:
                 idx = self.combo_server_version.findData(branch_key)
                 if idx >= 0:
                     self.combo_server_version.setCurrentIndex(idx)
+                self.selected_branch_key = b.get('key') or branch_key or 'public'
+                if hasattr(self, 'update_target_server_build'):
+                    self.update_target_server_build()
 
         radio.toggled.connect(_on_toggle)
 
@@ -438,6 +452,9 @@ class InstallTabMixin:
             idx = self.combo_server_version.findData(branch_name)
 
         self.combo_server_version.setCurrentIndex(idx)
+        self.selected_branch_key = branch_name
+        if hasattr(self, 'update_target_server_build'):
+            self.update_target_server_build()
         self.lbl_beta_code_status.setText(f"{tr('beta_code_success')} ({branch_name})")
         self.lbl_beta_code_status.setVisible(True)
 
@@ -492,8 +509,12 @@ class InstallTabMixin:
     def on_install_finished(self):
         self.install_btn.setEnabled(True)
         self.install_progress.setValue(100)
-        self.install_status_label.setText('Installation complete!')
+        self.install_status_label.setText('Installation complete!' if get_language() == 'en' else 'Установка завершена!')
         self.server_installed = True
+        if hasattr(self, 'update_status'):
+            self.update_status()
+        if hasattr(self, 'update_target_server_build'):
+            self.update_target_server_build()
         QMessageBox.information(self, tr('install_complete'), tr('install_complete_msg'))
 
     def on_install_error(self, error):
