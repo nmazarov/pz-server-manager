@@ -29,9 +29,12 @@ def setup_paths(custom_server_dir: str = None) -> dict:
         server_dir = Path(custom_server_dir).resolve()
     else:
         # Check adjacent directory, then default
-        adj_dir = ROOT_DIR / 'server'
-        if adj_dir.exists():
-            server_dir = adj_dir
+        if (ROOT_DIR / 'PZServer').exists():
+            server_dir = ROOT_DIR / 'PZServer'
+        elif (ROOT_DIR / 'server').exists():
+            server_dir = ROOT_DIR / 'server'
+        elif (ROOT_DIR / 'servertest').exists():
+            server_dir = ROOT_DIR / 'servertest'
         elif system == 'Windows':
             server_dir = Path('C:/PZServer')
         else:
