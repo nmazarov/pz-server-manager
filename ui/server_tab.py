@@ -36,7 +36,7 @@ class ServerTabMixin:
         cl = QVBoxLayout(controls_group)
 
         row_top = QHBoxLayout()
-        name_lbl = QLabel(tr('lbl_server_name') + ":")
+        name_lbl = QLabel(tr('lbl_server_name'))
         name_lbl.setStyleSheet("font-weight: bold;")
         row_top.addWidget(name_lbl)
 
@@ -309,7 +309,7 @@ class ServerTabMixin:
         restore_btn = QPushButton(tr('btn_restore'))
         btn_row.addWidget(restore_btn)
 
-        close_btn = QPushButton(tr('btn_close') if 'btn_close' in tr('btn_close') else "Закрыть" if get_language() == 'ru' else "Close")
+        close_btn = QPushButton(tr('btn_close'))
         close_btn.clicked.connect(dialog.reject)
         btn_row.addWidget(close_btn)
         vlayout.addLayout(btn_row)
