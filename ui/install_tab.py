@@ -225,11 +225,46 @@ class InstallTabMixin:
         sl.addWidget(self.install_log)
         layout.addWidget(g2)
 
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(12)
+
         self.install_btn = QPushButton(tr('btn_install_server'))
         self.install_btn.setMinimumHeight(44)
-        self.install_btn.setStyleSheet('font-size:14px;font-weight:bold;')
+        self.install_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2e663e;
+                color: #ffffff;
+                font-size: 13px;
+                font-weight: bold;
+                border-radius: 4px;
+                padding: 6px 14px;
+            }
+            QPushButton:hover { background-color: #387c4c; }
+            QPushButton:disabled { background-color: #383838; color: #777777; }
+        """)
+        self.install_btn.setToolTip("Выполнить чистую/первичную установку выделенного сервера" if get_language() == 'ru' else "Perform a clean/initial installation of the dedicated server")
         self.install_btn.clicked.connect(self.start_installation)
-        layout.addWidget(self.install_btn)
+        btn_row.addWidget(self.install_btn)
+
+        self.update_btn = QPushButton(tr('btn_update_server'))
+        self.update_btn.setMinimumHeight(44)
+        self.update_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2b5b7b;
+                color: #ffffff;
+                font-size: 13px;
+                font-weight: bold;
+                border-radius: 4px;
+                padding: 6px 14px;
+            }
+            QPushButton:hover { background-color: #35729a; }
+            QPushButton:disabled { background-color: #383838; color: #777777; }
+        """)
+        self.update_btn.setToolTip("Обновить и проверить целостность файлов уже установленного сервера" if get_language() == 'ru' else "Update and verify files of the installed server")
+        self.update_btn.clicked.connect(self.start_update)
+        btn_row.addWidget(self.update_btn)
+
+        layout.addLayout(btn_row)
 
         warn = QLabel(
             '⚠️ '
@@ -458,6 +493,37 @@ class InstallTabMixin:
         self.lbl_beta_code_status.setText(f"{tr('beta_code_success')} ({branch_name})")
         self.lbl_beta_code_status.setVisible(True)
 
+    def _run_install_worker(self, install_path: Path, is_update: bool = False):
+        self.paths['server_dir'] = install_path
+        self.paths['steamcmd_dir'] = install_path / 'steamcmd'
+        self.install_btn.setEnabled(False)
+        self.update_btn.setEnabled(False)
+        self._is_updating = is_update
+
+        ver_data = self.combo_server_version.currentData()
+        beta_branch = ver_data if ver_data is not None else ""
+        beta_password = getattr(self, 'current_beta_password', "")
+
+        action_text = (
+            "Обновление и проверка файлов сервера..." if (get_language() == 'ru' and is_update)
+            else ("Updating server files..." if is_update
+                  else ("Установка сервера..." if get_language() == 'ru' else "Installing server..."))
+        )
+        self.install_status_label.setText(action_text)
+        self.install_progress.setValue(0)
+
+        self.install_worker = InstallWorker(
+            self.installer, self.paths,
+            beta_branch=beta_branch,
+            beta_password=beta_password
+        )
+        self.install_worker.progress.connect(self.on_install_progress)
+        self.install_worker.log.connect(self.on_install_log)
+        self.install_worker.finished.connect(self.on_install_finished)
+        self.install_worker.finished.connect(self.install_worker.deleteLater)
+        self.install_worker.error.connect(self.on_install_error)
+        self.install_worker.start()
+
     def start_installation(self):
         install_path = Path(self.install_path_edit.text())
         try:
@@ -480,25 +546,47 @@ class InstallTabMixin:
         ) != QMessageBox.Yes:
             return
 
-        self.paths['server_dir'] = install_path
-        self.paths['steamcmd_dir'] = install_path / 'steamcmd'
-        self.install_btn.setEnabled(False)
+        self._run_install_worker(install_path, is_update=False)
 
-        ver_data = self.combo_server_version.currentData()
-        beta_branch = ver_data if ver_data is not None else ""
-        beta_password = getattr(self, 'current_beta_password', "")
+    def start_update(self):
+        install_path = Path(self.install_path_edit.text())
+        try:
+            install_path.mkdir(parents=True, exist_ok=True)
+            tf = install_path / '.write_test'
+            tf.touch(); tf.unlink()
+        except PermissionError:
+            if QMessageBox.warning(
+                self, 'Permission Denied',
+                tr('admin_required_msg', path=install_path),
+                QMessageBox.Yes | QMessageBox.No
+            ) == QMessageBox.Yes:
+                self.browse_install_path()
+            return
 
-        self.install_worker = InstallWorker(
-            self.installer, self.paths,
-            beta_branch=beta_branch,
-            beta_password=beta_password
-        )
-        self.install_worker.progress.connect(self.on_install_progress)
-        self.install_worker.log.connect(self.on_install_log)
-        self.install_worker.finished.connect(self.on_install_finished)
-        self.install_worker.finished.connect(self.install_worker.deleteLater)
-        self.install_worker.error.connect(self.on_install_error)
-        self.install_worker.start()
+        from main import check_server_installed
+        if not check_server_installed({'server_dir': install_path}):
+            reply = QMessageBox.question(
+                self,
+                tr('confirm'),
+                "В указанной папке сервер ещё не обнаружен.\n\n"
+                "Выполнить первичную установку сервера?"
+                if get_language() == 'ru' else
+                "No installed server was found in this directory.\n\n"
+                "Perform a clean server installation?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                return
+
+        ver_label = self.combo_server_version.currentText()
+        if QMessageBox.question(
+            self, tr('confirm'),
+            tr('confirm_update', path=install_path, branch=ver_label),
+            QMessageBox.Yes | QMessageBox.No
+        ) != QMessageBox.Yes:
+            return
+
+        self._run_install_worker(install_path, is_update=True)
 
     def on_install_progress(self, value, message):
         self.install_progress.setValue(value)
@@ -509,18 +597,29 @@ class InstallTabMixin:
 
     def on_install_finished(self):
         self.install_btn.setEnabled(True)
+        self.update_btn.setEnabled(True)
         self.install_progress.setValue(100)
-        self.install_status_label.setText('Installation complete!' if get_language() == 'en' else 'Установка завершена!')
+        is_update = getattr(self, '_is_updating', False)
+        if is_update:
+            msg_title = tr('update_complete')
+            msg_desc = tr('update_complete_msg')
+            self.install_status_label.setText('Update complete!' if get_language() == 'en' else 'Обновление завершено!')
+        else:
+            msg_title = tr('install_complete')
+            msg_desc = tr('install_complete_msg')
+            self.install_status_label.setText('Installation complete!' if get_language() == 'en' else 'Установка завершена!')
         self.server_installed = True
         if hasattr(self, 'update_status'):
             self.update_status()
         if hasattr(self, 'update_target_server_build'):
             self.update_target_server_build()
-        QMessageBox.information(self, tr('install_complete'), tr('install_complete_msg'))
+        QMessageBox.information(self, msg_title, msg_desc)
 
     def on_install_error(self, error):
         self.install_btn.setEnabled(True)
-        self.install_status_label.setText('Installation failed!')
+        self.update_btn.setEnabled(True)
+        is_update = getattr(self, '_is_updating', False)
+        self.install_status_label.setText('Update failed!' if is_update else 'Installation failed!')
         QMessageBox.critical(self, tr('install_failed'), error)
 
     def check_server_update_on_startup(self):
@@ -575,7 +674,7 @@ class InstallTabMixin:
 
         if reply == QMessageBox.Yes:
             self.show_install_tab()
-            self.start_installation()
+            self.start_update()
 
     @staticmethod
     def _mono_font() -> str:

@@ -252,6 +252,9 @@ def get_installed_server_buildid(server_dir: Path) -> Optional[str]:
     Detect the installed BuildID for Project Zomboid Dedicated Server.
     Checks steamapps/appmanifest_380870.acf in server_dir and its parent directories.
     """
+    if not server_dir:
+        return None
+    server_dir = Path(server_dir)
     candidates = [
         server_dir / "steamapps" / f"appmanifest_{PZ_APP_ID}.acf",
         server_dir.parent / "steamapps" / f"appmanifest_{PZ_APP_ID}.acf",
@@ -963,6 +966,49 @@ echo "Update complete!"
             f.write(update_content)
         update_script.chmod(update_script.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
+    def _relocate_nested_server_files(self, callback: Optional[Callable[[str], None]] = None):
+        """Move files if SteamCMD installed them into nested steamapps/common folder."""
+        possible_nested_dirs = [
+            self.steamcmd_dir / "steamapps" / "common" / "Project Zomboid Dedicated Server",
+            self.server_dir / "steamapps" / "common" / "Project Zomboid Dedicated Server",
+            self.steamcmd_dir / "steamapps" / "common" / "project zomboid dedicated server",
+            self.server_dir / "steamapps" / "common" / "project zomboid dedicated server",
+        ]
+        for nested in possible_nested_dirs:
+            if nested.exists() and any(nested.iterdir()):
+                msg = f"Detected downloaded server in nested directory: {nested}. Moving to {self.server_dir}..."
+                logger.info(msg)
+                if callback:
+                    callback(msg)
+                self.server_dir.mkdir(parents=True, exist_ok=True)
+                for item in list(nested.iterdir()):
+                    dest = self.server_dir / item.name
+                    try:
+                        if dest.exists():
+                            if dest.is_dir():
+                                shutil.rmtree(dest, ignore_errors=True)
+                            else:
+                                dest.unlink(missing_ok=True)
+                        shutil.move(str(item), str(self.server_dir))
+                    except Exception as e:
+                        logger.warning(f"Error moving {item.name}: {e}")
+                break
+
+        # Also copy appmanifest if present in steamcmd/steamapps
+        manifest_candidates = [
+            self.steamcmd_dir / "steamapps" / f"appmanifest_{PZ_APP_ID}.acf",
+            self.server_dir.parent / "steamapps" / f"appmanifest_{PZ_APP_ID}.acf",
+        ]
+        manifest_dst_dir = self.server_dir / "steamapps"
+        for m_src in manifest_candidates:
+            if m_src.exists():
+                try:
+                    manifest_dst_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(str(m_src), str(manifest_dst_dir / m_src.name))
+                    break
+                except Exception as e:
+                    logger.warning(f"Error copying appmanifest: {e}")
+
     def is_installed(self) -> bool:
         """Check if the server is already installed."""
         candidates = [
@@ -973,6 +1019,9 @@ echo "Update complete!"
             self.server_dir / "start-server.sh",
             self.server_dir / "ProjectZomboid64",
         ]
+        if any(c.exists() for c in candidates):
+            return True
+        self._relocate_nested_server_files()
         return any(c.exists() for c in candidates)
 
     def get_server_version(self) -> Optional[str]:

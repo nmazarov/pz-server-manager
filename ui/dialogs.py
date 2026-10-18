@@ -356,10 +356,14 @@ class DialogsMixin:
             self.statusBar.showMessage(f"Server directory: {path}", 5000)
 
     def validate_server(self):
-        QMessageBox.information(self, tr('menu_validate'), 'Go to the Install tab and click Install / Update Server.')
+        self.show_install_tab()
+        if hasattr(self, 'start_update'):
+            self.start_update()
 
     def update_server(self):
         self.show_install_tab()
+        if hasattr(self, 'start_update'):
+            self.start_update()
 
     @staticmethod
     def _mono_font() -> str:

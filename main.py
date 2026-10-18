@@ -147,7 +147,10 @@ def ensure_directories(paths: dict) -> None:
 
 def check_server_installed(paths: dict) -> bool:
     """Check if Project Zomboid server is already installed."""
-    server_dir = paths['server_dir']
+    server_dir = paths.get('server_dir')
+    if not server_dir:
+        return False
+    server_dir = Path(server_dir)
     # Windows executables
     candidates = [
         server_dir / 'ProjectZomboid64.exe',
@@ -158,6 +161,28 @@ def check_server_installed(paths: dict) -> bool:
         server_dir / 'start-server.sh',
         server_dir / 'ProjectZomboid64',
     ]
+    if any(c.exists() for c in candidates):
+        return True
+
+    # Check nested steamapps folder in steamcmd
+    steamcmd_dir = paths.get('steamcmd_dir', server_dir / 'steamcmd')
+    nested = Path(steamcmd_dir) / 'steamapps' / 'common' / 'Project Zomboid Dedicated Server'
+    if (nested / 'StartServer64.bat').exists() or (nested / 'ProjectZomboid64.exe').exists():
+        try:
+            import shutil
+            server_dir.mkdir(parents=True, exist_ok=True)
+            for item in nested.iterdir():
+                dest = server_dir / item.name
+                if dest.exists():
+                    if dest.is_dir():
+                        shutil.rmtree(dest, ignore_errors=True)
+                    else:
+                        dest.unlink(missing_ok=True)
+                shutil.move(str(item), str(server_dir))
+            return True
+        except Exception:
+            pass
+
     return any(c.exists() for c in candidates)
 
 

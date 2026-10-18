@@ -19,6 +19,8 @@ PZ Server Manager
 
 # Test servers & local cache
 servertest/
+PZServer/
+steamcmd/
 
 # IDE
 .idea/
