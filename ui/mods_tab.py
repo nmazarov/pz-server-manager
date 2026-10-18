@@ -121,14 +121,23 @@ class ModsTabMixin:
                           ('btn_remove_mod', self.remove_mod),
                           ('btn_clear_mods', self.clear_mods)]:
             b = QPushButton(tr(key))
+            b.setMinimumHeight(30)
+            b.setMaximumWidth(240)
             b.clicked.connect(slot)
             row.addWidget(b)
+        row.addStretch()
         gl.addLayout(row)
-        layout.addWidget(g)
+        layout.addWidget(g, 1)
 
-        # ── Map Load Order Section ──
+        # ── Middle Row: Map Load Order (Left) + Import/Export/Presets (Right) ──
+        mid_row = QHBoxLayout()
+        mid_row.setSpacing(14)
+
+        # Left Column: Map Load Order
         g_maps = QGroupBox(tr('group_map_order'))
         gl_maps = QVBoxLayout(g_maps)
+        gl_maps.setContentsMargins(10, 10, 10, 10)
+        gl_maps.setSpacing(8)
 
         lbl_map_hint = QLabel(
             "💡 Модовые карты должны быть выше стандартной карты <b>Muldraugh, KY</b> для корректной генерации мира."
@@ -136,11 +145,13 @@ class ModsTabMixin:
             "💡 Custom mod maps must be loaded BEFORE vanilla <b>Muldraugh, KY</b>."
         )
         lbl_map_hint.setStyleSheet("font-size: 11px; color: #a0a0a0;")
+        lbl_map_hint.setWordWrap(True)
         gl_maps.addWidget(lbl_map_hint)
 
         maps_row = QHBoxLayout()
         self.maps_order_list = QListWidget()
-        self.maps_order_list.setMaximumHeight(85)
+        self.maps_order_list.setMinimumHeight(120)
+        self.maps_order_list.setMaximumHeight(160)
         self.maps_order_list.setStyleSheet("""
             QListWidget {
                 background-color: #212121;
@@ -157,59 +168,93 @@ class ModsTabMixin:
 
         map_btns = QVBoxLayout()
         b_up = QPushButton(tr('btn_move_map_up'))
+        b_up.setMinimumHeight(28)
+        b_up.setMinimumWidth(90)
         b_up.clicked.connect(self.move_map_up)
         map_btns.addWidget(b_up)
 
         b_down = QPushButton(tr('btn_move_map_down'))
+        b_down.setMinimumHeight(28)
+        b_down.setMinimumWidth(90)
         b_down.clicked.connect(self.move_map_down)
         map_btns.addWidget(b_down)
 
         b_opt = QPushButton(tr('btn_optimize_map_order'))
-        b_opt.setStyleSheet("background-color: #264e36; color: #fff; font-size: 11px;")
+        b_opt.setMinimumHeight(30)
+        b_opt.setMinimumWidth(110)
+        b_opt.setStyleSheet("background-color: #264e36; color: #fff; font-size: 11px; font-weight: bold;")
         b_opt.clicked.connect(self.optimize_map_order)
         map_btns.addWidget(b_opt)
+        map_btns.addStretch()
 
         maps_row.addLayout(map_btns)
         gl_maps.addLayout(maps_row)
-        layout.addWidget(g_maps)
+        mid_row.addWidget(g_maps, 1)
 
+        # Right Column: Import/Export & Presets
         g2 = QGroupBox(tr('group_import_export'))
-        iol = QHBoxLayout(g2)
+        iol = QVBoxLayout(g2)
+        iol.setContentsMargins(10, 10, 10, 10)
+        iol.setSpacing(10)
+
+        io_btns_row = QHBoxLayout()
         bi = QPushButton(tr('btn_import_mods'))
+        bi.setMinimumHeight(32)
         bi.clicked.connect(self.import_mods)
-        iol.addWidget(bi)
+        io_btns_row.addWidget(bi)
+
         be = QPushButton(tr('btn_export_mods'))
+        be.setMinimumHeight(32)
         be.clicked.connect(self.export_mods)
-        iol.addWidget(be)
+        io_btns_row.addWidget(be)
+        iol.addLayout(io_btns_row)
 
         btn_preset_mods = QPushButton("🎁 " + ("Готовые наборы модов" if get_language() == 'ru' else "Mod Presets"))
-        btn_preset_mods.setStyleSheet("background-color: #2b5b7b; color: #ffffff; font-weight: bold;")
+        btn_preset_mods.setMinimumHeight(36)
+        btn_preset_mods.setStyleSheet("background-color: #2b5b7b; color: #ffffff; font-weight: bold; font-size: 13px;")
         btn_preset_mods.setToolTip("Установить популярный готовый набор модов (Машины, Оружие, Интерфейс)" if get_language() == 'ru' else "Load curated mod packs")
         btn_preset_mods.clicked.connect(self.apply_mod_preset_action)
         iol.addWidget(btn_preset_mods)
+        iol.addStretch()
 
-        layout.addWidget(g2)
+        mid_row.addWidget(g2, 1)
+        layout.addLayout(mid_row)
 
+        # ── Bottom Action Row ──
         row_save = QHBoxLayout()
+        row_save.setSpacing(10)
+
         btn_mod_sandbox = QPushButton(tr('btn_mod_options_quick'))
-        btn_mod_sandbox.setStyleSheet("background-color: #5b3a8c; color: #ffffff; font-weight: bold;")
+        btn_mod_sandbox.setMinimumHeight(34)
+        btn_mod_sandbox.setMaximumWidth(280)
+        btn_mod_sandbox.setStyleSheet("background-color: #5b3a8c; color: #ffffff; font-weight: bold; padding: 6px 14px;")
         btn_mod_sandbox.setToolTip("Перейти к детальным настройкам установленных модов в песочнице" if get_language() == 'ru' else "Open Mod Sandbox Options in Sandbox tab")
         btn_mod_sandbox.clicked.connect(self.open_mod_sandbox_tab)
         row_save.addWidget(btn_mod_sandbox)
 
         btn_check_compat = QPushButton("🔍 " + ("Проверить актуальность" if get_language() == 'ru' else "Check Compatibility"))
-        btn_check_compat.setStyleSheet("background-color: #2e663e; color: #ffffff; font-weight: bold;")
+        btn_check_compat.setMinimumHeight(34)
+        btn_check_compat.setMaximumWidth(240)
+        btn_check_compat.setStyleSheet("background-color: #2e663e; color: #ffffff; font-weight: bold; padding: 6px 12px;")
         btn_check_compat.setToolTip("Проверить актуальность и совместимость всех модов в Steam Workshop" if get_language() == 'ru' else "Check all mods compatibility in Steam Workshop")
         btn_check_compat.clicked.connect(self.check_mods_compatibility_action)
         row_save.addWidget(btn_check_compat)
 
         ba = QPushButton(tr('btn_analyze_mods'))
+        ba.setMinimumHeight(34)
+        ba.setMaximumWidth(220)
         ba.clicked.connect(self.analyze_mods)
         row_save.addWidget(ba)
 
+        row_save.addStretch()
+
         bs = QPushButton(tr('btn_save_mods'))
+        bs.setMinimumHeight(34)
+        bs.setMaximumWidth(240)
+        bs.setStyleSheet("background-color: #1e6b3b; color: #ffffff; font-weight: bold; padding: 6px 18px;")
         bs.clicked.connect(self.save_mods)
         row_save.addWidget(bs)
+
         layout.addLayout(row_save)
 
         self.tabs.addTab(tab, tr('tab_mods'))

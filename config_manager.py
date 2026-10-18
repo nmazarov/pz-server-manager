@@ -446,57 +446,107 @@ Mods=
                     logger.warning(f"Could not auto-create default sandbox vars: {e}")
             return defaults, {}
 
+    def _parse_lua_content(self, content: str) -> tuple:
+        """Parse Lua content into (vars_dict, meta_comments)."""
         vars_dict = {}
         meta_comments = {}
         current_category = None
         last_comment = []
 
+        for line in content.splitlines():
+            s = line.strip()
+            if s.startswith('--'):
+                last_comment.append(s[2:].strip())
+                continue
+            if not s or s.startswith('SandboxVars ='):
+                last_comment = []
+                continue
+
+            # Category start: CategoryName = {
+            cat_match = re.match(r'^(\w+)\s*=\s*\{', s)
+            if cat_match:
+                category_name = cat_match.group(1)
+                if category_name != 'SandboxVars':
+                    current_category = category_name
+                    if current_category not in vars_dict:
+                        vars_dict[current_category] = {}
+                last_comment = []
+                continue
+
+            # Category end: },
+            if s.startswith('}') and current_category:
+                current_category = None
+                last_comment = []
+                continue
+
+            # Key = Value,
+            kv_match = re.match(r'^(\w+)\s*=\s*([^,\n]+)', s)
+            if kv_match:
+                key = kv_match.group(1)
+                raw_val = kv_match.group(2).strip().rstrip(',')
+                val = self._parse_lua_val(raw_val)
+
+                if current_category:
+                    vars_dict[current_category][key] = val
+                    if last_comment:
+                        meta_comments[(current_category, key)] = ' '.join(last_comment)
+                else:
+                    vars_dict[key] = val
+                    if last_comment:
+                        meta_comments[key] = ' '.join(last_comment)
+                last_comment = []
+
+        return vars_dict, meta_comments
+
+    def load_sandbox_vars_full(self, create_if_missing: bool = True) -> tuple:
+        """
+        Load sandbox variables and metadata comments from SandboxVars.lua.
+        Returns (vars_dict, meta_comments).
+        Supports root-level variables, vanilla sub-tables (ZombieLore, ZombieConfig, Map),
+        and any custom mod tables (CommonSense, MoreTraits, CompanionDogs, VFE, etc.).
+        """
+        lua_path = self.get_sandbox_path()
+        defaults = self.get_default_sandbox_vars()
+
+        if not lua_path.exists():
+            logger.info(f"Sandbox file not found at {lua_path}. Using standard defaults.")
+            if create_if_missing:
+                try:
+                    self.save_sandbox_vars(defaults)
+                except Exception as e:
+                    logger.warning(f"Could not auto-create default sandbox vars: {e}")
+            return defaults, {}
+
         try:
             with open(lua_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
-            for line in content.splitlines():
-                s = line.strip()
-                if s.startswith('--'):
-                    last_comment.append(s[2:].strip())
-                    continue
-                if not s or s.startswith('SandboxVars ='):
-                    last_comment = []
-                    continue
+            vars_dict, meta_comments = self._parse_lua_content(content)
 
-                # Category start: CategoryName = {
-                cat_match = re.match(r'^(\w+)\s*=\s*\{', s)
-                if cat_match:
-                    category_name = cat_match.group(1)
-                    if category_name != 'SandboxVars':
-                        current_category = category_name
-                        if current_category not in vars_dict:
-                            vars_dict[current_category] = {}
-                    last_comment = []
-                    continue
+            # If current server sandbox file has no mod tables, check other server configs to inherit them!
+            vanilla_tables = {'ZombieLore', 'ZombieConfig', 'MultiplierConfig', 'Map', 'Basement', 'SandboxVars'}
+            has_mod_tables = any(isinstance(v, dict) and k not in vanilla_tables for k, v in vars_dict.items())
 
-                # Category end: },
-                if s.startswith('}') and current_category:
-                    current_category = None
-                    last_comment = []
-                    continue
-
-                # Key = Value,
-                kv_match = re.match(r'^(\w+)\s*=\s*([^,\n]+)', s)
-                if kv_match:
-                    key = kv_match.group(1)
-                    raw_val = kv_match.group(2).strip().rstrip(',')
-                    val = self._parse_lua_val(raw_val)
-
-                    if current_category:
-                        vars_dict[current_category][key] = val
-                        if last_comment:
-                            meta_comments[(current_category, key)] = ' '.join(last_comment)
-                    else:
-                        vars_dict[key] = val
-                        if last_comment:
-                            meta_comments[key] = ' '.join(last_comment)
-                    last_comment = []
+            if not has_mod_tables and self.server_config_dir.exists():
+                candidates = sorted(
+                    [p for p in self.server_config_dir.glob('*_SandboxVars.lua') if p.name != lua_path.name],
+                    key=lambda x: 0 if 'servertest' in x.name.lower() else 1
+                )
+                for cand in candidates:
+                    try:
+                        c_dict, c_meta = self._parse_lua_content(cand.read_text(encoding='utf-8'))
+                        c_mods = {k: v for k, v in c_dict.items() if isinstance(v, dict) and k not in vanilla_tables}
+                        if c_mods:
+                            for mk, mv in c_mods.items():
+                                if mk not in vars_dict:
+                                    vars_dict[mk] = mv
+                            for (cat, k), c_text in c_meta.items():
+                                if cat in c_mods and (cat, k) not in meta_comments:
+                                    meta_comments[(cat, k)] = c_text
+                            logger.info(f"Inherited {len(c_mods)} mod tables from {cand.name}")
+                            break
+                    except Exception as ex:
+                        logger.warning(f"Failed to inherit mod tables from {cand}: {ex}")
 
             logger.info(f"Loaded sandbox vars from {lua_path} ({len(vars_dict)} root/table keys)")
             return vars_dict, meta_comments

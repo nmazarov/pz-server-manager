@@ -3,14 +3,15 @@
 """
 Sandbox Tab Mixin for PZ Server Manager.
 Handles all sandbox variables (ZombieLore, ZombieConfig, Climate, Loot, Vehicles, Mod Options, etc.)
-in servertest_SandboxVars.lua in an in-game style tabbed interface.
+in servertest_SandboxVars.lua with responsive, widescreen-optimized two-column layouts.
 """
 
 import logging
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
     QSpinBox, QDoubleSpinBox, QCheckBox, QComboBox, QGroupBox,
-    QFormLayout, QScrollArea, QTabWidget, QLineEdit, QMessageBox
+    QFormLayout, QScrollArea, QTabWidget, QLineEdit, QMessageBox,
+    QSizePolicy, QFrame
 )
 from PyQt5.QtCore import Qt
 
@@ -101,30 +102,53 @@ def _combo_value(mapping, idx: int, default=1):
     return default
 
 
+def _style_form(form: QFormLayout):
+    """Apply consistent responsive styling to form layouts."""
+    form.setContentsMargins(12, 14, 12, 14)
+    form.setSpacing(8)
+    form.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+    form.setFieldGrowthPolicy(QFormLayout.FieldsStayAtSizeHint)
+
+
+def _set_ctl_limits(ctl, max_w: int = 280):
+    """Limit control width so it doesn't stretch across ultrawide monitors."""
+    ctl.setMaximumWidth(max_w)
+    ctl.setMinimumWidth(180)
+
+
 class SandboxTabMixin:
     """Mixin for the Sandbox settings tab with tabbed UI and mod support."""
 
     def create_sandbox_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
+        layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
         # ── Top Bar: Presets & Action Buttons ──
         top_bar = QHBoxLayout()
-        top_bar.addWidget(QLabel(f"<b>{tr('lbl_preset')}</b>"))
+        top_bar.setSpacing(10)
+
+        lbl_p = QLabel(f"<b>{tr('lbl_preset')}</b>")
+        lbl_p.setStyleSheet("font-size: 13px; color: #e0e0e0;")
+        top_bar.addWidget(lbl_p)
 
         self.preset_combo = QComboBox()
         self.preset_combo.addItems(['Custom', 'Apocalypse', 'Survivor', 'Builder'])
+        self.preset_combo.setMinimumWidth(160)
+        self.preset_combo.setMaximumWidth(220)
         self.preset_combo.currentTextChanged.connect(self.on_preset_changed)
         top_bar.addWidget(self.preset_combo)
-        top_bar.addSpacing(15)
+
+        top_bar.addSpacing(10)
 
         b_save = QPushButton(tr('btn_save_sandbox'))
-        b_save.setStyleSheet("background-color: #1e6b3b; color: #ffffff; font-weight: bold; padding: 6px 14px;")
+        b_save.setStyleSheet("background-color: #1e6b3b; color: #ffffff; font-weight: bold; padding: 6px 16px; border-radius: 4px;")
         b_save.clicked.connect(self.save_sandbox_settings)
         top_bar.addWidget(b_save)
 
         b_reload = QPushButton(tr('btn_reload'))
+        b_reload.setStyleSheet("padding: 6px 14px;")
         b_reload.clicked.connect(self.load_sandbox_settings)
         top_bar.addWidget(b_reload)
 
@@ -134,179 +158,216 @@ class SandboxTabMixin:
         # ── Central Subtabs ──
         self.sandbox_subtabs = QTabWidget()
         self.sandbox_subtabs.setStyleSheet("""
-            QTabWidget::pane { border: 1px solid #3c3c3c; background-color: #1e1e1e; }
-            QTabBar::tab { background: #2a2a2a; color: #bbb; padding: 8px 14px; margin-right: 2px; }
-            QTabBar::tab:selected { background: #383838; color: #40ff40; font-weight: bold; }
+            QTabWidget::pane { border: 1px solid #3c3c3c; background-color: #1a1a1a; border-radius: 4px; }
+            QTabBar::tab { background: #252525; color: #bbb; padding: 8px 16px; margin-right: 3px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
+            QTabBar::tab:selected { background: #333333; color: #40ff40; font-weight: bold; border-bottom: 2px solid #40ff40; }
+            QTabBar::tab:hover { background: #2c2c2c; color: #fff; }
         """)
 
-        # Tab 1: Zombies & Population
+        # Tab 1: Zombies & Population (2 Columns)
         self.sandbox_subtabs.addTab(self._create_zombies_subtab(), tr('subtab_zombies'))
-        # Tab 2: Loot & Resources
+        # Tab 2: Loot & Resources (2 Columns)
         self.sandbox_subtabs.addTab(self._create_loot_subtab(), tr('subtab_loot'))
-        # Tab 3: World & Time
+        # Tab 3: World & Time (2 Columns)
         self.sandbox_subtabs.addTab(self._create_world_subtab(), tr('subtab_world'))
-        # Tab 4: Vehicles
+        # Tab 4: Vehicles (2 Columns)
         self.sandbox_subtabs.addTab(self._create_vehicles_subtab(), tr('subtab_vehicles'))
-        # Tab 5: Character & Skills
+        # Tab 5: Character & Skills (2 Columns)
         self.sandbox_subtabs.addTab(self._create_character_subtab(), tr('subtab_character'))
-        # Tab 6: Mod Sandbox Options
+        # Tab 6: Mod Sandbox Options (Clean Informative Card Table)
         self.sandbox_subtabs.addTab(self._create_mods_subtab(), tr('subtab_mods'))
 
         layout.addWidget(self.sandbox_subtabs)
         self.tabs.addTab(tab, tr('tab_sandbox'))
 
-    # ── Subtab 1: Zombies & Population ────────────────────────────────
+    # ── Subtab 1: Zombies & Population (2 Columns) ────────────────────
     def _create_zombies_subtab(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         sw = QWidget()
         sl = QVBoxLayout(sw)
+        sl.setContentsMargins(10, 10, 10, 10)
 
-        # Basic Zombie Lore
+        cols = QHBoxLayout()
+        cols.setSpacing(14)
+
+        # Left Column: Basic Zombie Lore
         g_lore = QGroupBox(tr('group_zombie_lore'))
         f_lore = QFormLayout(g_lore)
+        _style_form(f_lore)
 
         self.sandbox_zombie_speed = QComboBox()
         self.sandbox_zombie_speed.addItems(_combo_items(_ZOMBIE_SPEED))
+        _set_ctl_limits(self.sandbox_zombie_speed)
         f_lore.addRow(tr('lbl_speed'), self.sandbox_zombie_speed)
 
         self.sandbox_zombie_strength = QComboBox()
         self.sandbox_zombie_strength.addItems(_combo_items(_ZOMBIE_STRENGTH))
+        _set_ctl_limits(self.sandbox_zombie_strength)
         f_lore.addRow(tr('lbl_strength'), self.sandbox_zombie_strength)
 
         self.sandbox_zombie_toughness = QComboBox()
         self.sandbox_zombie_toughness.addItems(_combo_items(_ZOMBIE_TOUGHNESS))
+        _set_ctl_limits(self.sandbox_zombie_toughness)
         f_lore.addRow(tr('lbl_toughness'), self.sandbox_zombie_toughness)
 
         self.sandbox_zombie_transmission = QComboBox()
         self.sandbox_zombie_transmission.addItems(_combo_items(_ZOMBIE_TRANSMISSION))
+        _set_ctl_limits(self.sandbox_zombie_transmission)
         f_lore.addRow(tr('lbl_transmission'), self.sandbox_zombie_transmission)
 
         self.sandbox_infection_mortality = QComboBox()
         self.sandbox_infection_mortality.addItems(_combo_items(_INFECTION))
+        _set_ctl_limits(self.sandbox_infection_mortality)
         f_lore.addRow(tr('lbl_infection_mortality'), self.sandbox_infection_mortality)
 
         self.sandbox_zombie_cognition = QComboBox()
         self.sandbox_zombie_cognition.addItems(_combo_items(_ZOMBIE_COGNITION))
+        _set_ctl_limits(self.sandbox_zombie_cognition)
         f_lore.addRow(tr('lbl_cognition'), self.sandbox_zombie_cognition)
 
         self.sandbox_memory = QComboBox()
         self.sandbox_memory.addItems(_combo_items(_ZOMBIE_MEMORY))
+        _set_ctl_limits(self.sandbox_memory)
         f_lore.addRow(tr('lbl_memory'), self.sandbox_memory)
 
         self.sandbox_decomp = QComboBox()
         self.sandbox_decomp.addItems(_combo_items(_ZOMBIE_DECOMP))
+        _set_ctl_limits(self.sandbox_decomp)
         f_lore.addRow(tr('lbl_decomp'), self.sandbox_decomp)
 
         self.sandbox_sight = QComboBox()
         self.sandbox_sight.addItems(_combo_items(_ZOMBIE_SIGHT))
+        _set_ctl_limits(self.sandbox_sight)
         f_lore.addRow(tr('lbl_sight'), self.sandbox_sight)
 
         self.sandbox_hearing = QComboBox()
         self.sandbox_hearing.addItems(_combo_items(_ZOMBIE_HEARING))
+        _set_ctl_limits(self.sandbox_hearing)
         f_lore.addRow(tr('lbl_hearing'), self.sandbox_hearing)
 
         self.sandbox_smell = QComboBox()
         self.sandbox_smell.addItems(_combo_items(_ZOMBIE_SMELL))
+        _set_ctl_limits(self.sandbox_smell)
         f_lore.addRow(tr('lbl_smell'), self.sandbox_smell)
 
         self.sandbox_zombie_active = QComboBox()
         self.sandbox_zombie_active.addItems([tr(k) for k, _ in _ZOMBIE_ACTIVE])
+        _set_ctl_limits(self.sandbox_zombie_active)
         f_lore.addRow("Активность зомби:" if get_language() == 'ru' else "Active Time:", self.sandbox_zombie_active)
 
         self.sandbox_zombie_distribution = QComboBox()
         self.sandbox_zombie_distribution.addItems(_combo_items(_ZOMBIE_DISTRIBUTION))
+        _set_ctl_limits(self.sandbox_zombie_distribution)
         f_lore.addRow(tr('lbl_distribution'), self.sandbox_zombie_distribution)
 
-        self.sandbox_thump_no_chasing = QCheckBox("Атаковать двери/стены даже без преследования игрока" if get_language() == 'ru' else "Thump doors/walls without chasing")
+        self.sandbox_thump_no_chasing = QCheckBox("Атаковать двери/стены без преследования" if get_language() == 'ru' else "Thump doors/walls without chasing")
         f_lore.addRow(self.sandbox_thump_no_chasing)
 
         self.sandbox_thump_on_construction = QCheckBox("Атаковать постройки игроков" if get_language() == 'ru' else "Damage player constructions")
         self.sandbox_thump_on_construction.setChecked(True)
         f_lore.addRow(self.sandbox_thump_on_construction)
 
-        self.sandbox_trigger_alarm = QCheckBox("Зомби могут вызывать сигнализацию в домах" if get_language() == 'ru' else "Zombies trigger house alarms")
+        self.sandbox_trigger_alarm = QCheckBox("Зомби вызывают сигнализацию в домах" if get_language() == 'ru' else "Zombies trigger house alarms")
         f_lore.addRow(self.sandbox_trigger_alarm)
 
-        sl.addWidget(g_lore)
+        cols.addWidget(g_lore, 1)
 
-        # Advanced Zombie Config
+        # Right Column: Advanced Zombie Config
         g_adv = QGroupBox(tr('group_zombie_advanced'))
         f_adv = QFormLayout(g_adv)
+        _style_form(f_adv)
 
         self.sandbox_pop_mult = QDoubleSpinBox()
         self.sandbox_pop_mult.setRange(0.0, 10.0)
         self.sandbox_pop_mult.setSingleStep(0.1)
         self.sandbox_pop_mult.setValue(1.0)
+        _set_ctl_limits(self.sandbox_pop_mult, 140)
         f_adv.addRow(tr('lbl_pop_multiplier'), self.sandbox_pop_mult)
 
         self.sandbox_pop_start_mult = QDoubleSpinBox()
         self.sandbox_pop_start_mult.setRange(0.0, 10.0)
         self.sandbox_pop_start_mult.setSingleStep(0.1)
         self.sandbox_pop_start_mult.setValue(1.0)
+        _set_ctl_limits(self.sandbox_pop_start_mult, 140)
         f_adv.addRow(tr('lbl_pop_start_mult'), self.sandbox_pop_start_mult)
 
         self.sandbox_pop_peak_mult = QDoubleSpinBox()
         self.sandbox_pop_peak_mult.setRange(0.0, 10.0)
         self.sandbox_pop_peak_mult.setSingleStep(0.1)
         self.sandbox_pop_peak_mult.setValue(1.5)
+        _set_ctl_limits(self.sandbox_pop_peak_mult, 140)
         f_adv.addRow(tr('lbl_pop_peak_mult'), self.sandbox_pop_peak_mult)
 
         self.sandbox_pop_peak_day = QSpinBox()
         self.sandbox_pop_peak_day.setRange(1, 365)
         self.sandbox_pop_peak_day.setValue(28)
         self.sandbox_pop_peak_day.setSuffix(f" {tr('days')}")
+        _set_ctl_limits(self.sandbox_pop_peak_day, 140)
         f_adv.addRow(tr('lbl_pop_peak_day'), self.sandbox_pop_peak_day)
 
         self.sandbox_respawn_hours = QSpinBox()
         self.sandbox_respawn_hours.setRange(0, 8760)
         self.sandbox_respawn_hours.setValue(72)
         self.sandbox_respawn_hours.setSuffix(" ч.")
+        _set_ctl_limits(self.sandbox_respawn_hours, 140)
         f_adv.addRow(tr('lbl_respawn_hours'), self.sandbox_respawn_hours)
 
         self.sandbox_respawn_unseen_hours = QSpinBox()
         self.sandbox_respawn_unseen_hours.setRange(0, 8760)
         self.sandbox_respawn_unseen_hours.setValue(16)
         self.sandbox_respawn_unseen_hours.setSuffix(" ч.")
+        _set_ctl_limits(self.sandbox_respawn_unseen_hours, 140)
         f_adv.addRow(tr('lbl_respawn_unseen_hours'), self.sandbox_respawn_unseen_hours)
 
         self.sandbox_respawn_mult = QDoubleSpinBox()
         self.sandbox_respawn_mult.setRange(0.0, 1.0)
         self.sandbox_respawn_mult.setSingleStep(0.05)
         self.sandbox_respawn_mult.setValue(0.1)
+        _set_ctl_limits(self.sandbox_respawn_mult, 140)
         f_adv.addRow(tr('lbl_respawn_fraction'), self.sandbox_respawn_mult)
 
         self.sandbox_redistribute_hours = QSpinBox()
         self.sandbox_redistribute_hours.setRange(0, 8760)
         self.sandbox_redistribute_hours.setValue(12)
         self.sandbox_redistribute_hours.setSuffix(" ч.")
+        _set_ctl_limits(self.sandbox_redistribute_hours, 140)
         f_adv.addRow(tr('lbl_redistribute_hours'), self.sandbox_redistribute_hours)
 
         self.sandbox_rally_size = QSpinBox()
         self.sandbox_rally_size.setRange(0, 500)
         self.sandbox_rally_size.setValue(20)
+        _set_ctl_limits(self.sandbox_rally_size, 140)
         f_adv.addRow(tr('lbl_rally_group_size'), self.sandbox_rally_size)
 
         self.sandbox_rally_radius = QSpinBox()
         self.sandbox_rally_radius.setRange(1, 50)
         self.sandbox_rally_radius.setValue(3)
+        _set_ctl_limits(self.sandbox_rally_radius, 140)
         f_adv.addRow(tr('lbl_rally_group_radius'), self.sandbox_rally_radius)
 
-        sl.addWidget(g_adv)
+        cols.addWidget(g_adv, 1)
+
+        sl.addLayout(cols)
         sl.addStretch()
         scroll.setWidget(sw)
         return scroll
 
-    # ── Subtab 2: Loot & Resources ─────────────────────────────────────
+    # ── Subtab 2: Loot & Resources (2 Columns) ─────────────────────────
     def _create_loot_subtab(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         sw = QWidget()
         sl = QVBoxLayout(sw)
+        sl.setContentsMargins(10, 10, 10, 10)
 
-        # 10 In-game Loot Categories
+        cols = QHBoxLayout()
+        cols.setSpacing(14)
+
+        # Left Column: 10 In-game Loot Categories
         g_cats = QGroupBox(tr('group_loot_categories'))
         f_cats = QFormLayout(g_cats)
+        _style_form(f_cats)
 
         self.loot_combos = {}
         loot_keys = [
@@ -325,26 +386,30 @@ class SandboxTabMixin:
             cb = QComboBox()
             cb.addItems(_combo_items(_LOOT_RARITY))
             cb.setCurrentIndex(def_idx)
+            _set_ctl_limits(cb, 260)
             f_cats.addRow(tr(tr_key), cb)
             self.loot_combos[key] = cb
 
-        sl.addWidget(g_cats)
+        cols.addWidget(g_cats, 1)
 
-        # Loot Respawn & Utilities
+        # Right Column: Loot Respawn & Utilities
         g_respawn = QGroupBox(tr('group_loot_respawn'))
         f_respawn = QFormLayout(g_respawn)
+        _style_form(f_respawn)
 
         self.sandbox_loot_respawn = QComboBox()
         self.sandbox_loot_respawn.addItems(_combo_items(_LOOT_RESPAWN))
+        _set_ctl_limits(self.sandbox_loot_respawn, 260)
         f_respawn.addRow(tr('lbl_loot_respawn'), self.sandbox_loot_respawn)
 
         self.sandbox_max_items_respawn = QSpinBox()
         self.sandbox_max_items_respawn.setRange(1, 100)
         self.sandbox_max_items_respawn.setValue(4)
+        _set_ctl_limits(self.sandbox_max_items_respawn, 140)
         f_respawn.addRow(tr('lbl_max_items_respawn'), self.sandbox_max_items_respawn)
 
         self.sandbox_construction_respawn = QCheckBox(
-            "Постройки игроков запрещают респаун лута в контейнере" if get_language() == 'ru'
+            "Постройки игроков блокируют респаун лута" if get_language() == 'ru'
             else "Player construction prevents loot respawn"
         )
         self.sandbox_construction_respawn.setChecked(True)
@@ -355,6 +420,7 @@ class SandboxTabMixin:
         self.sandbox_water_shutoff.setValue(14)
         self.sandbox_water_shutoff.setSpecialValueText(tr('never'))
         self.sandbox_water_shutoff.setSuffix(f" {tr('days')}")
+        _set_ctl_limits(self.sandbox_water_shutoff, 140)
         f_respawn.addRow(tr('lbl_water_shutoff'), self.sandbox_water_shutoff)
 
         self.sandbox_electricity_shutoff = QSpinBox()
@@ -362,31 +428,42 @@ class SandboxTabMixin:
         self.sandbox_electricity_shutoff.setValue(14)
         self.sandbox_electricity_shutoff.setSpecialValueText(tr('never'))
         self.sandbox_electricity_shutoff.setSuffix(f" {tr('days')}")
+        _set_ctl_limits(self.sandbox_electricity_shutoff, 140)
         f_respawn.addRow(tr('lbl_electricity_shutoff'), self.sandbox_electricity_shutoff)
 
-        sl.addWidget(g_respawn)
+        cols.addWidget(g_respawn, 1)
+
+        sl.addLayout(cols)
         sl.addStretch()
         scroll.setWidget(sw)
         return scroll
 
-    # ── Subtab 3: World & Time ─────────────────────────────────────────
+    # ── Subtab 3: World & Time (2 Columns) ─────────────────────────────
     def _create_world_subtab(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         sw = QWidget()
         sl = QVBoxLayout(sw)
+        sl.setContentsMargins(10, 10, 10, 10)
 
+        cols = QHBoxLayout()
+        cols.setSpacing(14)
+
+        # Left Column: Time & Calendar
         g_time = QGroupBox(tr('group_time'))
         f_time = QFormLayout(g_time)
+        _style_form(f_time)
 
         self.sandbox_day_length = QComboBox()
         self.sandbox_day_length.addItems([k for k, _ in _DAY_LENGTH])
         self.sandbox_day_length.setCurrentIndex(2)  # 1h default
+        _set_ctl_limits(self.sandbox_day_length, 260)
         f_time.addRow(tr('lbl_day_length'), self.sandbox_day_length)
 
         self.sandbox_start_year = QSpinBox()
         self.sandbox_start_year.setRange(1, 100)
         self.sandbox_start_year.setValue(1)
+        _set_ctl_limits(self.sandbox_start_year, 140)
         f_time.addRow("Начальный год:" if get_language() == 'ru' else "Start Year:", self.sandbox_start_year)
 
         self.sandbox_start_month = QComboBox()
@@ -394,31 +471,38 @@ class SandboxTabMixin:
                   'july', 'august', 'september', 'october', 'november', 'december']
         self.sandbox_start_month.addItems([tr(m) for m in months])
         self.sandbox_start_month.setCurrentIndex(6)  # July
+        _set_ctl_limits(self.sandbox_start_month, 260)
         f_time.addRow(tr('lbl_start_month'), self.sandbox_start_month)
 
         self.sandbox_start_day = QSpinBox()
         self.sandbox_start_day.setRange(1, 31)
         self.sandbox_start_day.setValue(9)
+        _set_ctl_limits(self.sandbox_start_day, 140)
         f_time.addRow(tr('lbl_start_day'), self.sandbox_start_day)
 
         self.sandbox_start_time = QComboBox()
         self.sandbox_start_time.addItems([k for k, _ in _START_TIMES])
         self.sandbox_start_time.setCurrentIndex(1)  # 9:00 AM
+        _set_ctl_limits(self.sandbox_start_time, 260)
         f_time.addRow("Время старта:" if get_language() == 'ru' else "Start Time:", self.sandbox_start_time)
 
         self.sandbox_night_darkness = QComboBox()
         self.sandbox_night_darkness.addItems(_combo_items(_NIGHT_DARK))
         self.sandbox_night_darkness.setCurrentIndex(2)  # normal
+        _set_ctl_limits(self.sandbox_night_darkness, 260)
         f_time.addRow(tr('lbl_night_darkness'), self.sandbox_night_darkness)
 
         self.sandbox_time_since_apo = QComboBox()
         self.sandbox_time_since_apo.addItems(_combo_items(_TIME_APO))
+        _set_ctl_limits(self.sandbox_time_since_apo, 260)
         f_time.addRow(tr('lbl_time_since_apo'), self.sandbox_time_since_apo)
 
-        sl.addWidget(g_time)
+        cols.addWidget(g_time, 1)
 
+        # Right Column: Environment & Events
         g_env = QGroupBox(tr('group_world'))
         f_env = QFormLayout(g_env)
+        _style_form(f_env)
 
         self.sandbox_fire_spread = QCheckBox("Распространение огня по постройкам и деревьям" if get_language() == 'ru' else "Fire spreads to buildings/trees")
         self.sandbox_fire_spread.setChecked(True)
@@ -427,174 +511,231 @@ class SandboxTabMixin:
         self.sandbox_nature_abundance = QComboBox()
         self.sandbox_nature_abundance.addItems(_combo_items(_NATURE_ABU))
         self.sandbox_nature_abundance.setCurrentIndex(2)
+        _set_ctl_limits(self.sandbox_nature_abundance, 260)
         f_env.addRow(tr('lbl_nature_abundance'), self.sandbox_nature_abundance)
 
         self.sandbox_helicopter = QComboBox()
         self.sandbox_helicopter.addItems(_combo_items(_EVENT_FREQ))
         self.sandbox_helicopter.setCurrentIndex(1)  # once
+        _set_ctl_limits(self.sandbox_helicopter, 260)
         f_env.addRow(tr('lbl_helicopter'), self.sandbox_helicopter)
 
         self.sandbox_meta_event = QComboBox()
         self.sandbox_meta_event.addItems(_combo_items(_META_FREQ))
         self.sandbox_meta_event.setCurrentIndex(1)  # sometimes
+        _set_ctl_limits(self.sandbox_meta_event, 260)
         f_env.addRow(tr('lbl_meta_event'), self.sandbox_meta_event)
 
         self.sandbox_sleeping_event = QComboBox()
         self.sandbox_sleeping_event.addItems(_combo_items(_META_FREQ))
         self.sandbox_sleeping_event.setCurrentIndex(1)  # sometimes
+        _set_ctl_limits(self.sandbox_sleeping_event, 260)
         f_env.addRow(tr('lbl_sleeping_event'), self.sandbox_sleeping_event)
 
         self.sandbox_erosion_speed = QComboBox()
         self.sandbox_erosion_speed.addItems(_combo_items(_EROSION_SPD))
         self.sandbox_erosion_speed.setCurrentIndex(2)  # normal
+        _set_ctl_limits(self.sandbox_erosion_speed, 260)
         f_env.addRow(tr('lbl_erosion_speed'), self.sandbox_erosion_speed)
 
         self.sandbox_erosion_days = QSpinBox()
         self.sandbox_erosion_days.setRange(0, 3650)
         self.sandbox_erosion_days.setValue(100)
         self.sandbox_erosion_days.setSuffix(f" {tr('days')}")
+        _set_ctl_limits(self.sandbox_erosion_days, 140)
         f_env.addRow(tr('lbl_erosion_days'), self.sandbox_erosion_days)
 
-        sl.addWidget(g_env)
+        cols.addWidget(g_env, 1)
+
+        sl.addLayout(cols)
         sl.addStretch()
         scroll.setWidget(sw)
         return scroll
 
-    # ── Subtab 4: Vehicles ─────────────────────────────────────────────
+    # ── Subtab 4: Vehicles (2 Columns) ─────────────────────────────────
     def _create_vehicles_subtab(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         sw = QWidget()
         sl = QVBoxLayout(sw)
+        sl.setContentsMargins(10, 10, 10, 10)
 
-        g_veh = QGroupBox(tr('group_vehicles'))
+        cols = QHBoxLayout()
+        cols.setSpacing(14)
+
+        # Left Column: Spawns & State
+        g_veh = QGroupBox("Появление и состояние транспорта" if get_language() == 'ru' else "Vehicle Spawn & Condition")
         f_veh = QFormLayout(g_veh)
+        _style_form(f_veh)
 
         self.sandbox_car_spawn = QComboBox()
         self.sandbox_car_spawn.addItems(_combo_items(_CAR_SPAWN))
         self.sandbox_car_spawn.setCurrentIndex(3)  # normal
+        _set_ctl_limits(self.sandbox_car_spawn, 260)
         f_veh.addRow(tr('lbl_car_spawn'), self.sandbox_car_spawn)
 
-        self.sandbox_vehicle_easy_use = QCheckBox("Легкое управление (не требует ключа зажигания и взлома)" if get_language() == 'ru' else "Easy use (no keys/hotwiring needed)")
+        self.sandbox_vehicle_easy_use = QCheckBox("Легкое управление (без ключа зажигания и взлома)" if get_language() == 'ru' else "Easy use (no keys/hotwiring needed)")
         self.sandbox_vehicle_easy_use.setChecked(False)
         f_veh.addRow(self.sandbox_vehicle_easy_use)
-
-        self.sandbox_chance_gas = QComboBox()
-        self.sandbox_chance_gas.addItems(_combo_items(_CAR_LEVEL))
-        self.sandbox_chance_gas.setCurrentIndex(2)  # normal
-        f_veh.addRow(tr('lbl_gas_chance'), self.sandbox_chance_gas)
-
-        self.sandbox_initial_gas = QComboBox()
-        self.sandbox_initial_gas.addItems(_combo_items(_CAR_LEVEL))
-        self.sandbox_initial_gas.setCurrentIndex(1)  # low
-        f_veh.addRow(tr('lbl_initial_gas'), self.sandbox_initial_gas)
-
-        self.sandbox_gas_consumption = QDoubleSpinBox()
-        self.sandbox_gas_consumption.setRange(0.0, 10.0)
-        self.sandbox_gas_consumption.setSingleStep(0.1)
-        self.sandbox_gas_consumption.setValue(1.0)
-        f_veh.addRow(tr('lbl_gas_consumption'), self.sandbox_gas_consumption)
 
         self.sandbox_car_condition = QComboBox()
         self.sandbox_car_condition.addItems(_combo_items(_CAR_LEVEL))
         self.sandbox_car_condition.setCurrentIndex(2)  # normal
+        _set_ctl_limits(self.sandbox_car_condition, 260)
         f_veh.addRow(tr('lbl_car_condition'), self.sandbox_car_condition)
 
         self.sandbox_traffic_jam = QCheckBox("Заторы и пробки из разбитых машин на дорогах" if get_language() == 'ru' else "Traffic jams on roads")
         self.sandbox_traffic_jam.setChecked(True)
         f_veh.addRow(self.sandbox_traffic_jam)
 
+        cols.addWidget(g_veh, 1)
+
+        # Right Column: Fuel & Mechanics
+        g_fuel = QGroupBox("Топливо и механика" if get_language() == 'ru' else "Fuel & Mechanics")
+        f_fuel = QFormLayout(g_fuel)
+        _style_form(f_fuel)
+
+        self.sandbox_chance_gas = QComboBox()
+        self.sandbox_chance_gas.addItems(_combo_items(_CAR_LEVEL))
+        self.sandbox_chance_gas.setCurrentIndex(2)  # normal
+        _set_ctl_limits(self.sandbox_chance_gas, 260)
+        f_fuel.addRow(tr('lbl_gas_chance'), self.sandbox_chance_gas)
+
+        self.sandbox_initial_gas = QComboBox()
+        self.sandbox_initial_gas.addItems(_combo_items(_CAR_LEVEL))
+        self.sandbox_initial_gas.setCurrentIndex(1)  # low
+        _set_ctl_limits(self.sandbox_initial_gas, 260)
+        f_fuel.addRow(tr('lbl_initial_gas'), self.sandbox_initial_gas)
+
+        self.sandbox_gas_consumption = QDoubleSpinBox()
+        self.sandbox_gas_consumption.setRange(0.0, 10.0)
+        self.sandbox_gas_consumption.setSingleStep(0.1)
+        self.sandbox_gas_consumption.setValue(1.0)
+        _set_ctl_limits(self.sandbox_gas_consumption, 140)
+        f_fuel.addRow(tr('lbl_gas_consumption'), self.sandbox_gas_consumption)
+
         self.sandbox_car_alarm = QComboBox()
         self.sandbox_car_alarm.addItems(_combo_items(_EVENT_FREQ))
         self.sandbox_car_alarm.setCurrentIndex(2)  # sometimes
-        f_veh.addRow(tr('lbl_car_alarm'), self.sandbox_car_alarm)
+        _set_ctl_limits(self.sandbox_car_alarm, 260)
+        f_fuel.addRow(tr('lbl_car_alarm'), self.sandbox_car_alarm)
 
         self.sandbox_crash_damage = QCheckBox("Урон игроку при столкновении на машине" if get_language() == 'ru' else "Player damaged in vehicle crashes")
         self.sandbox_crash_damage.setChecked(True)
-        f_veh.addRow(self.sandbox_crash_damage)
+        f_fuel.addRow(self.sandbox_crash_damage)
 
-        sl.addWidget(g_veh)
+        cols.addWidget(g_fuel, 1)
+
+        sl.addLayout(cols)
         sl.addStretch()
         scroll.setWidget(sw)
         return scroll
 
-    # ── Subtab 5: Character & Skills ───────────────────────────────────
+    # ── Subtab 5: Character & Skills (2 Columns) ───────────────────────
     def _create_character_subtab(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         sw = QWidget()
         sl = QVBoxLayout(sw)
+        sl.setContentsMargins(10, 10, 10, 10)
 
+        cols = QHBoxLayout()
+        cols.setSpacing(14)
+
+        # Left Column: XP & Points
         g_char = QGroupBox(tr('group_character'))
         f_char = QFormLayout(g_char)
+        _style_form(f_char)
 
         xp_row = QHBoxLayout()
+        xp_row.setSpacing(6)
         self.sandbox_xp_mult = QDoubleSpinBox()
         self.sandbox_xp_mult.setRange(0.1, 100.0)
         self.sandbox_xp_mult.setSingleStep(0.5)
         self.sandbox_xp_mult.setValue(1.0)
+        self.sandbox_xp_mult.setFixedWidth(80)
         xp_row.addWidget(self.sandbox_xp_mult)
 
-        for mult_val in [1.0, 1.5, 2.0, 3.0, 5.0, 10.0]:
+        for mult_val in [1.0, 1.5, 2.0, 3.0, 5.0]:
             btn = QPushButton(f"{mult_val:g}x")
-            btn.setStyleSheet("padding: 2px 6px; font-size: 11px;")
+            btn.setStyleSheet("padding: 3px 6px; font-size: 11px;")
             btn.clicked.connect(lambda _, v=mult_val: self.sandbox_xp_mult.setValue(v))
             xp_row.addWidget(btn)
+        xp_row.addStretch()
         f_char.addRow(tr('lbl_xp_multiplier'), xp_row)
 
         self.sandbox_char_free_points = QSpinBox()
         self.sandbox_char_free_points.setRange(0, 100)
         self.sandbox_char_free_points.setValue(0)
+        _set_ctl_limits(self.sandbox_char_free_points, 140)
         f_char.addRow(tr('lbl_char_free_points'), self.sandbox_char_free_points)
 
         self.sandbox_player_damage = QComboBox()
         self.sandbox_player_damage.addItems(_combo_items(_PLAYER_DMG))
         self.sandbox_player_damage.setCurrentIndex(2)
+        _set_ctl_limits(self.sandbox_player_damage, 260)
         f_char.addRow(tr('lbl_player_damage'), self.sandbox_player_damage)
+
+        cols.addWidget(g_char, 1)
+
+        # Right Column: Farming & Generators
+        g_farm = QGroupBox("Фермерство и генераторы" if get_language() == 'ru' else "Farming & Generators")
+        f_farm = QFormLayout(g_farm)
+        _style_form(f_farm)
 
         self.sandbox_farming_speed = QComboBox()
         self.sandbox_farming_speed.addItems(_combo_items(_FARMING_SPD))
         self.sandbox_farming_speed.setCurrentIndex(2)
-        f_char.addRow(tr('lbl_farming_speed'), self.sandbox_farming_speed)
+        _set_ctl_limits(self.sandbox_farming_speed, 260)
+        f_farm.addRow(tr('lbl_farming_speed'), self.sandbox_farming_speed)
 
         self.sandbox_plant_resilience = QComboBox()
         self.sandbox_plant_resilience.addItems(_combo_items(_CAR_LEVEL))
         self.sandbox_plant_resilience.setCurrentIndex(2)
-        f_char.addRow(tr('lbl_plant_resilience'), self.sandbox_plant_resilience)
+        _set_ctl_limits(self.sandbox_plant_resilience, 260)
+        f_farm.addRow(tr('lbl_plant_resilience'), self.sandbox_plant_resilience)
 
         self.sandbox_plant_abundance = QComboBox()
         self.sandbox_plant_abundance.addItems(_combo_items(_CAR_LEVEL))
         self.sandbox_plant_abundance.setCurrentIndex(2)
-        f_char.addRow(tr('lbl_plant_abundance'), self.sandbox_plant_abundance)
+        _set_ctl_limits(self.sandbox_plant_abundance, 260)
+        f_farm.addRow(tr('lbl_plant_abundance'), self.sandbox_plant_abundance)
 
         self.sandbox_generator_spawn = QComboBox()
         self.sandbox_generator_spawn.addItems(_combo_items(_GENERATOR_SP))
         self.sandbox_generator_spawn.setCurrentIndex(2)
-        f_char.addRow(tr('lbl_generator_spawn'), self.sandbox_generator_spawn)
+        _set_ctl_limits(self.sandbox_generator_spawn, 260)
+        f_farm.addRow(tr('lbl_generator_spawn'), self.sandbox_generator_spawn)
 
         self.sandbox_generator_fuel = QDoubleSpinBox()
         self.sandbox_generator_fuel.setRange(0.0, 10.0)
         self.sandbox_generator_fuel.setSingleStep(0.1)
         self.sandbox_generator_fuel.setValue(1.0)
-        f_char.addRow(tr('lbl_generator_fuel'), self.sandbox_generator_fuel)
+        _set_ctl_limits(self.sandbox_generator_fuel, 140)
+        f_farm.addRow(tr('lbl_generator_fuel'), self.sandbox_generator_fuel)
 
-        sl.addWidget(g_char)
+        cols.addWidget(g_farm, 1)
+
+        sl.addLayout(cols)
         sl.addStretch()
         scroll.setWidget(sw)
         return scroll
 
-    # ── Subtab 6: Mod Sandbox Options ──────────────────────────────────
+    # ── Subtab 6: Mod Sandbox Options (Clean 3-Column Table) ───────────
     def _create_mods_subtab(self) -> QWidget:
         container = QWidget()
         layout = QVBoxLayout(container)
-        layout.setSpacing(6)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         search_row = QHBoxLayout()
         search_row.addWidget(QLabel(f"<b>{tr('lbl_mod_search')}</b>"))
         self.mod_search_input = QLineEdit()
         self.mod_search_input.setPlaceholderText(tr('ph_mod_search'))
+        self.mod_search_input.setMaximumWidth(400)
         self.mod_search_input.textChanged.connect(self._filter_mod_options)
         search_row.addWidget(self.mod_search_input)
+        search_row.addStretch()
         layout.addLayout(search_row)
 
         self.mod_options_scroll = QScrollArea()
@@ -602,6 +743,7 @@ class SandboxTabMixin:
         self.mod_options_widget = QWidget()
         self.mod_options_layout = QVBoxLayout(self.mod_options_widget)
         self.mod_options_layout.setAlignment(Qt.AlignTop)
+        self.mod_options_layout.setSpacing(12)
 
         self.mod_empty_label = QLabel(tr('no_mod_options_found'))
         self.mod_empty_label.setAlignment(Qt.AlignCenter)
@@ -619,7 +761,7 @@ class SandboxTabMixin:
         t = text.strip().lower()
         for gb, items in self.mod_group_boxes:
             gb_visible = False
-            for row_w, label_w, key_str, comment_str in items:
+            for row_w, key_str, comment_str in items:
                 match = (t in key_str.lower()) or (t in comment_str.lower())
                 row_w.setVisible(match or not t)
                 if match:
@@ -795,7 +937,7 @@ class SandboxTabMixin:
             logger.exception('Failed to load sandbox settings')
 
     def _populate_mod_options(self, sb: dict, meta: dict):
-        """Dynamically render UI controls for all mod tables found in SandboxVars."""
+        """Dynamically render informative 3-column rows for all mod tables in SandboxVars."""
         # Clear existing mod widgets
         for i in reversed(range(self.mod_options_layout.count())):
             item = self.mod_options_layout.itemAt(i)
@@ -824,57 +966,67 @@ class SandboxTabMixin:
                 QGroupBox {
                     font-weight: bold;
                     font-size: 13px;
-                    border: 1px solid #444;
+                    border: 1px solid #3d3d3d;
                     border-radius: 6px;
-                    margin-top: 8px;
-                    padding-top: 14px;
-                    background-color: #242424;
+                    margin-top: 10px;
+                    padding-top: 16px;
+                    background-color: #212121;
                 }
                 QGroupBox::title {
                     subcontrol-origin: margin;
-                    left: 10px;
-                    padding: 0 4px;
+                    left: 14px;
+                    padding: 0 6px;
                     color: #5294e2;
                 }
             """)
-            form = QFormLayout(gb)
-            form.setSpacing(6)
+            gb_vbox = QVBoxLayout(gb)
+            gb_vbox.setContentsMargins(12, 10, 12, 10)
+            gb_vbox.setSpacing(6)
             gb_items = []
 
             for key, val in mod_data.items():
                 comment = meta.get((mod_name, key), '')
-                label_txt = f"{key}:"
-                label_w = QLabel(label_txt)
-                if comment:
-                    label_w.setToolTip(f"<b>{key}</b><br>{comment}")
+
+                row_widget = QWidget()
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(4, 2, 4, 2)
+                row_layout.setSpacing(12)
+
+                lbl_k = QLabel(f"<b>{key}</b>:")
+                lbl_k.setFixedWidth(230)
+                lbl_k.setStyleSheet("color: #e0e0e0; font-size: 12px;")
 
                 if isinstance(val, bool):
-                    w = QCheckBox()
+                    w = QCheckBox("Включено" if val and get_language() == 'ru' else ("Вкл" if get_language() == 'ru' else "Enabled"))
                     w.setChecked(val)
-                    if comment:
-                        w.setToolTip(comment)
-                        w.setText(comment)
+                    w.stateChanged.connect(lambda state, cb=w: cb.setText("Включено" if state and get_language() == 'ru' else ("Отключено" if get_language() == 'ru' else ("Enabled" if state else "Disabled"))))
+                    _set_ctl_limits(w, 240)
                 elif isinstance(val, int):
                     w = QSpinBox()
                     w.setRange(-999999, 999999)
                     w.setValue(val)
-                    if comment:
-                        w.setToolTip(comment)
+                    _set_ctl_limits(w, 140)
                 elif isinstance(val, float):
                     w = QDoubleSpinBox()
                     w.setRange(-999999.0, 999999.0)
                     w.setSingleStep(0.1)
                     w.setValue(val)
-                    if comment:
-                        w.setToolTip(comment)
+                    _set_ctl_limits(w, 140)
                 else:
                     w = QLineEdit(str(val))
-                    if comment:
-                        w.setToolTip(comment)
+                    _set_ctl_limits(w, 240)
 
-                form.addRow(label_w, w)
+                desc_lbl = QLabel(comment)
+                desc_lbl.setStyleSheet("color: #9e9e9e; font-size: 11px;")
+                desc_lbl.setWordWrap(True)
+
+                row_layout.addWidget(lbl_k)
+                row_layout.addWidget(w)
+                row_layout.addWidget(desc_lbl, 1)
+
+                gb_vbox.addWidget(row_widget)
                 self.mod_widgets[(mod_name, key)] = w
-                gb_items.append((w, label_w, key, comment))
+                gb_items.append((row_widget, key, comment))
 
             self.mod_group_boxes.append((gb, gb_items))
             self.mod_options_layout.addWidget(gb)

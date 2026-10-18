@@ -226,10 +226,13 @@ class InstallTabMixin:
         layout.addWidget(g2)
 
         btn_row = QHBoxLayout()
-        btn_row.setSpacing(12)
+        btn_row.setSpacing(16)
+        btn_row.addStretch()
 
         self.install_btn = QPushButton(tr('btn_install_server'))
         self.install_btn.setMinimumHeight(44)
+        self.install_btn.setMinimumWidth(240)
+        self.install_btn.setMaximumWidth(320)
         self.install_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2e663e;
@@ -248,6 +251,8 @@ class InstallTabMixin:
 
         self.update_btn = QPushButton(tr('btn_update_server'))
         self.update_btn.setMinimumHeight(44)
+        self.update_btn.setMinimumWidth(240)
+        self.update_btn.setMaximumWidth(320)
         self.update_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2b5b7b;
@@ -263,6 +268,7 @@ class InstallTabMixin:
         self.update_btn.setToolTip("Обновить и проверить целостность файлов уже установленного сервера" if get_language() == 'ru' else "Update and verify files of the installed server")
         self.update_btn.clicked.connect(self.start_update)
         btn_row.addWidget(self.update_btn)
+        btn_row.addStretch()
 
         layout.addLayout(btn_row)
 
