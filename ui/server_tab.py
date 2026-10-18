@@ -13,7 +13,7 @@ from datetime import datetime
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
     QCheckBox, QComboBox, QPlainTextEdit, QGroupBox, QGridLayout, QMessageBox,
-    QInputDialog, QSizePolicy, QDialog, QListWidget, QSystemTrayIcon
+    QInputDialog, QSizePolicy, QDialog, QListWidget, QSystemTrayIcon, QFrame
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont
