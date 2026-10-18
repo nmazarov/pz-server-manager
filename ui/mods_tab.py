@@ -126,6 +126,53 @@ class ModsTabMixin:
         gl.addLayout(row)
         layout.addWidget(g)
 
+        # ── Map Load Order Section ──
+        g_maps = QGroupBox(tr('group_map_order'))
+        gl_maps = QVBoxLayout(g_maps)
+
+        lbl_map_hint = QLabel(
+            "💡 Модовые карты должны быть выше стандартной карты <b>Muldraugh, KY</b> для корректной генерации мира."
+            if get_language() == 'ru' else
+            "💡 Custom mod maps must be loaded BEFORE vanilla <b>Muldraugh, KY</b>."
+        )
+        lbl_map_hint.setStyleSheet("font-size: 11px; color: #a0a0a0;")
+        gl_maps.addWidget(lbl_map_hint)
+
+        maps_row = QHBoxLayout()
+        self.maps_order_list = QListWidget()
+        self.maps_order_list.setMaximumHeight(85)
+        self.maps_order_list.setStyleSheet("""
+            QListWidget {
+                background-color: #212121;
+                color: #e0e0e0;
+                border: 1px solid #383838;
+                border-radius: 4px;
+            }
+            QListWidget::item:selected {
+                background-color: #283747;
+                color: #ffffff;
+            }
+        """)
+        maps_row.addWidget(self.maps_order_list, 1)
+
+        map_btns = QVBoxLayout()
+        b_up = QPushButton(tr('btn_move_map_up'))
+        b_up.clicked.connect(self.move_map_up)
+        map_btns.addWidget(b_up)
+
+        b_down = QPushButton(tr('btn_move_map_down'))
+        b_down.clicked.connect(self.move_map_down)
+        map_btns.addWidget(b_down)
+
+        b_opt = QPushButton(tr('btn_optimize_map_order'))
+        b_opt.setStyleSheet("background-color: #264e36; color: #fff; font-size: 11px;")
+        b_opt.clicked.connect(self.optimize_map_order)
+        map_btns.addWidget(b_opt)
+
+        maps_row.addLayout(map_btns)
+        gl_maps.addLayout(maps_row)
+        layout.addWidget(g_maps)
+
         g2 = QGroupBox(tr('group_import_export'))
         iol = QHBoxLayout(g2)
         bi = QPushButton(tr('btn_import_mods'))
@@ -144,6 +191,12 @@ class ModsTabMixin:
         layout.addWidget(g2)
 
         row_save = QHBoxLayout()
+        btn_mod_sandbox = QPushButton(tr('btn_mod_options_quick'))
+        btn_mod_sandbox.setStyleSheet("background-color: #5b3a8c; color: #ffffff; font-weight: bold;")
+        btn_mod_sandbox.setToolTip("Перейти к детальным настройкам установленных модов в песочнице" if get_language() == 'ru' else "Open Mod Sandbox Options in Sandbox tab")
+        btn_mod_sandbox.clicked.connect(self.open_mod_sandbox_tab)
+        row_save.addWidget(btn_mod_sandbox)
+
         btn_check_compat = QPushButton("🔍 " + ("Проверить актуальность" if get_language() == 'ru' else "Check Compatibility"))
         btn_check_compat.setStyleSheet("background-color: #2e663e; color: #ffffff; font-weight: bold;")
         btn_check_compat.setToolTip("Проверить актуальность и совместимость всех модов в Steam Workshop" if get_language() == 'ru' else "Check all mods compatibility in Steam Workshop")
@@ -260,6 +313,63 @@ class ModsTabMixin:
             self.lbl_mods_banner_desc.setStyleSheet("color: #9e9e9e; font-size: 11px; background: transparent;")
             self.btn_mods_banner_action.setVisible(False)
 
+    def open_mod_sandbox_tab(self):
+        """Switch to Sandbox tab and select Mod Options subtab."""
+        if hasattr(self, 'tabs'):
+            self.tabs.setCurrentIndex(2)
+        if hasattr(self, 'sandbox_subtabs'):
+            self.sandbox_subtabs.setCurrentIndex(5)
+
+    def load_maps_list(self):
+        """Load maps from server configuration into the map order list."""
+        if not hasattr(self, 'maps_order_list'):
+            return
+        self.maps_order_list.clear()
+        try:
+            name = self.server_name_input.text().strip() or 'servertest'
+            self.config_manager.set_server_name(name)
+            cfg = self.config_manager.load_server_ini()
+            map_str = cfg.get('Map', 'Muldraugh, KY')
+            maps = [m.strip() for m in map_str.split(';') if m.strip()]
+            if not maps:
+                maps = ['Muldraugh, KY']
+            for m in maps:
+                self.maps_order_list.addItem(m)
+        except Exception as e:
+            logger.warning(f"Failed to load map order: {e}")
+
+    def move_map_up(self):
+        row = self.maps_order_list.currentRow()
+        if row > 0:
+            item = self.maps_order_list.takeItem(row)
+            self.maps_order_list.insertItem(row - 1, item)
+            self.maps_order_list.setCurrentRow(row - 1)
+
+    def move_map_down(self):
+        row = self.maps_order_list.currentRow()
+        if 0 <= row < self.maps_order_list.count() - 1:
+            item = self.maps_order_list.takeItem(row)
+            self.maps_order_list.insertItem(row + 1, item)
+            self.maps_order_list.setCurrentRow(row + 1)
+
+    def optimize_map_order(self):
+        """Ensure all custom mod maps precede vanilla Muldraugh, KY."""
+        if not hasattr(self, 'maps_order_list'):
+            return
+        all_maps = [self.maps_order_list.item(i).text() for i in range(self.maps_order_list.count())]
+        vanilla = [m for m in all_maps if m in ('Muldraugh, KY', 'Riverside, KY', 'West Point, KY', 'Rosewood, KY')]
+        mods = [m for m in all_maps if m not in ('Muldraugh, KY', 'Riverside, KY', 'West Point, KY', 'Rosewood, KY')]
+        if not vanilla:
+            vanilla = ['Muldraugh, KY']
+        new_order = mods + vanilla
+        self.maps_order_list.clear()
+        for m in new_order:
+            self.maps_order_list.addItem(m)
+        self.statusBar.showMessage(
+            "Порядок карт оптимизирован: кастомные карты загружаются первыми!" if get_language() == 'ru'
+            else "Map order optimized: custom maps load first!", 4000
+        )
+
     def get_current_server_target_version(self) -> int:
         """Determine whether the target server is Build 42 or Build 41."""
         if hasattr(self, 'target_server_build') and self.target_server_build in (41, 42):
@@ -286,6 +396,8 @@ class ModsTabMixin:
     def load_mods_list(self):
         if hasattr(self, 'update_mods_server_status_banner'):
             self.update_mods_server_status_banner()
+        if hasattr(self, 'load_maps_list'):
+            self.load_maps_list()
         self.mods_list.clear()
         target_version = self.get_current_server_target_version()
         try:
@@ -590,6 +702,33 @@ class ModsTabMixin:
             name = self.server_name_input.text().strip() or 'servertest'
             self.mod_manager.set_server_name(name)
             report = self.mod_manager.save_to_config()
+
+            # Save manual map order to servertest.ini if specified
+            if hasattr(self, 'maps_order_list') and self.maps_order_list.count() > 0:
+                maps_order = [self.maps_order_list.item(i).text() for i in range(self.maps_order_list.count())]
+                maps_str = ';'.join(maps_order)
+                ini_path = self.config_manager.get_ini_path()
+                if ini_path.exists():
+                    try:
+                        with open(ini_path, 'r', encoding='utf-8') as f:
+                            lines = f.readlines()
+                        map_found = False
+                        new_lines = []
+                        for line in lines:
+                            if line.strip().startswith('Map='):
+                                new_lines.append(f"Map={maps_str}\n")
+                                map_found = True
+                            else:
+                                new_lines.append(line)
+                        if not map_found:
+                            new_lines.append(f"Map={maps_str}\n")
+                        with open(ini_path, 'w', encoding='utf-8') as f:
+                            f.writelines(new_lines)
+                        if hasattr(self, 'setting_map'):
+                            self.setting_map.setText(maps_str)
+                    except Exception as ex:
+                        logger.warning(f"Failed to persist custom map order: {ex}")
+
             self.load_mods_list()
 
             from main import check_server_installed
@@ -597,11 +736,11 @@ class ModsTabMixin:
                 QMessageBox.information(
                     self,
                     tr('success'),
-                    "Конфигурация модов сохранена!\n\n"
+                    "Конфигурация модов и карт сохранена!\n\n"
                     "⚠️ Напоминание: сервер ещё не установлен в папке сервера. "
                     "Чтобы игра скачала эти моды из Steam Workshop, перейдите на вкладку «Установка» и установите сервер."
                     if get_language() == 'ru' else
-                    "Mod configuration saved!\n\n"
+                    "Mod & map configuration saved!\n\n"
                     "⚠️ Reminder: Server is not yet installed in the server directory. "
                     "Please switch to the 'Install' tab and install the server so Steam Workshop mods are downloaded."
                 )

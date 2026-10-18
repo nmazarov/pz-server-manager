@@ -427,8 +427,13 @@ Mods=
             'SleepingEvent': 1,
         }
 
-    def load_sandbox_vars(self, create_if_missing: bool = True) -> Dict[str, Any]:
-        """Load sandbox variables from SandboxVars.lua handling nested Lua tables or return defaults."""
+    def load_sandbox_vars_full(self, create_if_missing: bool = True) -> tuple:
+        """
+        Load sandbox variables and metadata comments from SandboxVars.lua.
+        Returns (vars_dict, meta_comments).
+        Supports root-level variables, vanilla sub-tables (ZombieLore, ZombieConfig, Map),
+        and any custom mod tables (CommonSense, MoreTraits, CompanionDogs, VFE, etc.).
+        """
         lua_path = self.get_sandbox_path()
         defaults = self.get_default_sandbox_vars()
 
@@ -439,58 +444,45 @@ Mods=
                     self.save_sandbox_vars(defaults)
                 except Exception as e:
                     logger.warning(f"Could not auto-create default sandbox vars: {e}")
-            return defaults
+            return defaults, {}
 
         vars_dict = {}
+        meta_comments = {}
+        current_category = None
+        last_comment = []
 
         try:
             with open(lua_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
-            # First try dot notation: SandboxVars.Category.Key = Value
-            dot_pattern = r'SandboxVars\.(\w+)\.(\w+)\s*=\s*([^,\n]+)'
-            dot_matches = list(re.finditer(dot_pattern, content))
-            if dot_matches:
-                for match in dot_matches:
-                    category = match.group(1)
-                    key = match.group(2)
-                    raw_val = match.group(3).strip()
-                    val = self._parse_lua_val(raw_val)
-                    if category not in vars_dict:
-                        vars_dict[category] = {}
-                    vars_dict[category][key] = val
-                logger.info(f"Loaded sandbox vars (dot notation) from {lua_path}")
-                # Merge defaults for any missing categories
-                for cat, val in defaults.items():
-                    if cat not in vars_dict:
-                        vars_dict[cat] = val
-                return vars_dict
-
-            # Otherwise parse nested Lua table structure:
-            # SandboxVars = { Category = { Key = Value, ... } }
-            current_category = None
             for line in content.splitlines():
-                line = line.strip()
-                if not line or line.startswith('--') or line.startswith('SandboxVars ='):
+                s = line.strip()
+                if s.startswith('--'):
+                    last_comment.append(s[2:].strip())
+                    continue
+                if not s or s.startswith('SandboxVars ='):
+                    last_comment = []
                     continue
 
                 # Category start: CategoryName = {
-                cat_match = re.match(r'^(\w+)\s*=\s*\{', line)
+                cat_match = re.match(r'^(\w+)\s*=\s*\{', s)
                 if cat_match:
                     category_name = cat_match.group(1)
                     if category_name != 'SandboxVars':
                         current_category = category_name
                         if current_category not in vars_dict:
                             vars_dict[current_category] = {}
+                    last_comment = []
                     continue
 
                 # Category end: },
-                if line.startswith('}') and current_category:
+                if s.startswith('}') and current_category:
                     current_category = None
+                    last_comment = []
                     continue
 
                 # Key = Value,
-                kv_match = re.match(r'^(\w+)\s*=\s*([^,\n]+)', line)
+                kv_match = re.match(r'^(\w+)\s*=\s*([^,\n]+)', s)
                 if kv_match:
                     key = kv_match.group(1)
                     raw_val = kv_match.group(2).strip().rstrip(',')
@@ -498,55 +490,144 @@ Mods=
 
                     if current_category:
                         vars_dict[current_category][key] = val
+                        if last_comment:
+                            meta_comments[(current_category, key)] = ' '.join(last_comment)
                     else:
                         vars_dict[key] = val
+                        if last_comment:
+                            meta_comments[key] = ' '.join(last_comment)
+                    last_comment = []
 
-            logger.info(f"Loaded {len(vars_dict)} sandbox categories from {lua_path}")
-            # Ensure defaults for anything missing
-            for cat, val in defaults.items():
-                if cat not in vars_dict:
-                    vars_dict[cat] = val
-            return vars_dict
+            logger.info(f"Loaded sandbox vars from {lua_path} ({len(vars_dict)} root/table keys)")
+            return vars_dict, meta_comments
 
         except Exception as e:
             logger.error(f"Failed to load sandbox vars, using defaults: {e}")
-            return defaults
-            
-    def save_sandbox_vars(self, vars_dict: Dict[str, Any]):
-        """Save sandbox variables to SandboxVars.lua."""
-        lua_path = self.get_sandbox_path()
-        
-        # Ensure directory exists
-        lua_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        try:
-            def _format_val(val):
-                if isinstance(val, bool):
-                    return 'true' if val else 'false'
-                elif isinstance(val, (int, float)):
-                    return str(val)
-                return f'"{val}"'
+            return defaults, {}
 
+    def load_sandbox_vars(self, create_if_missing: bool = True) -> Dict[str, Any]:
+        """Load sandbox variables dictionary."""
+        vars_dict, _ = self.load_sandbox_vars_full(create_if_missing=create_if_missing)
+        return vars_dict
+
+    def save_sandbox_vars(self, vars_dict: Dict[str, Any]):
+        """
+        Safely and non-destructively save sandbox variables to SandboxVars.lua.
+        Preserves all 1400+ lines of Russian/English comments, formatting, table structure,
+        and all installed mod tables without overwriting unknown settings.
+        """
+        lua_path = self.get_sandbox_path()
+        lua_path.parent.mkdir(parents=True, exist_ok=True)
+
+        def _fmt(val):
+            if isinstance(val, bool):
+                return 'true' if val else 'false'
+            elif isinstance(val, (int, float)):
+                return str(val)
+            return f'"{val}"'
+
+        if not lua_path.exists():
+            # Create fresh Lua file with defaults and provided updates
             lines = ["SandboxVars = {"]
-            
             for key, val in vars_dict.items():
                 if isinstance(val, dict):
                     lines.append(f"    {key} = {{")
-                    for subkey, subval in val.items():
-                        lines.append(f"        {subkey} = {_format_val(subval)},")
+                    for subk, subv in val.items():
+                        lines.append(f"        {subk} = {_fmt(subv)},")
                     lines.append("    },")
                 else:
-                    lines.append(f"    {key} = {_format_val(val)},")
-                    
+                    lines.append(f"    {key} = {_fmt(val)},")
             lines.append("}")
-            
             with open(lua_path, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(lines))
-                
-            logger.info(f"Saved sandbox vars to {lua_path}")
-            
+            logger.info(f"Created new sandbox vars at {lua_path}")
+            return
+
+        try:
+            with open(lua_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+
+            new_lines = []
+            current_category = None
+            updated_keys = set()
+
+            for line in lines:
+                s = line.strip()
+
+                # Table start: CategoryName = {
+                m_tab = re.match(r'^(\s*)(\w+)\s*=\s*\{', line)
+                if m_tab and m_tab.group(2) != 'SandboxVars':
+                    current_category = m_tab.group(2)
+                    new_lines.append(line)
+                    continue
+
+                # Table end: },
+                if s.startswith('}') and current_category:
+                    cat_dict = vars_dict.get(current_category)
+                    if isinstance(cat_dict, dict):
+                        for k, v in cat_dict.items():
+                            if (current_category, k) not in updated_keys:
+                                new_lines.append(f"        {k} = {_fmt(v)},\n")
+                                updated_keys.add((current_category, k))
+                    current_category = None
+                    new_lines.append(line)
+                    continue
+
+                # Key = Value,
+                m_kv = re.match(r'^(\s*)(\w+)\s*=\s*([^,\n]+)(,?.*)$', line)
+                if m_kv and not s.startswith('--'):
+                    indent = m_kv.group(1)
+                    k = m_kv.group(2)
+                    rest = m_kv.group(4)
+                    trailing_comment = ''
+                    if '--' in rest:
+                        trailing_comment = ' ' + rest[rest.index('--'):].rstrip('\r\n')
+
+                    if current_category:
+                        cat_dict = vars_dict.get(current_category)
+                        if isinstance(cat_dict, dict) and k in cat_dict:
+                            new_val = _fmt(cat_dict[k])
+                            new_lines.append(f"{indent}{k} = {new_val},{trailing_comment}\n")
+                            updated_keys.add((current_category, k))
+                            continue
+                    else:
+                        if k in vars_dict and not isinstance(vars_dict[k], dict):
+                            new_val = _fmt(vars_dict[k])
+                            new_lines.append(f"{indent}{k} = {new_val},{trailing_comment}\n")
+                            updated_keys.add((None, k))
+                            continue
+
+                new_lines.append(line)
+
+            # Append any completely new tables from vars_dict that were not in the file
+            closing_idx = -1
+            for idx in range(len(new_lines) - 1, -1, -1):
+                if new_lines[idx].strip() == '}':
+                    closing_idx = idx
+                    break
+
+            if closing_idx != -1:
+                new_tables_lines = []
+                for cat, cval in vars_dict.items():
+                    if isinstance(cval, dict) and cat != 'SandboxVars':
+                        # Check if category was processed
+                        already_present = any((cat, k) in updated_keys for k in cval)
+                        if not already_present:
+                            new_tables_lines.append(f"    {cat} = {{\n")
+                            for k, v in cval.items():
+                                new_tables_lines.append(f"        {k} = {_fmt(v)},\n")
+                            new_tables_lines.append("    },\n")
+
+                if new_tables_lines:
+                    new_lines[closing_idx:closing_idx] = new_tables_lines
+
+            with open(lua_path, 'w', encoding='utf-8') as f:
+                f.writelines(new_lines)
+
+            logger.info(f"Non-destructively updated sandbox vars in {lua_path}")
+
         except Exception as e:
-            logger.error(f"Failed to save sandbox vars: {e}")
+            logger.error(f"Failed to update sandbox vars: {e}")
             raise
             
     def get_sandbox_value(self, category: str, key: str, default: Any = None) -> Any:
