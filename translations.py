@@ -241,7 +241,7 @@ TRANSLATIONS = {
         'folder_not_found':         'Folder Not Found',
         'about_text': (
             'Project Zomboid Server Manager\n'
-            'Version 1.1.0\n\n'
+            'Version 1.1.1\n\n'
             'Cross-platform tool for installing and managing\n'
             'Project Zomboid dedicated servers.\n\n'
             'Supports Windows, macOS and Linux.\n\n'
@@ -636,7 +636,7 @@ TRANSLATIONS = {
         'folder_not_found':         'Папка не найдена',
         'about_text': (
             'Менеджер сервера Project Zomboid\n'
-            'Версия 1.1.0\n\n'
+            'Версия 1.1.1\n\n'
             'Кроссплатформенная программа для установки\n'
             'и управления выделенным сервером Project Zomboid.\n\n'
             'Поддерживает Windows, macOS и Linux.\n\n'
