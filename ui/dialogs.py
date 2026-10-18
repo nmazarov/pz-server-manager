@@ -140,10 +140,6 @@ class DialogsMixin:
             public_ip = NetworkHelper.get_public_ip(timeout=2.5)
         except Exception:
             public_ip = None
-        try:
-            local_ip = NetworkHelper.get_local_ip()
-        except Exception:
-            local_ip = "127.0.0.1"
         QApplication.restoreOverrideCursor()
 
         port = self.setting_port.value() if hasattr(self, 'setting_port') else 16261
@@ -160,19 +156,19 @@ class DialogsMixin:
         is_ru = (get_language() == 'ru')
         if is_ru:
             pwd_str = pwd if pwd else "(без пароля)"
-            ext_ip_str = public_ip if public_ip else "Не определен (используйте локальный / Radmin VPN)"
+            ext_ip_str = public_ip if public_ip else "Не определен"
+            connect_ip = public_ip if public_ip else "IP вашего сервера"
             share_text = (
                 f"🎮 Данные для подключения к серверу Project Zomboid:\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📛 Название: {srv_name}\n"
-                f"🌐 Внешний IP (Интернет): {ext_ip_str}\n"
-                f"🏠 Локальный IP (LAN / Hamachi / Radmin): {local_ip}\n"
+                f"🌐 IP сервера: {ext_ip_str}\n"
                 f"🔌 Порт: {port}\n"
                 f"🔑 Пароль сервера: {pwd_str}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📌 Как подключиться в игре:\n"
                 f"1. Главное меню -> 'Сетевая игра' (Join)\n"
-                f"2. Заполните IP ({public_ip or local_ip}), Порт ({port}) и пароль (если задан)\n"
+                f"2. Заполните IP ({connect_ip}), Порт ({port}) и пароль (если задан)\n"
                 f"3. Нажмите 'Добавить' и 'Подключиться'!"
             )
             title = "Данные скопированы в буфер обмена!"
@@ -183,19 +179,19 @@ class DialogsMixin:
             )
         else:
             pwd_str = pwd if pwd else "(no password)"
-            ext_ip_str = public_ip if public_ip else "Not detected (use Local IP / VPN)"
+            ext_ip_str = public_ip if public_ip else "Not detected"
+            connect_ip = public_ip if public_ip else "Server IP"
             share_text = (
                 f"🎮 Project Zomboid Server Connection Details:\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📛 Server Name: {srv_name}\n"
-                f"🌐 Public IP: {ext_ip_str}\n"
-                f"🏠 Local IP (LAN / VPN): {local_ip}\n"
-                f"🔌 Порт: {port}\n"
+                f"🌐 Server IP: {ext_ip_str}\n"
+                f"🔌 Port: {port}\n"
                 f"🔑 Password: {pwd_str}\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
                 f"📌 How to connect in-game:\n"
                 f"1. Main Menu -> 'Join'\n"
-                f"2. Fill in IP ({public_ip or local_ip}), Port ({port}) and Password\n"
+                f"2. Fill in IP ({connect_ip}), Port ({port}) and Password\n"
                 f"3. Click 'Add' and 'Connect'!"
             )
             title = "Connection Info Copied!"
