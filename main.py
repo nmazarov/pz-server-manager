@@ -311,12 +311,24 @@ def main():
             font-family: {mono_font}, monospace;
         }}
         QListWidget {{
-            background-color: #3d3d3d;
+            background-color: #212121;
+            alternate-background-color: #282828;
             color: #ffffff;
-            border: 1px solid #555555;
+            border: 1px solid #383838;
+            border-radius: 4px;
+            outline: none;
+        }}
+        QListWidget::item {{
+            padding: 5px 8px;
+            border-radius: 3px;
+        }}
+        QListWidget::item:hover {{
+            background-color: #2f343a;
         }}
         QListWidget::item:selected {{
-            background-color: #5294e2;
+            background-color: #283747;
+            color: #ffffff;
+            border-left: 3px solid #5294e2;
         }}
         QProgressBar {{
             border: 1px solid #555555;
@@ -350,16 +362,38 @@ def main():
             height: 18px;
         }}
         QScrollBar:vertical {{
-            background-color: #2b2b2b;
-            width: 12px;
+            background-color: #212121;
+            width: 10px;
+            border: none;
         }}
         QScrollBar::handle:vertical {{
-            background-color: #555555;
-            border-radius: 6px;
+            background-color: #444444;
+            border-radius: 5px;
             min-height: 20px;
         }}
         QScrollBar::handle:vertical:hover {{
             background-color: #666666;
+        }}
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+            height: 0px;
+            border: none;
+        }}
+        QScrollBar:horizontal {{
+            background-color: #212121;
+            height: 10px;
+            border: none;
+        }}
+        QScrollBar::handle:horizontal {{
+            background-color: #444444;
+            border-radius: 5px;
+            min-width: 20px;
+        }}
+        QScrollBar::handle:horizontal:hover {{
+            background-color: #666666;
+        }}
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+            width: 0px;
+            border: none;
         }}
         QMenuBar {{
             background-color: #2b2b2b;

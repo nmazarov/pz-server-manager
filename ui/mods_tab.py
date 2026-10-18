@@ -88,6 +88,31 @@ class ModsTabMixin:
 
         self.mods_list = QListWidget()
         self.mods_list.setAlternatingRowColors(True)
+        self.mods_list.setStyleSheet("""
+            QListWidget {
+                background-color: #212121;
+                alternate-background-color: #282828;
+                color: #e0e0e0;
+                border: 1px solid #383838;
+                border-radius: 5px;
+                padding: 4px;
+                outline: none;
+            }
+            QListWidget::item {
+                padding: 6px 10px;
+                margin: 1px 0;
+                border-radius: 3px;
+                border-left: 3px solid transparent;
+            }
+            QListWidget::item:hover {
+                background-color: #2e3339;
+            }
+            QListWidget::item:selected {
+                background-color: #283747;
+                color: #ffffff;
+                border-left: 3px solid #5294e2;
+            }
+        """)
         gl.addWidget(self.mods_list)
 
         row = QHBoxLayout()
