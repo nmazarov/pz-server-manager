@@ -12,10 +12,10 @@ from datetime import datetime
 
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
-    QCheckBox, QComboBox, QTextEdit, QGroupBox, QGridLayout, QMessageBox,
+    QCheckBox, QComboBox, QPlainTextEdit, QGroupBox, QGridLayout, QMessageBox,
     QInputDialog, QSizePolicy, QDialog, QListWidget, QSystemTrayIcon
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont
 
 from translations import tr, get_language
@@ -94,11 +94,18 @@ class ServerTabMixin:
         console_group = QGroupBox(tr('group_console'))
         conl = QVBoxLayout(console_group)
 
-        self.console_output = QTextEdit()
+        self.console_output = QPlainTextEdit()
         self.console_output.setReadOnly(True)
+        self.console_output.setMaximumBlockCount(3000)
         self.console_output.setFont(QFont(self._mono_font(), 9))
         self.console_output.setStyleSheet("background-color: #1e1e1e; color: #d4d4d4;")
         conl.addWidget(self.console_output)
+
+        self._console_buffer = []
+        self._console_timer = QTimer(self)
+        self._console_timer.setInterval(100)
+        self._console_timer.timeout.connect(self._flush_console_buffer)
+        self._console_timer.start()
 
         cmd_row = QHBoxLayout()
         self.cmd_input = QLineEdit()
@@ -255,35 +262,23 @@ class ServerTabMixin:
 
     def append_console_output(self, text: str):
         ts = datetime.now().strftime('%H:%M:%S')
-        cursor = self.console_output.textCursor()
-        cursor.movePosition(QTextCursor.End)
-        fmt = QTextCharFormat()
-        line_lower = text.lower()
-
-        if any(k in line_lower for k in ['server started', 'logged in', 'listening', 'ready', 'started']):
-            fmt.setForeground(QColor('#4CAF50'))  # Green
-        elif any(k in line_lower for k in ['error', 'failed', 'exception', 'critical']):
-            fmt.setForeground(QColor('#F44336'))  # Red
-        elif any(k in line_lower for k in ['connected', 'connecting', 'fully connected', 'disconnected', 'join']):
-            fmt.setForeground(QColor('#00BCD4'))  # Cyan / Blue
-        elif any(k in line_lower for k in ['warning', 'warn']):
-            fmt.setForeground(QColor('#FF9800'))  # Orange
-        else:
-            fmt.setForeground(QColor('#d4d4d4'))  # Light Gray
-
-        cursor.insertText(f'[{ts}] {text}\n', fmt)
-        self.console_output.setTextCursor(cursor)
-        self.console_output.ensureCursorVisible()
+        if not hasattr(self, '_console_buffer'):
+            self._console_buffer = []
+        self._console_buffer.append(f'[{ts}] {text}')
 
     def append_console_error(self, text: str):
         ts = datetime.now().strftime('%H:%M:%S')
-        cursor = self.console_output.textCursor()
-        cursor.movePosition(QTextCursor.End)
-        fmt = QTextCharFormat()
-        fmt.setForeground(QColor('#ff6666'))
-        cursor.insertText(f'[{ts}] ERROR: {text}\n', fmt)
-        self.console_output.setTextCursor(cursor)
-        self.console_output.ensureCursorVisible()
+        if not hasattr(self, '_console_buffer'):
+            self._console_buffer = []
+        self._console_buffer.append(f'[{ts}] ERROR: {text}')
+
+    def _flush_console_buffer(self):
+        if not hasattr(self, '_console_buffer') or not self._console_buffer:
+            return
+        batch = self._console_buffer
+        self._console_buffer = []
+        combined = "\n".join(batch)
+        self.console_output.appendPlainText(combined)
 
     def open_backup_manager(self):
         """Show backup manager dialog to list and restore config backups."""
