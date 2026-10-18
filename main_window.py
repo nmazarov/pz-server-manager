@@ -16,7 +16,8 @@ from PyQt5.QtWidgets import (
     QTabWidget, QStatusBar, QFrame, QMessageBox, QApplication,
     QSystemTrayIcon, QMenu, QAction, QAbstractSpinBox
 )
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtGui import QPixmap
 
 from translations import tr, set_language, get_language
 from config_manager import ConfigManager
@@ -93,10 +94,22 @@ class MainWindow(
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(12, 6, 12, 6)
 
-        logo_lbl = QLabel("🧟")
-        logo_lbl.setStyleSheet("font-size: 24px;")
+        logo_lbl = QLabel()
+        app_root = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent
+        icon_path = app_root / "assets" / "icon.png"
+        if not icon_path.exists():
+            icon_path = app_root / "icon.png"
+
+        if icon_path.exists():
+            pix = QPixmap(str(icon_path)).scaled(34, 34, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_lbl.setPixmap(pix)
+            logo_lbl.setStyleSheet("border-radius: 6px;")
+        else:
+            logo_lbl.setText("🧟")
+            logo_lbl.setStyleSheet("font-size: 24px;")
+
         title_lbl = QLabel("Project Zomboid Server Manager")
-        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #40ff40;")
+        title_lbl.setStyleSheet("font-size: 15px; font-weight: bold; color: #40ff40; margin-left: 6px;")
 
         header_layout.addWidget(logo_lbl)
         header_layout.addWidget(title_lbl)

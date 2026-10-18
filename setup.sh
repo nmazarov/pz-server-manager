@@ -57,6 +57,10 @@ chmod +x run.sh build.sh setup.sh 2>/dev/null || true
 DESKTOP_FILE="$HOME/.local/share/applications/pz-server-manager.desktop"
 if [ -d "$HOME/.local/share/applications" ]; then
     echo "[4/4] Creating desktop application shortcut..."
+    ICON_PATH="utilities-system-monitor"
+    if [ -f "$SCRIPT_DIR/assets/icon.png" ]; then
+        ICON_PATH="$SCRIPT_DIR/assets/icon.png"
+    fi
     cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
 Type=Application
@@ -66,7 +70,7 @@ Exec=$SCRIPT_DIR/run.sh
 Path=$SCRIPT_DIR
 Terminal=false
 Categories=Game;Utility;
-Icon=utilities-system-monitor
+Icon=$ICON_PATH
 EOF
     chmod +x "$DESKTOP_FILE" 2>/dev/null || true
     echo "      Shortcut created at $DESKTOP_FILE"

@@ -61,7 +61,7 @@ set SCRIPT_DIR=%~dp0
 set RUN_BAT=%SCRIPT_DIR%run.bat
 set SHORTCUT=%USERPROFILE%\Desktop\PZ Server Manager.lnk
 
-powershell -Command "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%RUN_BAT%'; $s.WorkingDirectory='%SCRIPT_DIR%'; $s.WindowStyle=1; $s.Description='Project Zomboid Server Manager'; $s.Save()"
+powershell -Command "$s=(New-Object -COM WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%RUN_BAT%'; $s.WorkingDirectory='%SCRIPT_DIR%'; $s.WindowStyle=1; $s.Description='Project Zomboid Server Manager'; if (Test-Path '%SCRIPT_DIR%assets\icon.ico') { $s.IconLocation='%SCRIPT_DIR%assets\icon.ico'; } $s.Save()"
 
 echo.
 echo ============================================================

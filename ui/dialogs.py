@@ -26,7 +26,20 @@ logger = logging.getLogger(__name__)
 
 
 def create_zombie_app_icon() -> QIcon:
-    """Programmatically generate a Project Zomboid Zombie icon for window & tray."""
+    """Load high-res Project Zomboid icon from assets or programmatically generate if missing."""
+    app_root = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent.parent
+    candidates = [
+        app_root / "assets" / "icon.ico",
+        app_root / "assets" / "icon.png",
+        app_root / "icon.ico",
+        app_root / "icon.png",
+    ]
+    for c in candidates:
+        if c.exists():
+            icon = QIcon(str(c))
+            if not icon.isNull():
+                return icon
+
     pixmap = QPixmap(64, 64)
     pixmap.fill(Qt.transparent)
 

@@ -39,7 +39,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('assets', 'assets')],
     hiddenimports=[
         'PyQt5.sip',
         'PyQt5.QtCore',
@@ -111,4 +111,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     uac_admin=False,
+    icon='assets/icon.ico',
 )

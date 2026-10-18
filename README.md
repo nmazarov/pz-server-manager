@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" alt="Project Zomboid Server Manager" width="750"/>
+</p>
+
 # 🧟 Project Zomboid Dedicated Server Manager (v1.1)
 
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-3776AB.svg?logo=python&logoColor=white)](https://python.org)
