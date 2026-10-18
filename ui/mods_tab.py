@@ -548,8 +548,6 @@ class ModsTabMixin:
             report = self.mod_manager.analyze_and_order_mods()
             QApplication.processEvents()
             self.load_mods_list()
-        finally:
-            QApplication.restoreOverrideCursor()
 
             msg_parts = []
             if report.get('missing_workshop_ids'):
@@ -584,6 +582,8 @@ class ModsTabMixin:
             QMessageBox.information(self, tr('msg_mod_analysis_title'), "\n\n".join(msg_parts))
         except Exception as e:
             QMessageBox.critical(self, tr('error'), f"Ошибка анализа модов: {e}")
+        finally:
+            QApplication.restoreOverrideCursor()
 
     def save_mods(self):
         try:
