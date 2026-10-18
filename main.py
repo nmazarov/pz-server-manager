@@ -154,7 +154,7 @@ def check_server_installed(paths: dict) -> bool:
 
 
 def _load_custom_fonts():
-    """Load bundled Exo 2 and JetBrains Mono fonts into Qt font database."""
+    """Load bundled Inter and JetBrains Mono fonts into Qt font database."""
     base_dirs = []
     if getattr(sys, 'frozen', False):
         if hasattr(sys, '_MEIPASS'):
@@ -162,14 +162,15 @@ def _load_custom_fonts():
         base_dirs.append(Path(sys.executable).parent)
     base_dirs.append(Path(__file__).resolve().parent)
 
-    exo_found = False
+    inter_found = False
     jb_found = False
     for base in base_dirs:
-        if not exo_found:
-            exo_file = base / "assets" / "fonts" / "Exo2.ttf"
-            if exo_file.exists():
-                QFontDatabase.addApplicationFont(str(exo_file))
-                exo_found = True
+        if not inter_found:
+            for font_name in ["Inter-Regular.ttf", "Inter-Bold.ttf", "Inter.ttf"]:
+                inter_file = base / "assets" / "fonts" / font_name
+                if inter_file.exists():
+                    QFontDatabase.addApplicationFont(str(inter_file))
+                    inter_found = True
         if not jb_found:
             jb_file = base / "assets" / "fonts" / "JetBrainsMono.ttf"
             if jb_file.exists():
@@ -178,10 +179,10 @@ def _load_custom_fonts():
 
 
 def _get_platform_font() -> QFont:
-    """Get Exo 2 font for Project Zomboid dark tactical aesthetic, with system fallbacks."""
+    """Get Inter font for clean, modern UI aesthetic, with system fallbacks."""
     families = QFontDatabase().families()
-    if "Exo 2" in families:
-        return QFont("Exo 2", 10)
+    if "Inter" in families:
+        return QFont("Inter", 10)
     system = platform.system()
     if system == 'Windows':
         return QFont("Segoe UI", 10)
@@ -239,7 +240,7 @@ def main():
         QMainWindow, QWidget {{
             background-color: #2b2b2b;
             color: #ffffff;
-            font-family: 'Exo 2', 'Segoe UI', -apple-system, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }}
         QLabel {{
             background-color: transparent;
