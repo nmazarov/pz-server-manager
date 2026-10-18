@@ -96,7 +96,7 @@ class ServerProcess(QObject):
         self.output_reader: Optional[OutputReader] = None
         self._server_name = "servertest"
 
-    def start(self, server_name: str = "servertest"):
+    def start(self, server_name: str = "servertest", ram_gb: int = 6):
         """Start the game server."""
         if self.is_running():
             logger.warning("Server is already running")
@@ -112,21 +112,24 @@ class ServerProcess(QObject):
                 "Please install the server first."
             )
 
-        logger.info(f"Starting server with executable: {server_exe}")
+        logger.info(f"Starting server with executable: {server_exe} (RAM: {ram_gb} GB)")
 
         try:
             # Build command based on executable type
+            ram_flag = f"-Xmx{ram_gb}g"
+            ram_ms_flag = f"-Xms{min(4, ram_gb)}g"
             if server_exe.suffix == '.bat':
-                # Windows batch file
-                cmd = [str(server_exe)]
+                # Pass server name and RAM overrides to batch file
+                cmd = [str(server_exe), "-servername", server_name, ram_ms_flag, ram_flag]
             elif server_exe.suffix == '.sh':
                 # Unix shell script
-                cmd = ["bash", str(server_exe)]
+                cmd = ["bash", str(server_exe), "-servername", server_name, ram_ms_flag, ram_flag]
             else:
                 # Direct executable with arguments
                 cmd = [
                     str(server_exe),
                     "-servername", server_name,
+                    ram_ms_flag, ram_flag,
                     "-statistic", "0"
                 ]
 
@@ -148,7 +151,7 @@ class ServerProcess(QObject):
                 # Windows-specific: STARTUPINFO and creation flags
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                startupinfo.wShowWindow = subprocess.SW_MINIMIZE
+                startupinfo.wShowWindow = 6  # SW_MINIMIZE
                 kwargs['startupinfo'] = startupinfo
                 kwargs['creationflags'] = subprocess.CREATE_NEW_PROCESS_GROUP
             else:

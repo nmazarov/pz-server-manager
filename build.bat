@@ -69,9 +69,12 @@ echo.
 echo ========================================
 echo   Build Complete!
 echo ========================================
-echo.
-echo Standalone Executable Folder:
-echo   dist\PZ Server Manager\PZ Server Manager.exe
+if exist "dist\PZ Server Manager.exe" (
+    copy /y "dist\PZ Server Manager.exe" ".\PZ Server Manager.exe" >nul
+)
+
+echo Standalone Executable:
+echo   PZ Server Manager.exe
 echo.
 
 REM Deactivate virtual environment

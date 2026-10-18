@@ -43,28 +43,84 @@ class ConfigManager:
         """Get path to the spawnregions.lua file."""
         return self.server_config_dir / f"{self._server_name}_spawnregions.lua"
         
+    def get_default_server_ini(self) -> Dict[str, str]:
+        """Return full standard default configuration for a PZ dedicated server."""
+        return {
+            'PublicName': 'My PZ Server',
+            'PublicDescription': 'A Project Zomboid Dedicated Server',
+            'Password': '',
+            'MaxPlayers': '16',
+            'DefaultPort': '16261',
+            'UDPPort': '16262',
+            'SteamPort1': '8766',
+            'SteamPort2': '8767',
+            'RCONPort': '27015',
+            'RCONPassword': '',
+            'Open': 'true',
+            'PVP': 'true',
+            'PauseEmpty': 'true',
+            'AllowCoop': 'true',
+            'SleepAllowed': 'false',
+            'SleepNeeded': 'false',
+            'AnnounceDeath': 'false',
+            'NoFire': 'false',
+            'AllowDestructionBySledgehammer': 'true',
+            'DropOnDeath': '1',
+            'SpawnPoint': '0,0,0',
+            'Map': 'Muldraugh, KY',
+            'ServerWelcomeMessage': 'Welcome to Project Zomboid Dedicated Server!',
+            'PlayerSafehouse': 'false',
+            'AdminSafehouse': 'false',
+            'SafehouseAllowTreassing': 'false',
+            'SafehouseAllowFire': 'false',
+            'SafehouseAllowLoot': 'false',
+            'SafehouseAllowRespawn': 'false',
+            'GlobalChat': 'true',
+            'SafetySystem': 'true',
+            'ShowSafety': 'true',
+            'DisplayUserName': 'true',
+            'VoiceEnable': 'true',
+            'Voice3D': 'true',
+            'VoiceMinDistance': '10',
+            'VoiceMaxDistance': '100',
+            'UseSecureJoin': 'false',
+            'AllowNonAsciiUsername': 'false',
+            'AutoCreateUserInWhiteList': 'false',
+            'MaxAccountsPerUser': '0',
+            'SpeedLimit': '70',
+            'AdminPassword': '',
+            'SaveWorldEveryMinutes': '15',
+            'BackupsCount': '5',
+            'BackupsPeriod': '0',
+            'WorkshopItems': '',
+            'Mods': '',
+            'ServerRAM': '8',
+        }
+
     # ===== INI File Handling =====
     
-    def load_server_ini(self) -> Dict[str, str]:
-        """Load server settings from .ini file."""
+    def load_server_ini(self, create_if_missing: bool = True) -> Dict[str, str]:
+        """Load server settings from .ini file or provide defaults if missing."""
         ini_path = self.get_ini_path()
+        defaults = self.get_default_server_ini()
         
         if not ini_path.exists():
-            logger.warning(f"INI file not found: {ini_path}")
-            raise FileNotFoundError(f"Config file not found: {ini_path}")
+            logger.info(f"INI file not found at {ini_path}. Using standard defaults.")
+            if create_if_missing:
+                try:
+                    self.save_server_ini(defaults)
+                except Exception as e:
+                    logger.warning(f"Could not auto-create default INI: {e}")
+            return defaults
         
-        config = {}
+        config = dict(defaults)
         
         try:
             with open(ini_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
-                    
-                    # Skip comments and empty lines
                     if not line or line.startswith('#') or line.startswith(';'):
                         continue
-                    
-                    # Parse key=value
                     if '=' in line:
                         key, _, value = line.partition('=')
                         config[key.strip()] = value.strip()
@@ -73,23 +129,21 @@ class ConfigManager:
             return config
             
         except Exception as e:
-            logger.error(f"Failed to load INI file: {e}")
-            raise
+            logger.error(f"Failed to load INI file, falling back to defaults: {e}")
+            return defaults
             
     def save_server_ini(self, settings: Dict[str, str]):
         """Save server settings to .ini file, preserving comments and order."""
         ini_path = self.get_ini_path()
-        
-        # Ensure directory exists
         ini_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # If file exists, update it preserving structure
         if ini_path.exists():
             self._update_ini_file(ini_path, settings)
         else:
-            # Create new file with default structure
             self._create_ini_file(ini_path, settings)
             
+        # Also ensure spawn points are present
+        self.ensure_spawn_files()
         logger.info(f"Saved settings to {ini_path}")
         
     def _update_ini_file(self, path: Path, settings: Dict[str, str]):
@@ -223,60 +277,208 @@ Mods=
         
     # ===== Lua File Handling =====
     
-    def load_sandbox_vars(self) -> Dict[str, Any]:
-        """Load sandbox variables from SandboxVars.lua."""
+    def _parse_lua_val(self, value: str) -> Any:
+        """Parse raw Lua string value into Python bool, int, float, or str."""
+        value = value.strip().rstrip(',')
+        if value.lower() == 'true':
+            return True
+        elif value.lower() == 'false':
+            return False
+        elif value.isdigit() or (value.startswith('-') and value[1:].isdigit()):
+            return int(value)
+        elif '.' in value:
+            try:
+                f_val = float(value)
+                if f_val.is_integer():
+                    return int(f_val)
+                return f_val
+            except ValueError:
+                return value.strip('"\'')
+        else:
+            return value.strip('"\'')
+
+    def get_default_sandbox_vars(self) -> Dict[str, Any]:
+        """Return full standard default vanilla SandboxVars dictionary."""
+        return {
+            'VERSION': 5,
+            'Zombies': {'Count': 3},
+            'ZombieConfig': {
+                'PopulationMultiplier': 1.0,
+                'PopulationStartMultiplier': 1.0,
+                'PopulationPeakMultiplier': 1.5,
+                'PopulationPeakDay': 28,
+                'RespawnHours': 72.0,
+                'RespawnUnseenHours': 16.0,
+                'RespawnMultiplier': 0.1,
+                'RedistributeHours': 12.0,
+                'FollowSoundDistance': 100,
+                'RallyGroupSize': 20,
+                'RallyTravelDistance': 20,
+                'RallyGroupSeparation': 15,
+                'RallyGroupRadius': 3,
+            },
+            'ZombieLore': {
+                'Speed': 2,
+                'Strength': 2,
+                'Toughness': 2,
+                'Transmission': 1,
+                'Mortality': 5,
+                'Reanimate': 3,
+                'Cognition': 3,
+                'CrawlUnderVehicle': 5,
+                'Memory': 2,
+                'Decomp': 1,
+                'Sight': 2,
+                'Hearing': 2,
+                'Smell': 2,
+                'EnvironmentalAttacks': True,
+                'DamageOnAttack': True,
+                'TriggerHouseAlarm': False,
+                'ThumpNoChasing': False,
+            },
+            'GameTime': {
+                'StartYear': 1,
+                'StartMonth': 7,
+                'StartDay': 9,
+                'StartTime': 2,
+                'DayLength': 2,
+            },
+            'Loot': {
+                'Other': 2,
+                'Medical': 2,
+                'SurvivalGears': 2,
+                'CannedFood': 2,
+                'Literature': 2,
+                'FreshFood': 2,
+                'Weapon': 2,
+                'Ammo': 2,
+                'Mechanics': 2,
+            },
+            'Climate': {
+                'Temperature': 3,
+                'Rain': 3,
+                'ErosionSpeed': 3,
+                'ErosionDays': 100,
+            },
+            'Cars': {
+                'SpawnRate': 2,
+                'VehicleEasyUse': False,
+                'ZombieAttractionMultiplier': 1.0,
+                'CarGasConsumption': 1.0,
+                'ChanceHasGas': 2,
+                'InitialGas': 2,
+            },
+            'Character': {
+                'XPMultiplier': 1.0,
+                'FreePoints': 0,
+                'PlayerDamage': 2,
+            },
+            'Farming': {
+                'FarmingSpeed': 3,
+                'PlantResilience': 3,
+                'PlantAbundance': 3,
+            },
+            'Map': {
+                'AllowMiniMap': True,
+                'AllowWorldMap': True,
+                'MapAllKnown': False,
+            },
+            'WaterShutModifier': 14,
+            'ElecShutModifier': 14,
+            'TimeSinceApo': 1,
+            'NightDarkness': 2,
+            'FireSpread': True,
+            'Helicopter': 2,
+            'MetaEvent': 2,
+            'SleepingEvent': 1,
+        }
+
+    def load_sandbox_vars(self, create_if_missing: bool = True) -> Dict[str, Any]:
+        """Load sandbox variables from SandboxVars.lua handling nested Lua tables or return defaults."""
         lua_path = self.get_sandbox_path()
-        
+        defaults = self.get_default_sandbox_vars()
+
         if not lua_path.exists():
-            logger.warning(f"Sandbox file not found: {lua_path}")
-            raise FileNotFoundError(f"Sandbox file not found: {lua_path}")
-        
+            logger.info(f"Sandbox file not found at {lua_path}. Using standard defaults.")
+            if create_if_missing:
+                try:
+                    self.save_sandbox_vars(defaults)
+                except Exception as e:
+                    logger.warning(f"Could not auto-create default sandbox vars: {e}")
+            return defaults
+
         vars_dict = {}
-        
+
         try:
             with open(lua_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-            
-            # Parse Lua assignments
-            # Handles: SandboxVars.ZombieLore.Speed = 3,
-            pattern = r'SandboxVars\.(\w+)\.(\w+)\s*=\s*([^,\n]+)'
-            
-            for match in re.finditer(pattern, content):
-                category = match.group(1)
-                key = match.group(2)
-                value = match.group(3).strip()
-                
-                # Clean up value
-                if value.lower() == 'true':
-                    value = True
-                elif value.lower() == 'false':
-                    value = False
-                elif value.isdigit():
-                    value = int(value)
-                elif '.' in value:
-                    try:
-                        f_val = float(value)
-                        if f_val.is_integer():
-                            value = int(f_val)
-                        else:
-                            value = f_val
-                    except ValueError:
-                        value = value.strip('"\'')
-                else:
-                    value = value.strip('"\'')
-                
-                if category not in vars_dict:
-                    vars_dict[category] = {}
-                vars_dict[category][key] = value
-                
-            logger.info(f"Loaded sandbox vars from {lua_path}")
+
+            # First try dot notation: SandboxVars.Category.Key = Value
+            dot_pattern = r'SandboxVars\.(\w+)\.(\w+)\s*=\s*([^,\n]+)'
+            dot_matches = list(re.finditer(dot_pattern, content))
+            if dot_matches:
+                for match in dot_matches:
+                    category = match.group(1)
+                    key = match.group(2)
+                    raw_val = match.group(3).strip()
+                    val = self._parse_lua_val(raw_val)
+                    if category not in vars_dict:
+                        vars_dict[category] = {}
+                    vars_dict[category][key] = val
+                logger.info(f"Loaded sandbox vars (dot notation) from {lua_path}")
+                # Merge defaults for any missing categories
+                for cat, val in defaults.items():
+                    if cat not in vars_dict:
+                        vars_dict[cat] = val
+                return vars_dict
+
+            # Otherwise parse nested Lua table structure:
+            # SandboxVars = { Category = { Key = Value, ... } }
+            current_category = None
+            for line in content.splitlines():
+                line = line.strip()
+                if not line or line.startswith('--') or line.startswith('SandboxVars ='):
+                    continue
+
+                # Category start: CategoryName = {
+                cat_match = re.match(r'^(\w+)\s*=\s*\{', line)
+                if cat_match:
+                    category_name = cat_match.group(1)
+                    if category_name != 'SandboxVars':
+                        current_category = category_name
+                        if current_category not in vars_dict:
+                            vars_dict[current_category] = {}
+                    continue
+
+                # Category end: },
+                if line.startswith('}') and current_category:
+                    current_category = None
+                    continue
+
+                # Key = Value,
+                kv_match = re.match(r'^(\w+)\s*=\s*([^,\n]+)', line)
+                if kv_match:
+                    key = kv_match.group(1)
+                    raw_val = kv_match.group(2).strip().rstrip(',')
+                    val = self._parse_lua_val(raw_val)
+
+                    if current_category:
+                        vars_dict[current_category][key] = val
+                    else:
+                        vars_dict[key] = val
+
+            logger.info(f"Loaded {len(vars_dict)} sandbox categories from {lua_path}")
+            # Ensure defaults for anything missing
+            for cat, val in defaults.items():
+                if cat not in vars_dict:
+                    vars_dict[cat] = val
             return vars_dict
-            
+
         except Exception as e:
-            logger.error(f"Failed to load sandbox vars: {e}")
-            raise
+            logger.error(f"Failed to load sandbox vars, using defaults: {e}")
+            return defaults
             
-    def save_sandbox_vars(self, vars_dict: Dict[str, Dict[str, Any]]):
+    def save_sandbox_vars(self, vars_dict: Dict[str, Any]):
         """Save sandbox variables to SandboxVars.lua."""
         lua_path = self.get_sandbox_path()
         
@@ -284,24 +486,24 @@ Mods=
         lua_path.parent.mkdir(parents=True, exist_ok=True)
         
         try:
+            def _format_val(val):
+                if isinstance(val, bool):
+                    return 'true' if val else 'false'
+                elif isinstance(val, (int, float)):
+                    return str(val)
+                return f'"{val}"'
+
             lines = ["SandboxVars = {"]
             
-            for category, values in vars_dict.items():
-                lines.append(f"    {category} = {{")
-                
-                for key, value in values.items():
-                    # Format value based on type
-                    if isinstance(value, bool):
-                        formatted_value = 'true' if value else 'false'
-                    elif isinstance(value, (int, float)):
-                        formatted_value = str(value)
-                    else:
-                        formatted_value = f'"{value}"'
+            for key, val in vars_dict.items():
+                if isinstance(val, dict):
+                    lines.append(f"    {key} = {{")
+                    for subkey, subval in val.items():
+                        lines.append(f"        {subkey} = {_format_val(subval)},")
+                    lines.append("    },")
+                else:
+                    lines.append(f"    {key} = {_format_val(val)},")
                     
-                    lines.append(f"        {key} = {formatted_value},")
-                    
-                lines.append("    },")
-                
             lines.append("}")
             
             with open(lua_path, 'w', encoding='utf-8') as f:
@@ -480,4 +682,45 @@ Mods=
 
         self.save_sandbox_vars(vars_dict)
         logger.info(f"Applied sandbox preset: {preset_name}")
+
+    def ensure_spawn_files(self):
+        """Ensure spawnpoints and spawnregions files exist with default vanilla data."""
+        self.server_config_dir.mkdir(parents=True, exist_ok=True)
+
+        spawnregions_path = self.get_spawnregions_path()
+        if not spawnregions_path.exists():
+            default_regions = (
+                "function SpawnRegions()\n"
+                "\treturn {\n"
+                '\t\t{ name = "Muldraugh, KY", file = "media/maps/Muldraugh, KY/spawnpoints.lua" },\n'
+                '\t\t{ name = "Riverside, KY", file = "media/maps/Riverside, KY/spawnpoints.lua" },\n'
+                '\t\t{ name = "Rosewood, KY", file = "media/maps/Rosewood, KY/spawnpoints.lua" },\n'
+                '\t\t{ name = "West Point, KY", file = "media/maps/West Point, KY/spawnpoints.lua" },\n'
+                "\t}\n"
+                "end\n"
+            )
+            try:
+                with open(spawnregions_path, 'w', encoding='utf-8') as f:
+                    f.write(default_regions)
+                logger.info(f"Created default spawnregions at {spawnregions_path}")
+            except Exception as e:
+                logger.error(f"Failed to create spawnregions file: {e}")
+
+        spawnpoints_path = self.get_spawnpoints_path()
+        if not spawnpoints_path.exists():
+            default_points = (
+                "function SpawnPoints()\n"
+                "\treturn {\n"
+                "\t\tunemployed = {\n"
+                "\t\t\t{ posX = 12067, posY = 6801, posZ = 0 },\n"
+                "\t\t},\n"
+                "\t}\n"
+                "end\n"
+            )
+            try:
+                with open(spawnpoints_path, 'w', encoding='utf-8') as f:
+                    f.write(default_points)
+                logger.info(f"Created default spawnpoints at {spawnpoints_path}")
+            except Exception as e:
+                logger.error(f"Failed to create spawnpoints file: {e}")
 

@@ -13,9 +13,11 @@ import zipfile
 import tarfile
 import subprocess
 import urllib.request
+import json
 import shutil
 import stat
 import platform
+import re
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -25,6 +27,68 @@ logger = logging.getLogger(__name__)
 
 # Constants
 PZ_APP_ID = "380870"  # Project Zomboid Dedicated Server
+
+
+def fetch_available_server_branches() -> list:
+    """
+    Fetch the currently available public beta branches and versions from Steam for App 380870.
+    Returns a list of dicts: [{'branch': '', 'key': 'public', 'label': '...', 'buildid': '...', 'description': '...'}]
+    """
+    url = f"https://api.steamcmd.net/v1/info/{PZ_APP_ID}"
+    branches_list = []
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            raw_branches = data.get('data', {}).get(PZ_APP_ID, {}).get('depots', {}).get('branches', {})
+            for b_key, b_info in raw_branches.items():
+                if b_info.get('pwdrequired') == '1':
+                    continue
+                build_id = b_info.get('buildid', '')
+                desc = b_info.get('description', '')
+
+                ver_num = buildid_to_game_version(build_id, b_key)
+                if b_key == 'public':
+                    label = f"Версия {ver_num} — Актуальная (Public Build)"
+                elif b_key == 'unstable':
+                    label = f"Версия {ver_num} — Unstable (Тестовая)"
+                elif b_key == '42.19':
+                    label = "Версия 42.19.2"
+                elif b_key == 'legacy41':
+                    label = "Версия 41.78.21 — Старая ветка (Legacy Build 41)"
+                elif desc:
+                    label = f"Версия {ver_num} — {desc}"
+                else:
+                    label = f"Версия {ver_num} ({b_key})"
+
+                branches_list.append({
+                    'branch': '' if b_key == 'public' else b_key,
+                    'key': b_key,
+                    'label': label,
+                    'buildid': build_id,
+                    'description': desc,
+                })
+        logger.info(f"Loaded {len(branches_list)} server branches from Steam for App {PZ_APP_ID}")
+    except Exception as e:
+        logger.warning(f"Failed to fetch live branches from api.steamcmd.net: {e}")
+
+    if not branches_list:
+        branches_list = [
+            {'branch': '', 'key': 'public', 'label': 'Версия 42.21 — Актуальная (Public Build)', 'buildid': '', 'description': 'Public'},
+            {'branch': 'unstable', 'key': 'unstable', 'label': 'Версия 42.21 — Unstable (Тестовая)', 'buildid': '', 'description': 'Unstable'},
+            {'branch': '42.19', 'key': '42.19', 'label': 'Версия 42.19.2', 'buildid': '', 'description': 'Build 42.19'},
+            {'branch': 'legacy41', 'key': 'legacy41', 'label': 'Версия 41.78.21 — Старая ветка (Legacy Build 41)', 'buildid': '', 'description': 'Legacy 41'},
+        ]
+
+    branches_list.append({
+        'branch': 'custom',
+        'key': 'custom',
+        'label': 'custom — Другая ветка (Custom Beta Branch)…',
+        'buildid': '',
+        'description': 'Custom branch'
+    })
+
+    return branches_list
 
 
 def get_steamcmd_url() -> str:
@@ -64,12 +128,19 @@ def check_disk_space(target_path: Path, required_gb: float = 5.0) -> tuple:
 def find_existing_server_installations() -> list:
     """Scan common paths for an existing Project Zomboid Dedicated Server."""
     program_data = os.environ.get("ProgramData", "C:\\ProgramData")
+    app_root = Path(sys.executable).parent.resolve() if getattr(sys, 'frozen', False) else Path(__file__).parent.resolve()
+
     candidates = [
+        app_root / "servertest",
+        app_root / "PZServer",
         Path("C:/PZServer"),
         Path("C:/Program Files (x86)/Steam/steamapps/common/Project Zomboid Dedicated Server"),
         Path("C:/Program Files/Steam/steamapps/common/Project Zomboid Dedicated Server"),
         Path("D:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
         Path("E:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("F:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("G:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
+        Path("H:/SteamLibrary/steamapps/common/Project Zomboid Dedicated Server"),
         Path(program_data) / "PZServer",
         Path.home() / "pzserver",
     ]
@@ -87,6 +158,133 @@ def find_existing_server_installations() -> list:
     return found
 
 
+KNOWN_BUILD_VERSIONS = {
+    '25485538': '42.21',
+    '25485521': '42.21',
+    '24929695': '42.19.2',
+    '24928750': '41.78.21',
+    '22418194': '41.78.18',
+}
+
+
+def buildid_to_game_version(build_id: Optional[str], default_branch: str = "public") -> str:
+    """Convert Steam buildid or branch to human-readable game version string like 42.21."""
+    if not build_id:
+        return "42.21" if default_branch in ('public', 'unstable', '') else "41.78.21"
+    
+    clean_id = str(build_id).strip()
+    if clean_id in KNOWN_BUILD_VERSIONS:
+        return KNOWN_BUILD_VERSIONS[clean_id]
+    
+    # If build id is newer than known 42.21 build
+    try:
+        val = int(clean_id)
+        if val >= 25485538:
+            return "42.21+"
+        elif val >= 24929695:
+            return "42.19"
+        else:
+            return "41.78"
+    except Exception:
+        pass
+    return "42.21"
+
+
+def get_installed_server_buildid(server_dir: Path) -> Optional[str]:
+    """
+    Detect the installed BuildID for Project Zomboid Dedicated Server.
+    Checks steamapps/appmanifest_380870.acf in server_dir and its parent directories.
+    """
+    candidates = [
+        server_dir / "steamapps" / f"appmanifest_{PZ_APP_ID}.acf",
+        server_dir.parent / "steamapps" / f"appmanifest_{PZ_APP_ID}.acf",
+        server_dir.parent.parent / f"appmanifest_{PZ_APP_ID}.acf",
+        server_dir / "steamcmd" / "steamapps" / f"appmanifest_{PZ_APP_ID}.acf",
+    ]
+    for acf_path in candidates:
+        if acf_path.exists():
+            try:
+                with open(acf_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line in f:
+                        m = re.search(r'"buildid"\s+"(\d+)"', line)
+                        if m:
+                            return m.group(1)
+            except Exception as e:
+                logger.debug(f"Could not read {acf_path}: {e}")
+    return None
+
+
+def check_server_update_available(server_dir: Path, beta_branch: str = "") -> dict:
+    """
+    Check if a new version of the PZ Dedicated Server is available on Steam.
+    Returns:
+        {
+            'update_available': bool,
+            'installed_version': str,
+            'latest_version': str,
+            'installed_buildid': str or None,
+            'latest_buildid': str or None,
+            'branch': str,
+            'description': str
+        }
+    """
+    installed_id = get_installed_server_buildid(server_dir)
+    branches = fetch_available_server_branches()
+    target_key = beta_branch if beta_branch else 'public'
+    latest_id = None
+    desc = ''
+
+    for b in branches:
+        if b['key'] == target_key:
+            latest_id = b.get('buildid')
+            desc = b.get('label', '')
+            break
+
+    if not latest_id and branches:
+        # Fallback to public branch
+        for b in branches:
+            if b['key'] == 'public':
+                latest_id = b.get('buildid')
+                desc = b.get('label', '')
+                break
+
+    installed_ver = buildid_to_game_version(installed_id, target_key)
+    latest_ver = buildid_to_game_version(latest_id, target_key)
+
+    update_available = False
+    if installed_id and latest_id and installed_id != latest_id:
+        update_available = True
+
+    return {
+        'update_available': update_available,
+        'installed_version': installed_ver,
+        'latest_version': latest_ver,
+        'installed_buildid': installed_id,
+        'latest_buildid': latest_id,
+        'branch': target_key,
+        'description': desc
+    }
+
+
+class ServerUpdateCheckerWorker(QThread):
+    """Background worker to check for Project Zomboid server updates on Steam."""
+
+    update_found = pyqtSignal(dict)  # Emits update info dict when an update is available
+
+    def __init__(self, server_dir: Path, beta_branch: str = ""):
+        super().__init__()
+        self.server_dir = server_dir
+        self.beta_branch = beta_branch
+
+    def run(self):
+        try:
+            res = check_server_update_available(self.server_dir, self.beta_branch)
+            if res.get('update_available'):
+                self.update_found.emit(res)
+        except Exception as e:
+            logger.debug(f"Background server update check failed: {e}")
+
+
 class InstallWorker(QThread):
     """Worker thread for installation process."""
 
@@ -95,10 +293,17 @@ class InstallWorker(QThread):
     finished = pyqtSignal()  # Installation complete
     error = pyqtSignal(str)  # Error message
 
-    def __init__(self, installer: 'ServerInstaller', paths: dict):
+    def __init__(self, installer: 'ServerInstaller', paths: dict, beta_branch: str = ""):
         super().__init__()
         self.installer = installer
         self.paths = paths
+        self.beta_branch = beta_branch
+        # Sync installer directories with current paths chosen by user
+        if 'server_dir' in paths:
+            self.installer.server_dir = paths['server_dir']
+        if 'steamcmd_dir' in paths:
+            self.installer.steamcmd_dir = paths['steamcmd_dir']
+        self.installer._sanitize_paths()
 
     def run(self):
         """Run the installation process."""
@@ -143,11 +348,13 @@ class InstallWorker(QThread):
             self.log.emit("SteamCMD initialization complete")
 
             # Step 4: Install/Update Project Zomboid Server
-            self.progress.emit(50, "Installing Project Zomboid Server...")
-            self.log.emit("Installing Project Zomboid Dedicated Server...")
+            branch_info = f" ({self.beta_branch})" if self.beta_branch else ""
+            self.progress.emit(50, f"Installing Project Zomboid Server{branch_info}...")
+            self.log.emit(f"Installing Project Zomboid Dedicated Server{branch_info}...")
             self.log.emit("This may take a while depending on your connection...")
 
             self.installer.install_pz_server(
+                beta_branch=self.beta_branch,
                 callback=lambda msg: self.log.emit(msg),
                 progress_callback=lambda p: self.progress.emit(50 + int(p * 0.45), "Downloading server files...")
             )
@@ -176,6 +383,21 @@ class ServerInstaller:
         self.paths = paths
         self.server_dir = paths['server_dir']
         self.steamcmd_dir = paths['steamcmd_dir']
+        self._sanitize_paths()
+
+    def _sanitize_paths(self):
+        """Sanitize paths to ensure SteamCMD runs on pure ASCII path."""
+        try:
+            str(self.steamcmd_dir).encode('ascii')
+        except UnicodeEncodeError:
+            system_drive = os.environ.get("SystemDrive", "C:")
+            self.steamcmd_dir = Path(f"{system_drive}/PZServer/steamcmd")
+
+        try:
+            str(self.server_dir).encode('ascii')
+        except UnicodeEncodeError:
+            system_drive = os.environ.get("SystemDrive", "C:")
+            self.server_dir = Path(f"{system_drive}/PZServer")
 
     def ensure_directories(self):
         """Create necessary directories."""
@@ -204,15 +426,32 @@ class ServerInstaller:
             callback(f"Downloading from {url}")
 
         try:
-            # Download with progress
-            def reporthook(block_num, block_size, total_size):
-                if total_size > 0:
-                    downloaded = block_num * block_size
-                    percent = min(100, downloaded * 100 // total_size)
-                    if callback and block_num % 10 == 0:
-                        callback(f"Downloaded: {downloaded // 1024}KB / {total_size // 1024}KB ({percent}%)")
+            import ssl
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
 
-            urllib.request.urlretrieve(url, archive_path, reporthook)
+            req = urllib.request.Request(
+                url,
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            )
+
+            with urllib.request.urlopen(req, context=ctx) as response, open(archive_path, 'wb') as out_file:
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded = 0
+                block_size = 65536
+
+                while True:
+                    buffer = response.read(block_size)
+                    if not buffer:
+                        break
+                    downloaded += len(buffer)
+                    out_file.write(buffer)
+
+                    if total_size > 0 and callback:
+                        percent = min(100, int(downloaded * 100 / total_size))
+                        if downloaded % (block_size * 5) == 0 or percent == 100:
+                            callback(f"Downloaded: {downloaded // 1024}KB / {total_size // 1024}KB ({percent}%)")
 
             if callback:
                 callback("Download complete")
@@ -314,6 +553,7 @@ class ServerInstaller:
 
     def install_pz_server(
         self,
+        beta_branch: str = "",
         callback: Optional[Callable[[str], None]] = None,
         progress_callback: Optional[Callable[[float], None]] = None
     ):
@@ -333,8 +573,12 @@ class ServerInstaller:
             if os.name == 'nt':
                 server_dir_str = server_dir_str.replace('/', '\\')
 
+            branch_clean = beta_branch.strip()
+            beta_arg = f"-beta {branch_clean} " if branch_clean else ""
+
             if callback:
-                callback(f"Installing PZ Dedicated Server (App ID: {PZ_APP_ID})...")
+                branch_msg = f" [Branch: {branch_clean}]" if branch_clean else " [Build 42 Public]"
+                callback(f"Installing PZ Dedicated Server (App ID: {PZ_APP_ID}){branch_msg}...")
                 callback(f"Install directory: {server_dir_str}")
 
             # Create SteamCMD script file for more reliable execution
@@ -343,7 +587,7 @@ class ServerInstaller:
 @NoPromptForPassword 1
 force_install_dir "{server_dir_str}"
 login anonymous
-app_update {PZ_APP_ID} validate
+app_update {PZ_APP_ID} {beta_arg}validate
 quit
 """
             with open(script_path, 'w', encoding='utf-8') as f:
@@ -429,7 +673,7 @@ quit
                 # Try alternative installation method
                 if callback:
                     callback("Files not found, trying alternative method...")
-                self._install_alternative(callback, progress_callback)
+                self._install_alternative(beta_branch, callback, progress_callback)
 
         except Exception as e:
             logger.error(f"Failed to install server: {e}")
@@ -451,6 +695,7 @@ quit
 
     def _install_alternative(
         self,
+        beta_branch: str = "",
         callback: Optional[Callable[[str], None]] = None,
         progress_callback: Optional[Callable[[float], None]] = None
     ):
@@ -463,23 +708,25 @@ quit
         if callback:
             callback("Trying alternative installation method...")
 
-        # Use direct command line arguments
+        branch_clean = beta_branch.strip()
         cmd = [
             str(steamcmd_exe),
             "+@ShutdownOnFailedCommand", "0",
             "+@NoPromptForPassword", "1",
             "+force_install_dir", server_dir_str,
             "+login", "anonymous",
-            "+app_update", PZ_APP_ID, "-validate",
-            "+quit"
         ]
+        if branch_clean:
+            cmd.extend(["+app_update", PZ_APP_ID, "-beta", branch_clean, "validate"])
+        else:
+            cmd.extend(["+app_update", PZ_APP_ID, "validate"])
+        cmd.append("+quit")
 
         kwargs = {
             'stdout': subprocess.PIPE,
             'stderr': subprocess.STDOUT,
             'text': True,
             'cwd': str(self.steamcmd_dir),
-            'shell': True,  # Try with shell
         }
         if os.name == 'nt':
             kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW

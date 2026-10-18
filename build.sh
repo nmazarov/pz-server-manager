@@ -57,18 +57,15 @@ echo "  Build Complete!"
 echo "========================================"
 echo ""
 
-SYSTEM=$(uname -s)
-if [ "$SYSTEM" = "Darwin" ]; then
-    echo "Executable location:"
-    echo "  dist/PZ Server Manager"
-    echo ""
-    echo "You can now copy this file anywhere and run it."
-else
-    echo "Executable location:"
-    echo "  dist/PZ Server Manager"
-    echo ""
-    echo "You can now copy this file anywhere and run it."
+if [ -f "dist/PZ Server Manager" ]; then
+    cp "dist/PZ Server Manager" "PZ Server Manager"
+    chmod +x "PZ Server Manager"
 fi
+
+echo "Executable location:"
+echo "  ./PZ Server Manager"
+echo ""
+echo "You can now run it directly: './PZ Server Manager'"
 echo ""
 
 # Deactivate virtual environment

@@ -95,27 +95,35 @@ def request_admin():
         return False
 
 
-def get_default_paths() -> dict:
-    """Get default paths for server installation and configuration."""
-    system = platform.system()
+def get_app_root_dir() -> Path:
+    """Get the root directory of the application manager."""
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).parent.resolve()
+    return Path(__file__).parent.resolve()
 
-    if system == 'Windows':
-        home = Path(os.environ.get('USERPROFILE', Path.home()))
-        return {
-            'server_dir': Path('C:/PZServer'),
-            'steamcmd_dir': Path('C:/PZServer/steamcmd'),
-            'zomboid_dir': home / 'Zomboid',
-            'server_config_dir': home / 'Zomboid' / 'Server',
-        }
-    else:
-        # macOS and Linux
-        home = Path.home()
-        return {
-            'server_dir': home / 'pzserver',
-            'steamcmd_dir': home / 'pzserver' / 'steamcmd',
-            'zomboid_dir': home / 'Zomboid',
-            'server_config_dir': home / 'Zomboid' / 'Server',
-        }
+
+def get_default_paths(server_name: str = "servertest") -> dict:
+    """Get default paths for server installation and configuration."""
+    app_root = get_app_root_dir()
+    home = Path(os.environ.get('USERPROFILE', Path.home()))
+
+    # Default server folder placed right next to the manager (app_root / 'PZServer')
+    # If app_root contains Cyrillic / non-ASCII, SteamCMD requires an ASCII-safe fallback
+    try:
+        str(app_root).encode('ascii')
+        server_dir = app_root / "PZServer"
+    except UnicodeEncodeError:
+        system_drive = os.environ.get("SystemDrive", "C:")
+        server_dir = Path(f"{system_drive}/PZServer")
+
+    steamcmd_dir = server_dir / 'steamcmd'
+
+    return {
+        'server_dir': server_dir,
+        'steamcmd_dir': steamcmd_dir,
+        'zomboid_dir': home / 'Zomboid',
+        'server_config_dir': home / 'Zomboid' / 'Server',
+    }
 
 
 def ensure_directories(paths: dict) -> None:

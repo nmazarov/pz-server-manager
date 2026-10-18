@@ -144,6 +144,12 @@ TRANSLATIONS = {
         'lbl_generator_fuel':      'Generator Fuel Use:',
 
         # ── Install tab ───────────────────────────────────────────
+        'group_server_version': 'Server Version / Beta Branch',
+        'lbl_server_version':   'Select Version:',
+        'ver_stable':           'Stable (Build 41 - Public)',
+        'ver_b42_unstable':     'Unstable (Build 42 - unstable)',
+        'ver_custom':           'Custom Beta Branch…',
+        'lbl_custom_branch':    'Branch Name:',
         'lbl_ready_install':  'Ready to install',
         'btn_install_server': '📥 Install / Update Server',
         'btn_import_mods':    '📥 Import Mod List',
@@ -155,10 +161,17 @@ TRANSLATIONS = {
         'btn_save_sandbox':    '💾 Save Sandbox Settings',
         'btn_reload':          '🔄 Reload',
         'btn_save_mods':       '💾 Save & Apply Mods',
+        'btn_analyze_mods':    '🔍 Analyze & Resolve Mods',
         'btn_add_mod':         '➕ Add Mod',
+        'btn_import_collection': '📦 Import Steam Collection / Pack',
+        'btn_refresh_versions': '🔄 Refresh Steam Versions',
         'btn_remove_mod':      '➖ Remove Selected',
         'btn_clear_mods':      '🗑️ Clear All',
         'btn_browse':          'Browse…',
+        'msg_mod_analysis_title': 'Mod Analyzer & Dependencies',
+        'msg_mod_analysis_ok': 'All mod dependencies and load orders have been analyzed and verified successfully!',
+        'msg_collection_prompt': 'Enter Steam Workshop Collection URL or ID:',
+        'msg_collection_success': 'Collection imported successfully! Added/updated {added} mods.',
 
         # ── Menu ──────────────────────────────────────────────────
         'menu_file':        'File',
@@ -507,6 +520,12 @@ TRANSLATIONS = {
         'lbl_generator_fuel':      'Расход топлива генераторами:',
 
         # ── Install tab ───────────────────────────────────────────
+        'group_server_version': 'Версия сервера / Beta-ветка',
+        'lbl_server_version':   'Выберите версию:',
+        'ver_stable':           'Стабильная (Build 41 - Public)',
+        'ver_b42_unstable':     'Тестовая Нестабильная (Build 42 - unstable)',
+        'ver_custom':           'Другая ветка (Custom Beta Branch)…',
+        'lbl_custom_branch':    'Название ветки:',
         'lbl_ready_install':  'Готов к установке',
         'btn_install_server': '📥 Установить / Обновить сервер',
         'btn_import_mods':    '📥 Импорт списка модов',
@@ -518,10 +537,17 @@ TRANSLATIONS = {
         'btn_save_sandbox':    '💾 Сохранить Sandbox',
         'btn_reload':          '🔄 Обновить',
         'btn_save_mods':       '💾 Сохранить и применить моды',
+        'btn_analyze_mods':    '🔍 Анализ и зависимости модов',
         'btn_add_mod':         '➕ Добавить мод',
+        'btn_import_collection': '📦 Импорт коллекции / пака Steam',
+        'btn_refresh_versions': '🔄 Обновить версии из Steam',
         'btn_remove_mod':      '➖ Удалить выбранный',
         'btn_clear_mods':      '🗑️ Удалить все',
         'btn_browse':          'Обзор…',
+        'msg_mod_analysis_title': 'Анализ модов и зависимостей',
+        'msg_mod_analysis_ok': 'Все зависимости модов проверены, порядок загрузки оптимизирован!',
+        'msg_collection_prompt': 'Введите ссылку или ID коллекции Steam Workshop (например, https://steamcommunity.com/sharedfiles/filedetails/?id=3818199903):',
+        'msg_collection_success': 'Коллекция успешно импортирована! Добавлено/обновлено {added} модов.',
 
         # ── Menu ──────────────────────────────────────────────────
         'menu_file':        'Файл',
