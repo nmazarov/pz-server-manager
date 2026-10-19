@@ -35,11 +35,13 @@ except Exception as e:
 
 block_cipher = None
 
+project_root = os.path.abspath(os.path.join(SPECPATH, '..'))
+
 a = Analysis(
-    ['main.py'],
-    pathex=[],
+    [os.path.join(project_root, 'main.py')],
+    pathex=[project_root],
     binaries=[],
-    datas=[('assets', 'assets')],
+    datas=[(os.path.join(project_root, 'assets'), 'assets')],
     hiddenimports=[
         'PyQt5.sip',
         'PyQt5.QtCore',
@@ -112,5 +114,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     uac_admin=False,
-    icon='assets/icon.ico',
+    icon=os.path.join(project_root, 'assets', 'icon.ico'),
 )

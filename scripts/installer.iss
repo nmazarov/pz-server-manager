@@ -37,8 +37,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-; Source files from PyInstaller dist folder
-Source: "dist\PZ Server Manager\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Source standalone exe from PyInstaller dist folder
+Source: "dist\PZ Server Manager.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]
 ; Default server directory in ProgramData
@@ -46,7 +46,7 @@ Name: "{commonappdata}\PZServer"; Flags: uninsneveruninstall
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninsexe}"
+Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
