@@ -101,7 +101,7 @@ def main():
     print(f"  * Server Directory:    {paths['server_dir']}")
     print("=" * 62 + "\n")
 
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    uvicorn.run(app, host=args.host, port=args.port, log_config=None if getattr(sys, 'frozen', False) else uvicorn.config.LOGGING_CONFIG)
 
 
 if __name__ == "__main__":

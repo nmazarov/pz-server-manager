@@ -338,7 +338,7 @@ class MainWindow(
             class _WebDashboardThread(threading.Thread):
                 def __init__(self, fastapi_app, host="0.0.0.0", port=8080):
                     super().__init__(daemon=True, name="WebDashboardServer")
-                    config = uvicorn.Config(app=fastapi_app, host=host, port=port, log_level="warning")
+                    config = uvicorn.Config(app=fastapi_app, host=host, port=port, log_config=None)
                     self.server = uvicorn.Server(config)
                     self.is_running = False
 
