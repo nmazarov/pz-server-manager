@@ -51,7 +51,7 @@ def create_app(
     installer: Optional[ServerInstaller] = None,
 ) -> FastAPI:
     """Create and configure the FastAPI web application."""
-    app = FastAPI(title="PZ Server Manager Web", version="1.1")
+    app = FastAPI(title="PZ Server Manager Web", version="1.2.1")
 
     if auth_manager is None:
         auth_manager = AuthManager()
