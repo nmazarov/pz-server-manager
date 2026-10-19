@@ -35,21 +35,35 @@ from web.auth import AuthManager
 
 logger = logging.getLogger("pz_web")
 
-CUR_DIR = Path(__file__).resolve().parent
-STATIC_DIR = CUR_DIR / "static"
+if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+    _base_dir = Path(sys._MEIPASS)
+    STATIC_DIR = _base_dir / "web" / "static" if (_base_dir / "web" / "static").exists() else _base_dir / "static"
+else:
+    STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
-def create_app(paths: Dict[str, Path], auth_manager: Optional[AuthManager] = None) -> FastAPI:
+def create_app(
+    paths: Dict[str, Path],
+    auth_manager: Optional[AuthManager] = None,
+    server_process: Optional[ServerProcess] = None,
+    config_manager: Optional[ConfigManager] = None,
+    mod_manager: Optional[ModManager] = None,
+    installer: Optional[ServerInstaller] = None,
+) -> FastAPI:
     """Create and configure the FastAPI web application."""
     app = FastAPI(title="PZ Server Manager Web", version="1.1")
 
     if auth_manager is None:
         auth_manager = AuthManager()
 
-    config_manager = ConfigManager(paths)
-    server_process = ServerProcess(paths)
-    mod_manager = ModManager(paths)
-    installer = ServerInstaller(paths)
+    if config_manager is None:
+        config_manager = ConfigManager(paths)
+    if server_process is None:
+        server_process = ServerProcess(paths)
+    if mod_manager is None:
+        mod_manager = ModManager(paths)
+    if installer is None:
+        installer = ServerInstaller(paths)
 
     # ── Console Log Buffer ──────────────────────────────────────────
     console_history: List[str] = []

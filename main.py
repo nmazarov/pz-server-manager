@@ -241,6 +241,12 @@ def _get_monospace_font() -> str:
 
 def main():
     """Main entry point for the application."""
+    # Check if invoked in web server mode
+    if any(arg in sys.argv for arg in ['--web', '--web-only', 'web_main.py']):
+        import web_main
+        web_main.main()
+        return
+
     # Load language preference
     try:
         with open('language.cfg', 'r') as f:

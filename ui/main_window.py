@@ -74,6 +74,7 @@ class MainWindow(
         self.player_manager = PlayerManager(paths, saved_name)
         self.watchdog       = WatchdogManager(self)
         self.web_process    = None
+        self.web_server_thread = None
 
         self.server_process.output_received.connect(self.append_console_output)
         self.server_process.output_received.connect(self.player_manager.parse_console_line)
@@ -282,9 +283,11 @@ class MainWindow(
     def toggle_web_dashboard(self):
         """Toggle or open the FastAPI Web Dashboard."""
         import webbrowser
+        import threading
         is_ru = get_language() == 'ru'
 
-        if hasattr(self, 'web_process') and self.web_process and self.web_process.poll() is None:
+        # If already running in-process, ask to open in browser or stop
+        if hasattr(self, 'web_server_thread') and self.web_server_thread and getattr(self.web_server_thread, 'is_running', False):
             res = QMessageBox.question(
                 self,
                 tr('web_dashboard_title'),
@@ -296,32 +299,67 @@ class MainWindow(
                 webbrowser.open("http://localhost:8080")
             elif res == QMessageBox.No:
                 try:
-                    self.web_process.terminate()
-                    self.web_process = None
+                    self.web_server_thread.stop()
+                    self.web_server_thread = None
                     if hasattr(self, 'web_btn'):
                         self.web_btn.setStyleSheet("background-color: #4a287a; color: #ffffff; padding: 4px 10px; font-weight: bold;")
                         self.web_btn.setText("🌐 " + ("Веб-панель" if is_ru else "Web Dashboard"))
                     QMessageBox.information(self, tr('web_dashboard_title'), tr('web_dashboard_stopped'))
                 except Exception as e:
-                    logger.error(f"Failed to stop web process: {e}")
+                    logger.error(f"Failed to stop web server: {e}")
             return
 
-        # Start Web Dashboard process
-        root_dir = Path(__file__).resolve().parent.parent
-        venv_py = root_dir / "venv" / "Scripts" / "python.exe" if os.name == 'nt' else root_dir / "venv" / "bin" / "python"
-        py_bin = str(venv_py) if venv_py.exists() else sys.executable
+        # Start FastAPI Web Dashboard in background thread
+        try:
+            import uvicorn
+            from web.server import create_app
+        except ImportError as e:
+            logger.error(f"Web Dashboard dependencies not found: {e}")
+            QMessageBox.warning(
+                self,
+                tr('web_dashboard_title'),
+                "Библиотеки для веб-панели (FastAPI, Uvicorn) не найдены.\n"
+                "Установите: pip install -r requirements-web.txt"
+                if is_ru else
+                "Web Dashboard dependencies (FastAPI, Uvicorn) not found.\n"
+                "Install: pip install -r requirements-web.txt"
+            )
+            return
 
         try:
-            self.web_process = subprocess.Popen(
-                [py_bin, str(root_dir / "web_main.py"), "--port", "8080"],
-                cwd=str(root_dir),
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            app = create_app(
+                paths=self.paths,
+                server_process=self.server_process,
+                config_manager=self.config_manager,
+                mod_manager=self.mod_manager,
+                installer=self.installer
             )
+
+            class _WebDashboardThread(threading.Thread):
+                def __init__(self, fastapi_app, host="0.0.0.0", port=8080):
+                    super().__init__(daemon=True, name="WebDashboardServer")
+                    config = uvicorn.Config(app=fastapi_app, host=host, port=port, log_level="warning")
+                    self.server = uvicorn.Server(config)
+                    self.is_running = False
+
+                def run(self):
+                    self.is_running = True
+                    try:
+                        self.server.run()
+                    finally:
+                        self.is_running = False
+
+                def stop(self):
+                    self.server.should_exit = True
+
+            self.web_server_thread = _WebDashboardThread(app, port=8080)
+            self.web_server_thread.start()
+
             if hasattr(self, 'web_btn'):
                 self.web_btn.setStyleSheet("background-color: #1e6b3b; color: #ffffff; padding: 4px 10px; font-weight: bold;")
                 self.web_btn.setText("🌐 " + ("Веб-панель (8080: Онлайн)" if is_ru else "Web Dashboard (8080: Online)"))
 
-            QTimer.singleShot(1000, lambda: webbrowser.open("http://localhost:8080"))
+            QTimer.singleShot(800, lambda: webbrowser.open("http://localhost:8080"))
             self.statusBar.showMessage("🌐 Web Dashboard running on http://localhost:8080", 5000)
         except Exception as e:
             logger.error(f"Failed to launch Web Dashboard: {e}")
@@ -331,6 +369,11 @@ class MainWindow(
         """Force application exit."""
         if hasattr(self, 'tray_icon'):
             self.tray_icon.hide()
+        if hasattr(self, 'web_server_thread') and self.web_server_thread:
+            try:
+                self.web_server_thread.stop()
+            except Exception:
+                pass
         if hasattr(self, 'web_process') and self.web_process and self.web_process.poll() is None:
             try:
                 self.web_process.terminate()
