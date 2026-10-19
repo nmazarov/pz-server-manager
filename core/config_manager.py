@@ -16,6 +16,23 @@ from configparser import ConfigParser
 logger = logging.getLogger(__name__)
 
 
+def read_text_safely(path: Path) -> str:
+    """Read file content with UTF-8, falling back to cp1251 and latin-1 if decode fails."""
+    try:
+        return path.read_text(encoding='utf-8')
+    except (UnicodeDecodeError, LookupError):
+        try:
+            return path.read_text(encoding='cp1251')
+        except Exception:
+            return path.read_text(encoding='utf-8', errors='replace')
+
+
+def read_lines_safely(path: Path) -> List[str]:
+    """Read lines from file safely handling various encodings."""
+    text = read_text_safely(path)
+    return text.splitlines(keepends=True)
+
+
 class AppPreferences:
     """Persistent user preferences across launches (last server name, ram, backup, etc.)."""
     @staticmethod
@@ -158,8 +175,7 @@ class ConfigManager:
         config = dict(defaults)
         
         try:
-            with open(ini_path, 'r', encoding='utf-8') as f:
-                for line in f:
+            for line in read_lines_safely(ini_path):
                     line = line.strip()
                     if not line or line.startswith('#') or line.startswith(';'):
                         continue
@@ -196,8 +212,7 @@ class ConfigManager:
         lines = []
         updated_keys = set()
         
-        with open(path, 'r', encoding='utf-8') as f:
-            for line in f:
+        for line in read_lines_safely(path):
                 original_line = line
                 line_stripped = line.strip()
                 
@@ -513,8 +528,7 @@ Mods=
             return defaults, {}
 
         try:
-            with open(lua_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+            content = read_text_safely(lua_path)
 
             vars_dict, meta_comments = self._parse_lua_content(content)
 
@@ -529,7 +543,8 @@ Mods=
                 )
                 for cand in candidates:
                     try:
-                        c_dict, c_meta = self._parse_lua_content(cand.read_text(encoding='utf-8'))
+                        cand_content = read_text_safely(cand)
+                        c_dict, c_meta = self._parse_lua_content(cand_content)
                         c_mods = {k: v for k, v in c_dict.items() if isinstance(v, dict) and k not in vanilla_tables}
                         if c_mods:
                             for mk, mv in c_mods.items():
@@ -591,8 +606,7 @@ Mods=
             return
 
         try:
-            with open(lua_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
+            lines = read_lines_safely(lua_path)
 
             new_lines = []
             current_category = None

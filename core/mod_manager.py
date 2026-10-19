@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Dict, List, Optional, Callable
 from dataclasses import dataclass, asdict, field
 
+from core.config_manager import read_lines_safely
+
 logger = logging.getLogger(__name__)
 
 
@@ -114,8 +116,7 @@ class ModManager:
             workshop_items = []
             mod_ids = []
             
-            with open(ini_path, 'r', encoding='utf-8') as f:
-                for line in f:
+            for line in read_lines_safely(ini_path):
                     line = line.strip()
                     if line.startswith('WorkshopItems='):
                         items = line.split('=', 1)[1]
@@ -668,8 +669,7 @@ class ModManager:
         workshop_items = ';'.join(m.workshop_id for m in self.mods)
         mods_str = ';'.join(ordered_mids)
 
-        with open(ini_path, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
+        lines = read_lines_safely(ini_path)
 
         workshop_found = False
         mods_found = False
