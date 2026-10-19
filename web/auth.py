@@ -11,7 +11,12 @@ import hashlib
 from pathlib import Path
 from typing import Optional
 
-AUTH_FILE = Path("web_auth.json")
+import sys
+
+def get_auth_file_path() -> Path:
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).parent.resolve() / "web_auth.json"
+    return Path(__file__).resolve().parent.parent / "web_auth.json"
 
 
 def _hash_password(password: str, salt: str) -> str:
@@ -21,8 +26,8 @@ def _hash_password(password: str, salt: str) -> str:
 class AuthManager:
     """Manages web dashboard password, salt, and session tokens."""
 
-    def __init__(self, auth_path: Path = AUTH_FILE, default_password: Optional[str] = None):
-        self.auth_path = auth_path
+    def __init__(self, auth_path: Optional[Path] = None, default_password: Optional[str] = None):
+        self.auth_path = auth_path if auth_path else get_auth_file_path()
         self.active_sessions: set[str] = set()
         self._load_or_create(default_password)
 
@@ -38,9 +43,9 @@ class AuthManager:
             except Exception:
                 pass
 
-        # Generate new credentials
+        # Generate new credentials (default password is 'admin')
         self.salt = secrets.token_hex(16)
-        password = default_password if default_password else secrets.token_urlsafe(10)
+        password = default_password if default_password else "admin"
         self.hashed_pw = _hash_password(password, self.salt)
         self._initial_plain_password = password
 

@@ -288,11 +288,19 @@ class MainWindow(
 
         # If already running in-process, ask to open in browser or stop
         if hasattr(self, 'web_server_thread') and self.web_server_thread and getattr(self.web_server_thread, 'is_running', False):
+            info_text = (
+                f"🌐 Веб-панель запущена: http://localhost:8080\n\n"
+                f"🔑 Пароль администратора: admin (из файла web_auth.json)\n\n"
+                f"Желаете открыть в браузере или остановить веб-сервер?"
+                if is_ru else
+                f"🌐 Web Dashboard is running: http://localhost:8080\n\n"
+                f"🔑 Admin password: admin (from web_auth.json)\n\n"
+                f"Do you want to open in browser or stop web server?"
+            )
             res = QMessageBox.question(
                 self,
                 tr('web_dashboard_title'),
-                f"{tr('web_dashboard_running', url='http://localhost:8080')}\n\n" +
-                ("Желаете открыть в браузере или остановить веб-сервер?" if is_ru else "Do you want to open in browser or stop web server?"),
+                info_text,
                 QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
             )
             if res == QMessageBox.Yes:
@@ -360,7 +368,7 @@ class MainWindow(
                 self.web_btn.setText("🌐 " + ("Веб-панель (8080: Онлайн)" if is_ru else "Web Dashboard (8080: Online)"))
 
             QTimer.singleShot(800, lambda: webbrowser.open("http://localhost:8080"))
-            self.statusBar.showMessage("🌐 Web Dashboard running on http://localhost:8080", 5000)
+            self.statusBar.showMessage("🌐 Веб-панель: http://localhost:8080 (Пароль: admin)" if is_ru else "🌐 Web Dashboard: http://localhost:8080 (Password: admin)", 10000)
         except Exception as e:
             logger.error(f"Failed to launch Web Dashboard: {e}")
             QMessageBox.critical(self, tr('error'), f"Failed to start Web Dashboard: {e}")
