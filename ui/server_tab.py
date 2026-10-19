@@ -21,10 +21,10 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont, QCursor
 
-from translations import tr, get_language
-from server_process import check_ports_in_use
-from config_manager import AppPreferences
-from network_helper import NetworkHelper
+from core.translations import tr, get_language
+from core.server_process import check_ports_in_use
+from core.config_manager import AppPreferences
+from core.network_helper import NetworkHelper
 
 START_BTN_STYLE = """
 QPushButton#start_btn {
@@ -643,7 +643,7 @@ class ServerTabMixin:
         # Auto-backup before start if enabled
         if auto_bkp:
             try:
-                from backup_manager import BackupManager
+                from core.backup_manager import BackupManager
                 bm = BackupManager(self.paths, server_name=name)
                 save_dir = self.paths['zomboid_dir'] / 'Saves' / 'Multiplayer' / name
                 cfg_file = self.paths['zomboid_dir'] / 'Server' / f"{name}.ini"

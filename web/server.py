@@ -21,16 +21,16 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from config_manager import ConfigManager
-from server_process import ServerProcess, check_ports_in_use
-from mod_manager import ModManager
-from server_installer import (
+from core.config_manager import ConfigManager
+from core.server_process import ServerProcess, check_ports_in_use
+from core.mod_manager import ModManager
+from core.server_installer import (
     ServerInstaller, fetch_available_server_branches,
     get_installed_server_buildid, buildid_to_game_version,
     check_server_update_available
 )
-from backup_manager import BackupManager
-from network_helper import NetworkHelper
+from core.backup_manager import BackupManager
+from core.network_helper import NetworkHelper
 from web.auth import AuthManager
 
 logger = logging.getLogger("pz_web")

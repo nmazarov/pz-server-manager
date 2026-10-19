@@ -9,8 +9,8 @@ echo "  PZ Server Manager - Build Script"
 echo "========================================"
 echo ""
 
-# Determine script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Determine script directory and navigate to project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
 # Check Python
@@ -43,7 +43,7 @@ pip install pyinstaller --quiet
 echo "[4/4] Building executable..."
 echo ""
 
-pyinstaller --clean --noconfirm pz_server_manager.spec
+pyinstaller --clean --noconfirm scripts/pz_server_manager.spec
 
 if [ $? -ne 0 ]; then
     echo ""

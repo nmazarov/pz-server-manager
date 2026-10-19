@@ -102,7 +102,7 @@ class ProfileManager(QObject):
             if src_points.exists():
                 shutil.copy2(src_points, new_points)
         else:
-            from config_manager import ConfigManager
+            from core.config_manager import ConfigManager
             cm = ConfigManager(self.paths)
             cm.set_server_name(name)
             cm.ensure_spawn_files()

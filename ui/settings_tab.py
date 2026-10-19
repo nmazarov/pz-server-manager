@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
     QMessageBox
 )
 
-from translations import tr
+from core.translations import tr
 from ui.dialogs import _b
 
 logger = logging.getLogger(__name__)

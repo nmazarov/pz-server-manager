@@ -655,7 +655,7 @@ class ModManager:
         ini_path = self._get_ini_path()
 
         if not ini_path.exists():
-            from config_manager import ConfigManager
+            from core.config_manager import ConfigManager
             cm = ConfigManager(self.paths)
             cm.set_server_name(self._server_name)
             cm.load_server_ini(create_if_missing=True)

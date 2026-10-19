@@ -20,8 +20,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QEvent, QObject, QRect
 from PyQt5.QtGui import QFont, QIcon, QPixmap, QPainter, QBrush, QPen, QColor
 
-from translations import tr, get_language
-from network_helper import NetworkHelper
+from core.translations import tr, get_language
+from core.network_helper import NetworkHelper
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +209,7 @@ class DialogsMixin:
     def open_backup_manager(self):
         """Show graphical backup manager dialog to create, inspect, restore, and delete world backups."""
         if not hasattr(self, 'backup_manager'):
-            from backup_manager import BackupManager
+            from core.backup_manager import BackupManager
             name = self.server_name_input.text().strip() or 'servertest' if hasattr(self, 'server_name_input') else 'servertest'
             self.backup_manager = BackupManager(self.paths, name)
 

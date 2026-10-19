@@ -277,7 +277,7 @@ def get_installed_server_buildid(server_dir: Path) -> Optional[str]:
 def find_existing_server_installations() -> list:
     """Scan common paths for an existing Project Zomboid Dedicated Server, sorted by newest build first."""
     program_data = os.environ.get("ProgramData", "C:\\ProgramData")
-    app_root = Path(sys.executable).parent.resolve() if getattr(sys, 'frozen', False) else Path(__file__).parent.resolve()
+    app_root = Path(sys.executable).parent.resolve() if getattr(sys, 'frozen', False) else Path(__file__).resolve().parent.parent
 
     candidates = [
         app_root / "servertest",

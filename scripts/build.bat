@@ -3,6 +3,8 @@ REM ============================================
 REM PZ Server Manager - Build Script for Windows
 REM ============================================
 
+cd /d "%~dp0\.."
+
 echo.
 echo ========================================
 echo   PZ Server Manager - Build Script
@@ -41,7 +43,7 @@ REM Build executable with PyInstaller
 echo [4/5] Building executable folder with PyInstaller...
 echo.
 
-pyinstaller --clean --noconfirm pz_server_manager.spec
+pyinstaller --clean --noconfirm scripts\pz_server_manager.spec
 
 if errorlevel 1 (
     echo.
@@ -56,7 +58,7 @@ set ISCC_PATH="C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 
 if exist %ISCC_PATH% (
     echo Compiling Windows installer with Inno Setup...
-    %ISCC_PATH% installer.iss
+    %ISCC_PATH% scripts\installer.iss
     if errorlevel 0 (
         echo Installer created: installer_output\PZ_Server_Manager_Setup.exe
     )

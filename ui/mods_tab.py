@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 
-from translations import tr, get_language
+from core.translations import tr, get_language
 
 logger = logging.getLogger(__name__)
 
@@ -285,7 +285,7 @@ class ModsTabMixin:
             return
 
         try:
-            from server_installer import get_installed_server_buildid, buildid_to_game_version
+            from core.server_installer import get_installed_server_buildid, buildid_to_game_version
             from main import check_server_installed
 
             is_installed = check_server_installed(self.paths)
@@ -447,7 +447,7 @@ class ModsTabMixin:
             return 41 if '41' in str(branch).lower() else 42
 
         try:
-            from server_installer import get_installed_server_buildid, buildid_to_game_version
+            from core.server_installer import get_installed_server_buildid, buildid_to_game_version
             installed_id = get_installed_server_buildid(self.paths['server_dir'])
             if installed_id:
                 v_str = buildid_to_game_version(installed_id)

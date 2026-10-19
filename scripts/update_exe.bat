@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0\.."
 echo Updating PZ Server Manager...
 taskkill /F /IM "PZ Server Manager.exe" >nul 2>&1
 timeout /t 1 /nobreak >nul

@@ -19,21 +19,24 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QPixmap
 
-from translations import tr, set_language, get_language
-from config_manager import ConfigManager, AppPreferences
-from server_process import ServerProcess
-from mod_manager import ModManager
-from server_installer import ServerInstaller
-from backup_manager import BackupManager
-from player_manager import PlayerManager
-from watchdog_manager import WatchdogManager
+from core.translations import tr, set_language, get_language
+from core.config_manager import ConfigManager, AppPreferences
+from core.server_process import ServerProcess
+from core.mod_manager import ModManager
+from core.server_installer import ServerInstaller
+from core.backup_manager import BackupManager
+from core.player_manager import PlayerManager
+from core.watchdog_manager import WatchdogManager
 
-from ui import (
+from ui.dialogs import (
     DialogsMixin, create_zombie_app_icon, ensure_firewall_rules,
-    NoScrollEventFilter, _b,
-    ServerTabMixin, SettingsTabMixin, SandboxTabMixin,
-    ModsTabMixin, InstallTabMixin
+    NoScrollEventFilter, _b
 )
+from ui.server_tab import ServerTabMixin
+from ui.settings_tab import SettingsTabMixin
+from ui.sandbox_tab import SandboxTabMixin
+from ui.mods_tab import ModsTabMixin
+from ui.install_tab import InstallTabMixin
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +127,7 @@ class MainWindow(
             if hasattr(sys, '_MEIPASS'):
                 base_dirs.append(Path(sys._MEIPASS))
             base_dirs.append(Path(sys.executable).parent)
+        base_dirs.append(Path(__file__).resolve().parent.parent)
         base_dirs.append(Path(__file__).resolve().parent)
 
         icon_path = None
@@ -303,7 +307,7 @@ class MainWindow(
             return
 
         # Start Web Dashboard process
-        root_dir = Path(__file__).resolve().parent
+        root_dir = Path(__file__).resolve().parent.parent
         venv_py = root_dir / "venv" / "Scripts" / "python.exe" if os.name == 'nt' else root_dir / "venv" / "bin" / "python"
         py_bin = str(venv_py) if venv_py.exists() else sys.executable
 

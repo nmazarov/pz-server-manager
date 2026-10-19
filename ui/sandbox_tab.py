@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
-from translations import tr, get_language
+from core.translations import tr, get_language
 
 logger = logging.getLogger(__name__)
 

@@ -20,6 +20,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\{#MyAppName}
 DisableProgramGroupPage=yes
 DefaultGroupName={#MyAppName}
+SourceDir=..
 LicenseFile=LICENSE
 OutputDir=installer_output
 OutputBaseFilename=PZ_Server_Manager_Setup

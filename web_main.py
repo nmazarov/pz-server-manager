@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT_DIR))
 import uvicorn
 from web.auth import AuthManager
 from web.server import create_app
-from network_helper import NetworkHelper
+from core.network_helper import NetworkHelper
 
 
 def setup_paths(custom_server_dir: str = None) -> dict:

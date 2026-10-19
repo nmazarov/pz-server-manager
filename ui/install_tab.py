@@ -19,8 +19,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
 
-from translations import tr, get_language
-from server_installer import (
+from core.translations import tr, get_language
+from core.server_installer import (
     InstallWorker, ServerUpdateCheckerWorker, fetch_available_server_branches
 )
 

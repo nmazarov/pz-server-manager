@@ -14,6 +14,7 @@ from ui.settings_tab import SettingsTabMixin
 from ui.sandbox_tab import SandboxTabMixin
 from ui.mods_tab import ModsTabMixin
 from ui.install_tab import InstallTabMixin
+from ui.main_window import MainWindow
 
 __all__ = [
     'DialogsMixin',
@@ -26,4 +27,5 @@ __all__ = [
     'SandboxTabMixin',
     'ModsTabMixin',
     'InstallTabMixin',
+    'MainWindow',
 ]

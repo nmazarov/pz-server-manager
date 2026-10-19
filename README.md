@@ -335,11 +335,24 @@ Forward these ports on your router or cloud security group to allow incoming pla
 
 ```text
 pz-server-manager/
-├── main.py                     # Application entry point & crash handlers
-├── main_window.py              # Main Window coordinator & header actions
-├── web_main.py                 # FastAPI Web runner for headless VPS
+├── main.py                     # Desktop GUI application entry point
+├── web_main.py                 # FastAPI Web runner for remote / VPS dashboard
+│
+├── core/                       # Core backend managers & engines
+│   ├── config_manager.py       # INI and LUA parser & serializer
+│   ├── mod_manager.py          # Steam Workshop API parser & mod dependencies
+│   ├── server_installer.py     # SteamCMD downloader & version checker
+│   ├── server_process.py       # Server process lifecycle & port checker
+│   ├── backup_manager.py       # Full world ZIP backup, restore, and rotate engine
+│   ├── network_helper.py       # IP detection, Firewall & UPnP
+│   ├── translations.py         # Complete bilingual localization (RU / EN)
+│   ├── player_manager.py       # Live player tracking, RCON commands, Whitelist/Bans
+│   ├── watchdog_manager.py     # Crash watchdog & Discord webhook alerts
+│   ├── diagnostics_manager.py  # System diagnostic tools
+│   └── profile_manager.py      # Server profiles manager
 │
 ├── ui/                         # Modular PyQt5 interface package
+│   ├── main_window.py          # Main Window coordinator & header actions
 │   ├── server_tab.py           # Server control, console, live players panel, RAM
 │   ├── mods_tab.py             # Mod manager, search, B41/B42 compatibility, presets
 │   ├── settings_tab.py         # servertest.ini configuration
@@ -347,22 +360,23 @@ pz-server-manager/
 │   ├── install_tab.py          # SteamCMD installation & branch selector
 │   └── dialogs.py              # Graphical Backup GUI, Firewall rules, icons
 │
-├── config_manager.py           # INI and LUA parser & serializer
-├── mod_manager.py              # Steam Workshop API parser & mod dependencies
-├── server_installer.py         # SteamCMD downloader & version checker
-├── server_process.py           # Server process lifecycle & port checker
-├── backup_manager.py           # Full world ZIP backup, restore, and rotate engine
-├── network_helper.py           # IP detection, Firewall & UPnP
-├── translations.py             # Complete bilingual localization (RU / EN)
-├── player_manager.py           # Live player tracking, RCON commands, Whitelist/Bans
-├── watchdog_manager.py         # Crash watchdog & Discord webhook alerts
+├── web/                        # Remote Web Dashboard (FastAPI + SPA)
+│   ├── server.py               # REST API & WebSockets server
+│   ├── auth.py                 # Web authentication & session manager
+│   └── static/                 # Frontend SPA (HTML, CSS, JS)
 │
-├── setup.bat / setup.sh        # Desktop setup scripts (Windows / Linux)
-├── run.bat / run.sh            # Desktop run scripts (Windows / Linux)
-├── run-web.bat / run-web.sh    # Web Dashboard runners (Windows / Linux)
-├── setup_vps.sh                # Automated 1-command Linux VPS installer
-├── build.bat / build.sh        # PyInstaller executable builders
-├── pz_server_manager.spec      # PyInstaller build specification
+├── scripts/                    # Build, installer, and utility scripts
+│   ├── build.bat / build.sh    # Standalone executable builders (PyInstaller)
+│   ├── pz_server_manager.spec  # PyInstaller spec configuration
+│   ├── installer.iss           # Inno Setup Windows installer script
+│   ├── setup_vps.sh            # Automated 1-command Linux VPS installer
+│   ├── run_web.bat / .sh       # Web Dashboard launch scripts
+│   └── update_exe.bat          # Binary replacement helper
+│
+├── assets/                     # Icons, logos, and fonts
+├── setup.bat / setup.sh        # Setup & dependency installers
+├── run.bat / run.sh            # Desktop launch scripts
+├── run-web.bat / run-web.sh    # Web dashboard launch scripts
 └── README.md                   # Full bilingual documentation (RU & EN)
 ```
 

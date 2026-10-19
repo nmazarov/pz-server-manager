@@ -19,10 +19,10 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont, QFontDatabase
 
 import traceback
-from main_window import MainWindow
-from server_installer import ServerInstaller, find_existing_server_installations, get_installed_server_buildid, buildid_to_game_version
-from config_manager import ConfigManager
-from translations import set_language, tr, get_language
+from ui import MainWindow
+from core.server_installer import ServerInstaller, find_existing_server_installations, get_installed_server_buildid, buildid_to_game_version
+from core.config_manager import ConfigManager
+from core.translations import set_language, tr, get_language
 
 # Reconfigure standard streams to UTF-8
 if hasattr(sys.stdout, 'reconfigure'):
