@@ -73,6 +73,11 @@ def main():
     args = parser.parse_args()
 
     paths = setup_paths(args.server_dir)
+    from core.config_manager import AppPreferences
+    prefs = AppPreferences.load(paths)
+    saved_port = int(prefs.get('web_port', 0))
+    port = saved_port if (args.port == 8080 and saved_port > 0) else args.port
+
     auth_mgr = AuthManager(default_password=args.password)
     if args.password:
         auth_mgr.set_password(args.password)
@@ -91,8 +96,8 @@ def main():
     print("\n" + "=" * 62)
     print("  [PZ] Project Zomboid Server Manager - Web Dashboard (VPS)")
     print("=" * 62)
-    print(f"  * Web Dashboard URL:   http://{local_ip}:{args.port}")
-    print(f"  * Localhost:           http://127.0.0.1:{args.port}")
+    print(f"  * Web Dashboard URL:   http://{local_ip}:{port}")
+    print(f"  * Localhost:           http://127.0.0.1:{port}")
     if init_pw:
         print(f"  * Admin Password:      {init_pw}")
         print("    (Saved in web_auth.json - remember or change in web settings)")
@@ -101,7 +106,7 @@ def main():
     print(f"  * Server Directory:    {paths['server_dir']}")
     print("=" * 62 + "\n")
 
-    uvicorn.run(app, host=args.host, port=args.port, log_config=None if getattr(sys, 'frozen', False) else uvicorn.config.LOGGING_CONFIG)
+    uvicorn.run(app, host=args.host, port=port, log_config=None if getattr(sys, 'frozen', False) else uvicorn.config.LOGGING_CONFIG)
 
 
 if __name__ == "__main__":

@@ -496,6 +496,14 @@ TRANSLATIONS = {
         'web_dashboard_running_btn': 'Web Dashboard (Online: 8080)',
         'web_dashboard_stopped': 'Web Dashboard stopped.',
         'web_dashboard_tooltip': 'Toggle local FastAPI Web Dashboard to manage the server via browser or mobile',
+        'web_security_title': 'Web Dashboard Security Setup',
+        'web_security_desc': 'For security against unauthorized bot scanners, select a custom port and admin password.',
+        'web_port_label': 'Web Dashboard Port (1024 - 65535):',
+        'web_pw_label': 'Admin Password:',
+        'web_firewall_label': 'Automatically configure Windows Defender Firewall rule for this port',
+        'btn_random_port': '🎲 Random Port',
+        'btn_gen_pw': '🎲 Generate Password',
+        'btn_save_start_web': 'Save & Launch Web Panel',
 
         # Tray
         'tray_show': 'Show Manager',
@@ -1011,6 +1019,14 @@ TRANSLATIONS = {
         'web_dashboard_running_btn': 'Веб-панель (Онлайн: 8080)',
         'web_dashboard_stopped': 'Веб-панель остановлена.',
         'web_dashboard_tooltip': 'Включить локальный веб-сервер FastAPI для управления сервером через браузер или со смартфона',
+        'web_security_title': 'Безопасность веб-панели',
+        'web_security_desc': 'Для защиты от сетевых сканеров и попыток взлома выберите нестандартный порт и пароль администратора для веб-панели.',
+        'web_port_label': 'Порт веб-панели (1024 - 65535):',
+        'web_pw_label': 'Пароль администратора:',
+        'web_firewall_label': 'Автоматически открыть этот порт в Брандмауэре Windows',
+        'btn_random_port': '🎲 Случайный порт',
+        'btn_gen_pw': '🎲 Сгенерировать пароль',
+        'btn_save_start_web': 'Сохранить и запустить',
 
         # Tray
         'tray_show': 'Показать приложение',

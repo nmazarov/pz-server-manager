@@ -136,6 +136,28 @@ class NetworkHelper:
             return False, err
 
     @staticmethod
+    def ensure_web_firewall_rule(port: int = 8080) -> Tuple[bool, str]:
+        """Create or update Inbound Windows Defender Firewall rule for the Web Dashboard port."""
+        if os.name != 'nt':
+            return False, "Firewall configuration is Windows-only."
+
+        rule_name = "Project Zomboid Web Dashboard (TCP)"
+        cmd_del = f'netsh advfirewall firewall delete rule name="{rule_name}"'
+        cmd_add = f'netsh advfirewall firewall add rule name="{rule_name}" dir=in action=allow protocol=TCP localport={port} enable=yes'
+
+        try:
+            subprocess.run(cmd_del, shell=True, capture_output=True)
+            proc = subprocess.run(cmd_add, shell=True, capture_output=True, text=True)
+            if proc.returncode == 0:
+                logger.info(f"Windows Firewall rule added for Web Dashboard on port {port}.")
+                return True, f"Firewall rule for port {port} created successfully."
+            else:
+                return False, proc.stderr or "Failed to add firewall rule."
+        except Exception as e:
+            logger.error(f"Failed to add web firewall rule: {e}")
+            return False, str(e)
+
+    @staticmethod
     def check_firewall_rules_exist() -> bool:
         """Check if Project Zomboid firewall rules are already registered."""
         if os.name != 'nt':

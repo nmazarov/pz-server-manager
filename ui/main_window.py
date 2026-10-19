@@ -220,7 +220,18 @@ class MainWindow(
 
         self._setup_tray_icon()
         QTimer.singleShot(300, self.check_existing_server_status)
+        QTimer.singleShot(1000, self._auto_ensure_firewall)
         QTimer.singleShot(1500, self.check_server_update_on_startup)
+
+    def _auto_ensure_firewall(self):
+        """Silently check and configure Windows Firewall rules if missing."""
+        if os.name == 'nt':
+            try:
+                from core.network_helper import NetworkHelper
+                if not NetworkHelper.check_firewall_rules_exist():
+                    NetworkHelper.add_windows_firewall_rules()
+            except Exception as e:
+                logger.debug(f"Auto firewall check: {e}")
 
     def update_target_server_build(self):
         """Update target build (42 or 41) based on user's selected branch and installed server."""
@@ -280,21 +291,76 @@ class MainWindow(
             else:
                 self.show_normal_and_raise()
 
+    def open_web_security_dialog(self):
+        """Open dialog to configure port, password, and firewall for the Web Dashboard."""
+        from ui.dialogs import WebSecurityDialog
+        from core.config_manager import AppPreferences
+        from web.auth import AuthManager
+        from core.network_helper import NetworkHelper
+
+        prefs = AppPreferences.load(self.paths)
+        web_port = int(prefs.get('web_port', 8080))
+
+        dlg = WebSecurityDialog(self, current_port=web_port, current_password="admin")
+        if dlg.exec_() != 1:  # QDialog.Accepted == 1
+            return False
+
+        new_port = dlg.result_port
+        new_pw = dlg.result_password
+
+        prefs['web_port'] = new_port
+        prefs['web_configured'] = True
+        AppPreferences.save(self.paths, prefs)
+
+        am = AuthManager()
+        am.set_password(new_pw)
+
+        if dlg.result_open_firewall and os.name == 'nt':
+            NetworkHelper.ensure_web_firewall_rule(new_port)
+
+        # If currently running, restart on new port
+        if hasattr(self, 'web_server_thread') and self.web_server_thread and getattr(self.web_server_thread, 'is_running', False):
+            self.web_server_thread.stop()
+            self.web_server_thread = None
+            QTimer.singleShot(600, self.toggle_web_dashboard)
+        else:
+            is_ru = get_language() == 'ru'
+            QMessageBox.information(
+                self,
+                tr('web_security_title'),
+                f"Настройки веб-панели сохранены!\n\nПорт: {new_port}\nПароль: {new_pw}"
+                if is_ru else
+                f"Web Dashboard settings saved!\n\nPort: {new_port}\nPassword: {new_pw}"
+            )
+        return True
+
     def toggle_web_dashboard(self):
         """Toggle or open the FastAPI Web Dashboard."""
         import webbrowser
         import threading
         is_ru = get_language() == 'ru'
 
+        from core.config_manager import AppPreferences
+        prefs = AppPreferences.load(self.paths)
+        web_configured = prefs.get('web_configured', False)
+        web_port = int(prefs.get('web_port', 8080))
+
+        # First run: prompt user for custom port & password for security
+        if not web_configured:
+            if not self.open_web_security_dialog():
+                return
+            prefs = AppPreferences.load(self.paths)
+            web_port = int(prefs.get('web_port', 8080))
+
         # If already running in-process, ask to open in browser or stop
         if hasattr(self, 'web_server_thread') and self.web_server_thread and getattr(self.web_server_thread, 'is_running', False):
             info_text = (
-                f"🌐 Веб-панель запущена: http://localhost:8080\n\n"
-                f"🔑 Пароль администратора: admin (из файла web_auth.json)\n\n"
+                f"🌐 Веб-панель запущена: http://localhost:{web_port}\n\n"
+                f"🔑 Пароль сохранён в файле web_auth.json\n\n"
                 f"Желаете открыть в браузере или остановить веб-сервер?"
                 if is_ru else
-                f"🌐 Web Dashboard is running: http://localhost:8080\n\n"
-                f"🔑 Admin password: admin (from web_auth.json)\n\n"
+                f"🌐 Web Dashboard is running: http://localhost:{web_port}\n\n"
+                f"🔑 Password is saved in web_auth.json\n\n"
                 f"Do you want to open in browser or stop web server?"
             )
             res = QMessageBox.question(
@@ -304,7 +370,7 @@ class MainWindow(
                 QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
             )
             if res == QMessageBox.Yes:
-                webbrowser.open("http://localhost:8080")
+                webbrowser.open(f"http://localhost:{web_port}")
             elif res == QMessageBox.No:
                 try:
                     self.web_server_thread.stop()
@@ -360,15 +426,15 @@ class MainWindow(
                 def stop(self):
                     self.server.should_exit = True
 
-            self.web_server_thread = _WebDashboardThread(app, port=8080)
+            self.web_server_thread = _WebDashboardThread(app, port=web_port)
             self.web_server_thread.start()
 
             if hasattr(self, 'web_btn'):
                 self.web_btn.setStyleSheet("background-color: #1e6b3b; color: #ffffff; padding: 4px 10px; font-weight: bold;")
-                self.web_btn.setText("🌐 " + ("Веб-панель (8080: Онлайн)" if is_ru else "Web Dashboard (8080: Online)"))
+                self.web_btn.setText(f"🌐 Веб-панель ({web_port}: Онлайн)" if is_ru else f"🌐 Web Dashboard ({web_port}: Online)")
 
-            QTimer.singleShot(800, lambda: webbrowser.open("http://localhost:8080"))
-            self.statusBar.showMessage("🌐 Веб-панель: http://localhost:8080 (Пароль: admin)" if is_ru else "🌐 Web Dashboard: http://localhost:8080 (Password: admin)", 10000)
+            QTimer.singleShot(800, lambda: webbrowser.open(f"http://localhost:{web_port}"))
+            self.statusBar.showMessage(f"🌐 Веб-панель: http://localhost:{web_port}" if is_ru else f"🌐 Web Dashboard: http://localhost:{web_port}", 10000)
         except Exception as e:
             logger.error(f"Failed to launch Web Dashboard: {e}")
             QMessageBox.critical(self, tr('error'), f"Failed to start Web Dashboard: {e}")

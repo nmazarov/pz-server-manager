@@ -488,3 +488,137 @@ class DialogsMixin:
         elif system == 'Darwin':
             return 'Menlo'
         return 'DejaVu Sans Mono'
+
+
+class WebSecurityDialog(QDialog):
+    """Dialog to configure custom port, password, and firewall rules for the Web Dashboard."""
+
+    def __init__(self, parent=None, current_port: int = 8080, current_password: str = "admin"):
+        super().__init__(parent)
+        self.setWindowTitle(tr('web_security_title'))
+        self.setFixedSize(520, 370)
+        self.result_port = current_port
+        self.result_password = current_password
+        self.result_open_firewall = True
+
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #252526;
+                color: #ffffff;
+            }
+            QLabel {
+                color: #e0e0e0;
+            }
+            QSpinBox, QLineEdit {
+                background-color: #1e1e1e;
+                color: #40ff40;
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                padding: 6px 10px;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QSpinBox:focus, QLineEdit:focus {
+                border: 1px solid #2eb84d;
+            }
+            QPushButton {
+                background-color: #333333;
+                color: #ffffff;
+                border: 1px solid #444444;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #444444;
+            }
+            QCheckBox {
+                color: #cccccc;
+                font-size: 12px;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(14)
+
+        # Header with icon and description
+        header_layout = QHBoxLayout()
+        icon_lbl = QLabel("🛡️")
+        icon_lbl.setStyleSheet("font-size: 30px;")
+        desc_lbl = QLabel(tr('web_security_desc'))
+        desc_lbl.setWordWrap(True)
+        desc_lbl.setStyleSheet("color: #a0a0a0; font-size: 12px; line-height: 1.4;")
+        header_layout.addWidget(icon_lbl)
+        header_layout.addWidget(desc_lbl, 1)
+        layout.addLayout(header_layout)
+
+        # Port selection
+        port_box = QGroupBox(tr('web_port_label'))
+        port_box.setStyleSheet("QGroupBox { font-weight: bold; color: #40ff40; border: 1px solid #3c3c3c; border-radius: 6px; margin-top: 6px; padding-top: 14px; }")
+        port_layout = QHBoxLayout(port_box)
+
+        self.port_spin = QSpinBox()
+        self.port_spin.setRange(1024, 65535)
+        self.port_spin.setValue(current_port)
+        port_layout.addWidget(self.port_spin, 1)
+
+        rand_port_btn = QPushButton(tr('btn_random_port'))
+        rand_port_btn.clicked.connect(self._generate_random_port)
+        port_layout.addWidget(rand_port_btn)
+        layout.addWidget(port_box)
+
+        # Password selection
+        pw_box = QGroupBox(tr('web_pw_label'))
+        pw_box.setStyleSheet("QGroupBox { font-weight: bold; color: #40ff40; border: 1px solid #3c3c3c; border-radius: 6px; margin-top: 6px; padding-top: 14px; }")
+        pw_layout = QHBoxLayout(pw_box)
+
+        self.pw_edit = QLineEdit()
+        self.pw_edit.setText(current_password)
+        pw_layout.addWidget(self.pw_edit, 1)
+
+        rand_pw_btn = QPushButton(tr('btn_gen_pw'))
+        rand_pw_btn.clicked.connect(self._generate_random_password)
+        pw_layout.addWidget(rand_pw_btn)
+        layout.addWidget(pw_box)
+
+        # Firewall checkbox
+        self.fw_check = QCheckBox(tr('web_firewall_label'))
+        self.fw_check.setChecked(os.name == 'nt')
+        self.fw_check.setEnabled(os.name == 'nt')
+        layout.addWidget(self.fw_check)
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        cancel_btn = QPushButton(tr('btn_cancel') or "Отмена")
+        cancel_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        save_btn = QPushButton("🚀 " + tr('btn_save_start_web'))
+        save_btn.setStyleSheet("background-color: #208336; color: #ffffff; padding: 7px 16px; border: 1px solid #1c6d2d;")
+        save_btn.clicked.connect(self._on_save)
+        btn_layout.addWidget(save_btn)
+
+        layout.addLayout(btn_layout)
+
+    def _generate_random_port(self):
+        import random
+        excluded = {16261, 16262, 8766, 8767, 27015, 8080}
+        while True:
+            port = random.randint(8100, 48000)
+            if port not in excluded:
+                self.port_spin.setValue(port)
+                break
+
+    def _generate_random_password(self):
+        import secrets
+        self.pw_edit.setText(secrets.token_urlsafe(10))
+
+    def _on_save(self):
+        self.result_port = self.port_spin.value()
+        self.result_password = self.pw_edit.text().strip() or "admin"
+        self.result_open_firewall = self.fw_check.isChecked()
+        self.accept()
+

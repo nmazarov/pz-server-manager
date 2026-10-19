@@ -7,7 +7,7 @@ Contains modular tab mixins, dialogs, and main window components.
 
 from ui.dialogs import (
     DialogsMixin, create_zombie_app_icon, ensure_firewall_rules,
-    NoScrollEventFilter, _b
+    NoScrollEventFilter, _b, WebSecurityDialog
 )
 from ui.server_tab import ServerTabMixin
 from ui.settings_tab import SettingsTabMixin
@@ -27,5 +27,6 @@ __all__ = [
     'SandboxTabMixin',
     'ModsTabMixin',
     'InstallTabMixin',
+    'WebSecurityDialog',
     'MainWindow',
 ]

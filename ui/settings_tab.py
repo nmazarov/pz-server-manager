@@ -255,6 +255,11 @@ class SettingsTabMixin:
         self.setting_speed_limit.setSuffix(' km/h')
         _add_field(f, tr('lbl_speed_limit'), self.setting_speed_limit, 140)
 
+        web_sec_btn = QPushButton("🛡️ " + (tr('web_security_title') or "Безопасность веб-панели"))
+        web_sec_btn.setStyleSheet("background-color: #3b285a; color: #ffffff; padding: 6px 12px; font-weight: bold; border-radius: 4px;")
+        web_sec_btn.clicked.connect(lambda: getattr(self, 'open_web_security_dialog', lambda: None)())
+        _add_field(f, "", web_sec_btn, 240)
+
         right_col.addWidget(g_security)
 
         # ── 6. Admin (Right) ──

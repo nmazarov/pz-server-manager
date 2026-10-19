@@ -50,7 +50,15 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
+; Automatically configure Windows Defender Firewall for Project Zomboid server ports
+Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""Project Zomboid Server (UDP)"" dir=in action=allow protocol=UDP localport=16261,16262,8766,8767"; Flags: runhidden
+Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""Project Zomboid Server (TCP)"" dir=in action=allow protocol=TCP localport=16261,27015"; Flags: runhidden
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""Project Zomboid Server (UDP)"""; Flags: runhidden
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""Project Zomboid Server (TCP)"""; Flags: runhidden
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""Project Zomboid Web Dashboard (TCP)"""; Flags: runhidden
 
 [Code]
 // Verify 64-bit Java installation on Windows
