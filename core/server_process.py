@@ -1,3 +1,4 @@
+import psutil
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -134,24 +135,17 @@ class ServerProcess(QObject):
             logger.error(f"Error killing PID {pid}: {e}")
 
     def find_running_server_pids(self) -> list:
-        """Find running PZ server process PIDs by port or process name."""
-        pids = []
+        """Find running PZ server process PIDs by port."""
+        pids = set()
+        ports = {16261, 16262}
         try:
-            if os.name == 'nt':
-                out = subprocess.check_output('netstat -ano -p UDP', shell=True, text=True, errors='ignore')
-                for line in out.splitlines():
-                    if ':16261' in line or ':16262' in line:
-                        parts = line.split()
-                        if len(parts) >= 4:
-                            try:
-                                p = int(parts[-1])
-                                if p > 0 and self._is_pid_alive(p):
-                                    pids.append(p)
-                            except ValueError:
-                                pass
+            for conn in psutil.net_connections(kind='udp'):
+                if conn.laddr.port in ports:
+                    if conn.pid and psutil.pid_exists(conn.pid):
+                        pids.add(conn.pid)
         except Exception as e:
             logger.debug(f"find_running_server_pids error: {e}")
-        return list(set(pids))
+        return list(pids)
 
     def detect_and_attach_running_server(self) -> Optional[int]:
         """Detect if PZ server is already running outside this manager session, and attach to it."""

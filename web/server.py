@@ -17,6 +17,10 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query, Header, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -51,7 +55,18 @@ def create_app(
     installer: Optional[ServerInstaller] = None,
 ) -> FastAPI:
     """Create and configure the FastAPI web application."""
+    limiter = Limiter(key_func=get_remote_address)
     app = FastAPI(title="PZ Server Manager Web", version="1.2.1")
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:8080"], # Restrict to dashboard origin
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     if auth_manager is None:
         auth_manager = AuthManager()
@@ -275,6 +290,7 @@ def create_app(
     # ── REST API Endpoints ──────────────────────────────────────────
 
     @app.post("/api/login")
+    @limiter.limit("5/minute")
     def api_login(req: LoginReq):
         if auth_manager.verify_password(req.password):
             token = auth_manager.create_session()

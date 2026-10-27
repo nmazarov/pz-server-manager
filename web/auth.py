@@ -7,7 +7,7 @@ Authentication & Session Management for PZ Server Manager Web Dashboard.
 import os
 import json
 import secrets
-import hashlib
+import bcrypt
 from pathlib import Path
 from typing import Optional
 
@@ -19,8 +19,9 @@ def get_auth_file_path() -> Path:
     return Path(__file__).resolve().parent.parent / "web_auth.json"
 
 
-def _hash_password(password: str, salt: str) -> str:
-    return hashlib.sha256((salt + password).encode('utf-8')).hexdigest()
+def _hash_password(password: str) -> str:
+    # bcrypt handles salt internally
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 
 class AuthManager:
@@ -36,18 +37,21 @@ class AuthManager:
             try:
                 with open(self.auth_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    self.salt = data.get('salt', '')
+                    
                     self.hashed_pw = data.get('hashed_pw', '')
-                    if self.salt and self.hashed_pw:
+                    if self.hashed_pw:
                         return
             except Exception:
                 pass
 
-        # Generate new credentials (default password is 'admin')
-        self.salt = secrets.token_hex(16)
-        password = default_password if default_password else "admin"
-        self.hashed_pw = _hash_password(password, self.salt)
+        # Generate new credentials
+        password = default_password if default_password else secrets.token_urlsafe(16)
+        self.hashed_pw = _hash_password(password)
         self._initial_plain_password = password
+
+        # Save initial password for user
+        with open(self.auth_path.parent / "initial_password.txt", "w") as f:
+            f.write(password)
 
         self._save()
 
@@ -55,7 +59,6 @@ class AuthManager:
         try:
             with open(self.auth_path, 'w', encoding='utf-8') as f:
                 json.dump({
-                    'salt': self.salt,
                     'hashed_pw': self.hashed_pw
                 }, f, indent=2)
         except Exception as e:
@@ -65,15 +68,14 @@ class AuthManager:
         return getattr(self, '_initial_plain_password', None)
 
     def set_password(self, new_password: str):
-        self.salt = secrets.token_hex(16)
-        self.hashed_pw = _hash_password(new_password, self.salt)
+        self.hashed_pw = _hash_password(new_password)
         self.active_sessions.clear()
         self._save()
 
     def verify_password(self, password: str) -> bool:
         if not password:
             return False
-        return _hash_password(password, self.salt) == self.hashed_pw
+        return bcrypt.checkpw(password.encode('utf-8'), self.hashed_pw.encode('utf-8'))
 
     def create_session(self) -> str:
         token = secrets.token_hex(32)

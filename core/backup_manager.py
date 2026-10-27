@@ -145,13 +145,23 @@ class BackupManager(QObject):
             with zipfile.ZipFile(zip_p, 'r') as zf:
                 for member in zf.namelist():
                     # Destination determination based on prefix
+                    base_dest = self.zomboid_dir
+                    
                     if member.startswith("Server/"):
-                        dest = self.zomboid_dir / member
+                        dest = base_dest / member
                     elif member.startswith("db/"):
-                        dest = self.zomboid_dir / member
+                        dest = base_dest / member
                     elif member.startswith("Saves/"):
-                        dest = self.zomboid_dir / "Saves" / "Multiplayer" / member.replace(f"Saves/{self.server_name}/", "")
+                        base_dest = self.zomboid_dir / "Saves" / "Multiplayer"
+                        # Sanitize member name to prevent traversal
+                        sanitized_member = member.replace(f"Saves/{self.server_name}/", "")
+                        dest = base_dest / sanitized_member
                     else:
+                        continue
+                    
+                    # Security check: ensure destination is within target base directory
+                    if not dest.resolve().is_relative_to(base_dest.resolve()):
+                        logger.warning(f"Blocked malicious path in backup: {member}")
                         continue
 
                     dest.parent.mkdir(parents=True, exist_ok=True)

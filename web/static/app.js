@@ -398,18 +398,34 @@ async function loadMods() {
         badgeText = `🔴 [✗ ${m.reason}]`;
       }
 
-      item.innerHTML = `
-        <div>
-          <div class="mod-title">${m.name} <span style="color: var(--text-muted); font-size: 11px;">(ID: ${m.workshop_id})</span></div>
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">
-            Mod IDs: ${m.mod_ids.join(', ') || 'none'}
-          </div>
-        </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span class="mod-badge ${badgeClass}">${badgeText}</span>
-          <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="removeMod('${m.workshop_id}')">✕</button>
-        </div>
-      `;
+      // Safe DOM creation
+      const div1 = document.createElement('div');
+      const titleDiv = document.createElement('div');
+      titleDiv.className = 'mod-title';
+      titleDiv.textContent = m.name;
+      const idSpan = document.createElement('span');
+      idSpan.style.cssText = "color: var(--text-muted); font-size: 11px;";
+      idSpan.textContent = ` (ID: ${m.workshop_id})`;
+      titleDiv.appendChild(idSpan);
+      const idsDiv = document.createElement('div');
+      idsDiv.style.cssText = "font-size: 11px; color: var(--text-muted); margin-top: 3px;";
+      idsDiv.textContent = `Mod IDs: ${m.mod_ids.join(', ') || 'none'}`;
+      div1.appendChild(titleDiv);
+      div1.appendChild(idsDiv);
+      const div2 = document.createElement('div');
+      div2.style.cssText = "display: flex; align-items: center; gap: 10px;";
+      const badgeSpan = document.createElement('span');
+      badgeSpan.className = `mod-badge ${badgeClass}`;
+      badgeSpan.textContent = badgeText;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-danger';
+      btn.style.cssText = "padding: 4px 8px; font-size: 11px;";
+      btn.textContent = '✕';
+      btn.onclick = () => removeMod(m.workshop_id);
+      div2.appendChild(badgeSpan);
+      div2.appendChild(btn);
+      item.appendChild(div1);
+      item.appendChild(div2);
       container.appendChild(item);
     });
   } catch (e) {
@@ -526,16 +542,29 @@ async function loadInstallInfo() {
         document.getElementById('install-branch').value = b.branch;
       }
 
-      row.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <input type="radio" name="steam-branch-radio" value="${b.branch}" ${idx === 0 ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: #67c1f5;">
-          <div style="font-weight: bold; font-size: 13px; color: #fff;">${b.name_ru || b.name}</div>
-          <div style="font-size: 12px; color: #8f98a0;">— ${b.desc_ru || b.description}</div>
-        </div>
-        <div style="font-size: 12px; color: #8f98a0; font-weight: normal; text-align: right;">
-          ${b.date_ru || b.date_str || ''}
-        </div>
-      `;
+      // Safe DOM creation
+      const divWrapper = document.createElement('div');
+      divWrapper.style.cssText = 'display: flex; align-items: center; gap: 10px;';
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'steam-branch-radio';
+      radio.value = b.branch;
+      radio.checked = (idx === 0);
+      radio.style.cssText = 'cursor: pointer; width: 16px; height: 16px; accent-color: #67c1f5;';
+      const nameDiv = document.createElement('div');
+      nameDiv.style.cssText = 'font-weight: bold; font-size: 13px; color: #fff;';
+      nameDiv.textContent = b.name_ru || b.name;
+      const descDiv = document.createElement('div');
+      descDiv.style.cssText = 'font-size: 12px; color: #8f98a0;';
+      descDiv.textContent = '— ' + (b.desc_ru || b.description);
+      divWrapper.appendChild(radio);
+      divWrapper.appendChild(nameDiv);
+      divWrapper.appendChild(descDiv);
+      const dateDiv = document.createElement('div');
+      dateDiv.style.cssText = 'font-size: 12px; color: #8f98a0; font-weight: normal; text-align: right;';
+      dateDiv.textContent = b.date_ru || b.date_str || '';
+      row.appendChild(divWrapper);
+      row.appendChild(dateDiv);
 
       row.addEventListener('click', () => {
         const radio = row.querySelector('input[type="radio"]');
@@ -651,13 +680,23 @@ async function loadBackups() {
     list.forEach(b => {
       const item = document.createElement('div');
       item.className = 'mod-item';
-      item.innerHTML = `
-        <div>
-          <div style="font-weight: bold; font-size: 13px;">📦 ${b.name}</div>
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Размер архива: ${b.size_mb} MB</div>
-        </div>
-        <button class="btn btn-secondary" style="font-size: 12px;" onclick="restoreBackup('${b.name}')">Восстановить</button>
-      `;
+      // Safe DOM creation
+      const div1 = document.createElement('div');
+      const nameDiv = document.createElement('div');
+      nameDiv.style.cssText = 'font-weight: bold; font-size: 13px;';
+      nameDiv.textContent = '📦 ' + b.name;
+      const sizeDiv = document.createElement('div');
+      sizeDiv.style.cssText = 'font-size: 11px; color: var(--text-muted); margin-top: 2px;';
+      sizeDiv.textContent = 'Размер архива: ' + b.size_mb + ' MB';
+      div1.appendChild(nameDiv);
+      div1.appendChild(sizeDiv);
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-secondary';
+      btn.style.fontSize = '12px';
+      btn.textContent = 'Восстановить';
+      btn.onclick = () => restoreBackup(b.name);
+      item.appendChild(div1);
+      item.appendChild(btn);
       container.appendChild(item);
     });
   } catch (e) {

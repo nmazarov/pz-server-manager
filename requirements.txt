@@ -4,6 +4,9 @@
 # GUI Framework
 PyQt5>=5.15.0
 
+# System utilities
+psutil>=5.9.0
+
 # For building executables (optional, for distribution)
 pyinstaller>=5.0
 
