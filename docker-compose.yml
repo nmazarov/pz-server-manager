@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  pz-manager:
+    build: .
+    container_name: pz-server-manager
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "16261:16261/udp"
+      - "16262:16262/udp"
+      - "8766:8766/udp"
+      - "8767:8767/udp"
+      - "27015:27015/tcp"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
