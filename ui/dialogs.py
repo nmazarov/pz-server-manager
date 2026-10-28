@@ -577,6 +577,10 @@ class WebSecurityDialog(QDialog):
         self.pw_edit.setText(current_password)
         pw_layout.addWidget(self.pw_edit, 1)
 
+        copy_pw_btn = QPushButton("📋 " + ("Копировать" if get_language() == 'ru' else "Copy"))
+        copy_pw_btn.clicked.connect(self._copy_password)
+        pw_layout.addWidget(copy_pw_btn)
+
         rand_pw_btn = QPushButton(tr('btn_gen_pw'))
         rand_pw_btn.clicked.connect(self._generate_random_password)
         pw_layout.addWidget(rand_pw_btn)
@@ -612,13 +616,25 @@ class WebSecurityDialog(QDialog):
                 self.port_spin.setValue(port)
                 break
 
+    def _copy_password(self):
+        text = self.pw_edit.text()
+        if text:
+            clipboard = QApplication.clipboard()
+            if clipboard:
+                clipboard.setText(text)
+
     def _generate_random_password(self):
         import secrets
         self.pw_edit.setText(secrets.token_urlsafe(10))
 
     def _on_save(self):
         self.result_port = self.port_spin.value()
-        self.result_password = self.pw_edit.text().strip() or "admin"
+        pw = self.pw_edit.text().strip()
+        if not pw:
+            import secrets
+            pw = secrets.token_urlsafe(10)
+            self.pw_edit.setText(pw)
+        self.result_password = pw
         self.result_open_firewall = self.fw_check.isChecked()
         self.accept()
 
