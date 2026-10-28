@@ -62,7 +62,7 @@ def create_app(
     
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:8080"], # Restrict to dashboard origin
+        allow_origin_regex=r"^https?://.*", # Allow LAN and localhost
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -291,7 +291,7 @@ def create_app(
 
     @app.post("/api/login")
     @limiter.limit("5/minute")
-    def api_login(req: LoginReq):
+    def api_login(request: Request, req: LoginReq):
         if auth_manager.verify_password(req.password):
             token = auth_manager.create_session()
             return {"success": True, "token": token}
