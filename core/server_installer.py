@@ -678,6 +678,8 @@ class ServerInstaller:
                 server_dir_str = server_dir_str.replace('/', '\\')
 
             branch_clean = beta_branch.strip()
+            if branch_clean.lower() == 'public':
+                branch_clean = ''
             pwd_clean = beta_password.strip()
 
             beta_arg = ""

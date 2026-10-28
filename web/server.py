@@ -667,7 +667,14 @@ def create_app(
 
     @app.get("/api/install/status")
     def api_install_status(token: str = Depends(get_token)):
-        return install_state
+        return {
+            "running": install_state["running"],
+            "in_progress": install_state["running"],
+            "progress": install_state["progress"],
+            "message": install_state["message"],
+            "logs": install_state["logs"],
+            "log": "\n".join(install_state["logs"][-150:])
+        }
 
     @app.post("/api/install/start")
     def api_install_start(req: InstallReq, token: str = Depends(get_token)):
@@ -682,6 +689,8 @@ def create_app(
         def worker():
             try:
                 branch = req.branch.strip()
+                if branch.lower() == 'public':
+                    branch = ''
                 pwd = (req.password or "").strip()
                 installer.install_or_update(
                     beta_branch=branch,

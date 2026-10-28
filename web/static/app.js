@@ -1175,42 +1175,87 @@ function applyModPack(pack) {
 }
 
 // ── Install & Steam Betas ─────────────────────────────────────────
+async function checkSteamUpdate() {
+  try {
+    const res = await fetch('/api/install/check-update', { headers: getHeaders() });
+    if (!res.ok) return;
+    const d = await res.json();
+    await loadInstallInfo();
+    if (d.update_available) {
+      alert(`Доступно обновление сервера!\nУстановленная версия: ${d.installed_version} (Build ${d.installed_buildid || '?'})\nНовейшая в Steam: ${d.latest_version} (Build ${d.latest_buildid})`);
+    } else {
+      alert(`Сервер обновлен до последней версии!\nТекущая версия: ${d.latest_version} (Build ${d.latest_buildid || 'Latest'})`);
+    }
+  } catch (e) {
+    alert('Не удалось проверить обновления: ' + e);
+  }
+}
+
 async function loadInstallInfo() {
   try {
     const res = await fetch('/api/install/branches', { headers: getHeaders() });
     if (!res.ok) return;
     const d = await res.json();
-    renderSteamBranches(d.branches || []);
-  } catch (e) {}
+    const branches = Array.isArray(d) ? d : (d.branches || []);
+    renderSteamBranches(branches);
+  } catch (e) {
+    console.error('Failed to load branches:', e);
+  }
 }
 
 function renderSteamBranches(branches) {
   const container = document.getElementById('steam-branch-rows');
   if (!container) return;
 
-  if (branches.length === 0) {
-    branches = [
-      { name: 'public', description: 'Стабильная публичная версия (Build 41)', build: 'Build 41', updated: 'Steam Latest' },
-      { name: 'unstable', description: 'Публичная бета-версия (Build 42 Unstable)', build: 'Build 42', updated: 'Steam Latest' },
-      { name: 'legacy41_66', description: 'Legacy стабильная ветка 41.66', build: 'Build 41', updated: 'Архивная' }
-    ];
+  if (!Array.isArray(branches) || branches.length === 0) {
+    container.innerHTML = '<div style="padding: 16px; color: #8f98a0; font-size: 13px;">Загрузка версий из Steam...</div>';
+    return;
   }
 
   container.innerHTML = '';
-  branches.forEach(b => {
+  branches.forEach((b, idx) => {
     const row = document.createElement('div');
-    row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #223447; cursor: pointer; transition: background 0.15s;';
+    const branchVal = b.branch !== undefined ? b.branch : (b.name === 'public' ? '' : b.name);
+    const title = b.name_ru || b.name || b.key || 'Public';
+    const desc = b.desc_ru || b.description || '';
+    const date = b.date_str || b.date_ru || b.updated || 'Актуально';
+    const buildId = b.buildid ? `Build ID: ${b.buildid}` : '';
+
+    row.className = 'steam-branch-item';
+    row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #223447; cursor: pointer; transition: background 0.15s;';
+
+    const isSelected = idx === 0;
+    if (isSelected) {
+      row.style.background = '#2a475e';
+      const inputEl = document.getElementById('install-branch');
+      if (inputEl) inputEl.value = branchVal;
+    }
+
     row.innerHTML = `
       <div>
-        <div style="font-weight: bold; color: #fff; font-size: 13px;">${b.name} <span style="font-size: 11px; color: #8bc34a; margin-left: 6px;">[${b.build || 'PZ'}]</span></div>
-        <div style="font-size: 11px; color: #8f98a0; margin-top: 2px;">${b.description || ''}</div>
+        <div style="font-weight: 700; color: #fff; font-size: 13.5px; display: flex; align-items: center; gap: 8px;">
+          <span>${title}</span>
+          ${buildId ? `<span class="badge metric" style="font-size: 11px; padding: 1px 7px;">${buildId}</span>` : ''}
+          ${isSelected ? `<span class="badge online" id="selected-branch-badge" style="font-size: 10px; padding: 1px 6px;">Выбрана</span>` : ''}
+        </div>
+        <div style="font-size: 12px; color: #8f98a0; margin-top: 4px;">${desc}</div>
       </div>
-      <div style="font-size: 12px; color: #8f98a0;">${b.updated || 'Актуально'}</div>
+      <div style="font-size: 12px; color: #90caf9; font-weight: 600; text-align: right;">${date}</div>
     `;
+
     row.onclick = () => {
-      document.querySelectorAll('#steam-branch-rows > div').forEach(el => el.style.background = '');
+      document.querySelectorAll('#steam-branch-rows > div').forEach(el => {
+        el.style.background = '';
+        const badge = el.querySelector('#selected-branch-badge');
+        if (badge) badge.remove();
+      });
       row.style.background = '#2a475e';
-      document.getElementById('install-branch').value = b.name;
+      const titleEl = row.querySelector('div > div');
+      if (titleEl && !titleEl.querySelector('#selected-branch-badge')) {
+        titleEl.insertAdjacentHTML('beforeend', '<span class="badge online" id="selected-branch-badge" style="font-size: 10px; padding: 1px 6px;">Выбрана</span>');
+      }
+      const inputEl = document.getElementById('install-branch');
+      if (inputEl) inputEl.value = branchVal;
     };
     container.appendChild(row);
   });
@@ -1274,13 +1319,22 @@ function pollInstallProgress() {
       if (pctEl) pctEl.textContent = (st.progress || 0) + '%';
       if (fillEl) fillEl.style.width = (st.progress || 0) + '%';
       if (msgEl) msgEl.textContent = st.message || 'Выполняется...';
-      if (logEl && st.log) logEl.textContent = st.log;
+      const logContent = Array.isArray(st.logs) ? st.logs.join('\n') : (st.log || '');
+      if (logEl && logContent) {
+        logEl.textContent = logContent;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
 
-      if (!st.in_progress) {
+      const isRunning = st.running || st.in_progress;
+      if (!isRunning && st.progress !== undefined && st.progress > 0) {
         clearInterval(timer);
         const btn = document.getElementById('btn-do-install');
         if (btn) btn.disabled = false;
-        alert('Установка/обновление завершено!');
+        if (st.progress >= 100) {
+          alert('Установка/обновление сервера успешно завершено!');
+        } else if (st.message && st.message.includes('Ошибка')) {
+          alert('Установка завершилась с ошибкой: ' + st.message);
+        }
       }
     } catch (e) {
       clearInterval(timer);
