@@ -10,8 +10,9 @@ def test_auth_manager_creation_and_verification(tmp_path):
     assert am.verify_password("my_secret_password_123") is True
     assert am.verify_password("wrong_password") is False
 
-def test_auth_manager_session():
-    am = AuthManager()
+def test_auth_manager_session(tmp_path):
+    auth_file = tmp_path / "web_auth.json"
+    am = AuthManager(auth_path=auth_file, default_password="session_test_pass")
     token = am.create_session()
     assert token is not None
     assert am.validate_session(token) is True

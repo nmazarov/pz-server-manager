@@ -39,7 +39,8 @@ class AuthManager:
                     data = json.load(f)
                     
                     self.hashed_pw = data.get('hashed_pw', '')
-                    if self.hashed_pw:
+                    # Valid bcrypt hashes start with $2a$, $2b$, or $2y$
+                    if self.hashed_pw and self.hashed_pw.startswith('$2'):
                         return
             except Exception:
                 pass
@@ -73,9 +74,12 @@ class AuthManager:
         self._save()
 
     def verify_password(self, password: str) -> bool:
-        if not password:
+        if not password or not getattr(self, 'hashed_pw', ''):
             return False
-        return bcrypt.checkpw(password.encode('utf-8'), self.hashed_pw.encode('utf-8'))
+        try:
+            return bcrypt.checkpw(password.encode('utf-8'), self.hashed_pw.encode('utf-8'))
+        except (ValueError, Exception):
+            return False
 
     def create_session(self) -> str:
         token = secrets.token_hex(32)
