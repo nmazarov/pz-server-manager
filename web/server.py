@@ -34,6 +34,8 @@ from core.server_installer import (
     check_server_update_available
 )
 from core.backup_manager import BackupManager
+from core.player_manager import PlayerManager
+from core.watchdog_manager import WatchdogManager
 from core.network_helper import NetworkHelper
 from web.auth import AuthManager
 
@@ -53,6 +55,7 @@ def create_app(
     config_manager: Optional[ConfigManager] = None,
     mod_manager: Optional[ModManager] = None,
     installer: Optional[ServerInstaller] = None,
+    player_manager: Optional[PlayerManager] = None,
 ) -> FastAPI:
     """Create and configure the FastAPI web application."""
     limiter = Limiter(key_func=get_remote_address)
@@ -79,6 +82,30 @@ def create_app(
         mod_manager = ModManager(paths)
     if installer is None:
         installer = ServerInstaller(paths)
+    if player_manager is None:
+        player_manager = PlayerManager(paths)
+
+    watchdog_enabled = [True]
+    current_srv_name = ["servertest"]
+    current_srv_ram = [6]
+
+    def on_proc_exit(code: int):
+        if watchdog_enabled[0] and code != 0 and not server_process.is_running:
+            logger.warning(f"Watchdog: Server exited unexpectedly (code {code}), restarting in 5s...")
+            add_console_line(f"🛡️ [Watchdog]: Обнаружен краш сервера (код {code}). Авто-перезапуск через 5 сек...")
+            def do_restart():
+                if watchdog_enabled[0] and not server_process.is_running:
+                    server_process.start_server(name=current_srv_name[0], ram_gb=current_srv_ram[0])
+            threading.Timer(5.0, do_restart).start()
+
+    if hasattr(server_process, 'process_exited'):
+        try:
+            server_process.process_exited.connect(on_proc_exit)
+        except Exception:
+            pass
+
+    server_process.output_received.connect(lambda text: player_manager.parse_console_line(text))
+    server_process.server_stopped.connect(lambda: player_manager.clear_online_players())
 
     # ── Console Log Buffer ──────────────────────────────────────────
     console_history: List[str] = []
@@ -395,7 +422,69 @@ def create_app(
             server_process.send_command(f'servermsg "{msg}"')
             add_console_line(f'> [Admin Announcement]: servermsg "{msg}"')
             return {"success": True, "message": f"Broadcast sent: {msg}"}
+        elif act == "gunshot":
+            server_process.send_command("gunshot")
+            add_console_line("> [Admin Action]: gunshot (Ambient gunshot event)")
+            return {"success": True, "message": "Gunshot event triggered"}
         return {"success": False, "message": "Unknown action"}
+
+    # ── Live Player Dashboard & Watchdog ────────────────────────────
+
+    class PlayerActionReq(BaseModel):
+        action: str  # kick, ban, teleport, admin, whitelist_add, whitelist_remove, refresh
+        player: Optional[str] = ""
+        target: Optional[str] = ""
+        reason: Optional[str] = "Action by Administrator"
+        level: Optional[str] = "admin"
+
+    @app.get("/api/players")
+    def api_get_players(token: str = Depends(get_token)):
+        online = player_manager.get_online_players()
+        return {
+            "players": online,
+            "count": len(online)
+        }
+
+    @app.post("/api/players/action")
+    def api_player_action(req: PlayerActionReq, token: str = Depends(get_token)):
+        act = req.action.lower()
+        if act == "refresh":
+            if server_process.is_running:
+                server_process.send_command("players")
+            return {"success": True, "players": player_manager.get_online_players()}
+        elif act == "kick":
+            cmd = player_manager.cmd_kick(req.player, req.reason or "Kicked by Administrator")
+        elif act == "ban":
+            cmd = player_manager.cmd_ban(req.player, req.reason or "Banned by Administrator")
+        elif act == "teleport":
+            cmd = player_manager.cmd_teleport(req.player, req.target)
+        elif act == "admin":
+            cmd = player_manager.cmd_set_access(req.player, req.level or "admin")
+        elif act == "whitelist_add":
+            ok = player_manager.add_to_whitelist(req.player)
+            return {"success": ok}
+        elif act == "whitelist_remove":
+            ok = player_manager.remove_from_whitelist(req.player)
+            return {"success": ok}
+        else:
+            return {"success": False, "message": "Unknown action"}
+
+        if cmd and server_process.is_running:
+            server_process.send_command(cmd)
+            add_console_line(f"> [Player Action]: {cmd}")
+            return {"success": True, "command": cmd}
+        elif not server_process.is_running:
+            return {"success": False, "message": "Сервер не запущен"}
+        return {"success": True}
+
+    @app.get("/api/watchdog")
+    def api_get_watchdog(token: str = Depends(get_token)):
+        return {"enabled": watchdog_enabled[0]}
+
+    @app.post("/api/watchdog/toggle")
+    def api_toggle_watchdog(req: Dict[str, Any], token: str = Depends(get_token)):
+        watchdog_enabled[0] = bool(req.get("enabled", True))
+        return {"success": True, "enabled": watchdog_enabled[0]}
 
     # ── Settings & Sandbox ──────────────────────────────────────────
 
@@ -406,7 +495,9 @@ def create_app(
     @app.post("/api/settings")
     def api_save_settings(data: Dict[str, Any], token: str = Depends(get_token)):
         try:
-            config_manager.save_server_ini(data)
+            current = config_manager.load_server_ini()
+            current.update(data)
+            config_manager.save_server_ini(current)
             return {"success": True}
         except Exception as e:
             return {"success": False, "message": str(e)}
@@ -415,10 +506,31 @@ def create_app(
     def api_get_sandbox(token: str = Depends(get_token)):
         return config_manager.load_sandbox_vars()
 
+    @app.get("/api/sandbox/full")
+    def api_get_sandbox_full(token: str = Depends(get_token)):
+        try:
+            sb, meta = config_manager.load_sandbox_vars_full()
+            json_meta = {}
+            if meta:
+                for k, v in meta.items():
+                    if isinstance(k, tuple) and len(k) == 2:
+                        json_meta[f"{k[0]}.{k[1]}"] = str(v)
+            return {"vars": sb, "meta": json_meta}
+        except Exception as e:
+            return {"vars": config_manager.load_sandbox_vars(), "meta": {}, "error": str(e)}
+
     @app.post("/api/sandbox")
     def api_save_sandbox(data: Dict[str, Any], token: str = Depends(get_token)):
         try:
-            config_manager.save_sandbox_vars(data)
+            current = config_manager.load_sandbox_vars()
+            def deep_merge(target, src):
+                for k, v in src.items():
+                    if isinstance(v, dict) and isinstance(target.get(k), dict):
+                        deep_merge(target[k], v)
+                    else:
+                        target[k] = v
+            deep_merge(current, data)
+            config_manager.save_sandbox_vars(current)
             return {"success": True}
         except Exception as e:
             return {"success": False, "message": str(e)}
@@ -601,25 +713,44 @@ def create_app(
     @app.get("/api/backups")
     def api_get_backups(token: str = Depends(get_token)):
         bm = BackupManager(paths)
-        return [{"name": b.name, "size_mb": round(b.stat().st_size / (1024 * 1024), 2)} for b in bm.list_backups()]
+        return bm.list_backups()
+
+    class BackupCreateReq(BaseModel):
+        tag: Optional[str] = "manual"
 
     @app.post("/api/backups/create")
-    def api_create_backup(token: str = Depends(get_token)):
+    def api_create_backup(req: Optional[BackupCreateReq] = None, token: str = Depends(get_token)):
         try:
             bm = BackupManager(paths)
-            b_path = bm.create_backup(tag="manual")
+            tag = req.tag if (req and req.tag) else "manual"
+            b_path = bm.create_backup(tag=tag)
             return {"success": True, "file": Path(b_path).name}
         except Exception as e:
             return {"success": False, "message": str(e)}
 
+    class BackupRestoreReq(BaseModel):
+        filename: str
+
     @app.post("/api/backups/restore")
-    def api_restore_backup(req: QuickActionReq, token: str = Depends(get_token)):
+    def api_restore_backup(req: BackupRestoreReq, token: str = Depends(get_token)):
         try:
             bm = BackupManager(paths)
-            b_file = paths['server_config_dir'] / "backups" / req.action
+            b_file = bm.backup_dir / req.filename
             if not b_file.exists():
-                return {"success": False, "message": "Backup file not found"}
+                return {"success": False, "message": "Файл резервной копии не найден"}
             bm.restore_backup(b_file)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    @app.delete("/api/backups/{filename}")
+    def api_delete_backup(filename: str, token: str = Depends(get_token)):
+        try:
+            bm = BackupManager(paths)
+            b_file = bm.backup_dir / filename
+            if not b_file.exists():
+                return {"success": False, "message": "Файл не найден"}
+            bm.delete_backup(b_file)
             return {"success": True}
         except Exception as e:
             return {"success": False, "message": str(e)}
