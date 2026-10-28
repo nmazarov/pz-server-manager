@@ -652,10 +652,10 @@ function renderModOptions(sb, meta) {
       html += `<label style="font-weight: bold; font-size: 13px;">${key}:</label>`;
 
       if (typeof val === 'boolean') {
-        html += `<div style="margin-top: 4px;"><label style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+        html += `<div style="margin-top: 4px;"><label class="checkbox-tile">
                   <input type="checkbox" id="${inputId}" class="modopt-input" data-table="${tableName}" data-key="${key}" ${val ? 'checked' : ''}>
-                  Включено
-                </label></div>`;
+                  <span>Включено</span>
+                  </label></div>`;
       } else if (typeof val === 'number') {
         const step = Number.isInteger(val) ? '1' : '0.1';
         html += `<input type="number" id="${inputId}" class="form-control modopt-input" data-table="${tableName}" data-key="${key}" value="${val}" step="${step}">`;
