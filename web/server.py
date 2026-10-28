@@ -159,6 +159,11 @@ def create_app(
     server_process.output_received.connect(on_live_output)
     server_process.error_received.connect(lambda err: on_live_output(f"ERROR: {err}"))
 
+    if hasattr(server_process, 'add_output_listener'):
+        server_process.add_output_listener(lambda text: player_manager.parse_console_line(text))
+        server_process.add_output_listener(lambda text: add_console_line(text))
+        server_process.add_output_listener(on_live_output)
+
     # ── Installation Worker State ───────────────────────────────────
     install_state = {
         "running": False,
@@ -329,8 +334,19 @@ def create_app(
         auth_manager.revoke_session(token)
         return {"success": True}
 
+    @app.get("/api/metrics")
+    def api_get_metrics(token: str = Depends(get_token)):
+        return get_system_metrics()
+
+    @app.get("/api/console/history")
+    def api_console_history(token: str = Depends(get_token)):
+        return {"lines": console_history[-200:]}
+
     @app.get("/api/status")
     def api_status(token: str = Depends(get_token)):
+        if not server_process.is_running():
+            server_process.detect_and_attach_running_server()
+
         p = paths['server_dir']
         is_installed = any(
             (p / n).exists() for n in [
@@ -348,9 +364,12 @@ def create_app(
         except Exception:
             pass
 
+        is_run = server_process.is_running()
         return {
             "installed": is_installed,
-            "running": server_process.is_running(),
+            "running": is_run,
+            "is_running": is_run,
+            "pid": server_process.get_pid(),
             "target_version": target_version,
             "public_ip": NetworkHelper.get_local_ip(),
             "metrics": get_system_metrics()
@@ -548,6 +567,37 @@ def create_app(
             pass
         return 42
 
+    class UpdateModReq(BaseModel):
+        workshop_id: str
+        name: Optional[str] = None
+        mod_id: Optional[str] = None
+        mod_ids: Optional[List[str]] = None
+        map_folders: Optional[List[str]] = None
+
+    @app.post("/api/mods/update")
+    def api_update_mod(req: UpdateModReq, token: str = Depends(get_token)):
+        wid = req.workshop_id.strip()
+        for mod in mod_manager.mods:
+            if str(mod.workshop_id) == wid:
+                if req.name is not None:
+                    mod.name = req.name.strip()
+                if req.mod_id is not None:
+                    mod.mod_id = req.mod_id.strip()
+                if req.mod_ids is not None:
+                    mod.mod_ids = [m.strip() for m in req.mod_ids if m.strip()]
+                    if not mod.mod_id and mod.mod_ids:
+                        mod.mod_id = mod.mod_ids[0]
+                if req.map_folders is not None:
+                    mod.map_folders = [m.strip() for m in req.map_folders if m.strip()]
+
+                mod_manager._save_mods()
+                try:
+                    mod_manager.save_to_config()
+                except Exception:
+                    pass
+                return {"success": True, "mod": mod.to_dict()}
+        return {"success": False, "message": f"Mod {wid} not found"}
+
     @app.get("/api/mods")
     def api_get_mods(token: str = Depends(get_token)):
         target_version = get_target_build_version()
@@ -559,11 +609,13 @@ def create_app(
         for mod in mod_manager.get_mods():
             status_code, reason = mod_manager.check_compatibility(mod, target_build=target_version)
             mods_data.append({
-                "workshop_id": mod.get("workshop_id"),
+                "workshop_id": str(mod.get("workshop_id")),
                 "name": mod.get("name", "Unknown"),
+                "mod_id": mod.get("mod_id", ""),
                 "mod_ids": mod.get("mod_ids") or ([mod.get("mod_id")] if mod.get("mod_id") else []),
+                "map_folders": mod.get("map_folders", []),
                 "tags": mod.get("tags", []),
-                "status": status_code,  # 'compatible', 'incompatible', 'warning'
+                "status": status_code,
                 "reason": reason
             })
         return {
@@ -787,6 +839,7 @@ def create_app(
 
     @app.websocket("/ws/console")
     async def websocket_console(websocket: WebSocket, token: Optional[str] = Query(None)):
+        loop_holder["loop"] = asyncio.get_running_loop()
         if not auth_manager.validate_session(token):
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return

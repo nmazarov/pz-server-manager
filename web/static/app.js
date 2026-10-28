@@ -122,9 +122,15 @@ function switchSandboxSubtab(subtab) {
 // ── Dashboard Core ────────────────────────────────────────────────
 function initDashboard() {
   connectWebSocket();
+  loadConsoleHistory();
   pollStatus();
-  setInterval(pollStatus, 4000);
+  setInterval(pollStatus, 3000);
   setInterval(pollMetrics, 3000);
+  setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      loadConsoleHistory();
+    }
+  }, 3000);
   setInterval(() => {
     const srvPanel = document.getElementById('tab-server');
     if (srvPanel && srvPanel.classList.contains('active')) {
@@ -132,6 +138,28 @@ function initDashboard() {
     }
   }, 5000);
   loadWatchdog();
+}
+
+async function loadConsoleHistory() {
+  try {
+    const res = await fetch('/api/console/history', { headers: getHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const out = document.getElementById('console-output');
+    if (out && data.lines && data.lines.length > 0) {
+      out.innerHTML = '';
+      data.lines.forEach(l => {
+        const div = document.createElement('div');
+        div.className = 'terminal-line';
+        div.textContent = l;
+        out.appendChild(div);
+      });
+      const chk = document.getElementById('autoscroll-chk');
+      if (chk && chk.checked) {
+        out.scrollTop = out.scrollHeight;
+      }
+    }
+  } catch (e) {}
 }
 
 // ── WebSocket Live Console ────────────────────────────────────────
@@ -212,16 +240,25 @@ async function pollStatus() {
     const btnStop = document.getElementById('btn-stop');
     const btnRestart = document.getElementById('btn-restart');
 
-    if (data.is_running) {
-      badgeStatus.className = 'badge online';
-      badgeStatus.textContent = '🟢 Работает (PID ' + (data.pid || '') + ')';
+    const isRunning = Boolean(data.running || data.is_running);
+    const pidStr = data.pid ? ` (PID ${data.pid})` : '';
+
+    if (isRunning) {
+      if (badgeStatus) {
+        badgeStatus.className = 'badge online';
+        badgeStatus.textContent = '🟢 Работает' + pidStr;
+      }
       if (btnStart) btnStart.disabled = true;
       if (btnStop) btnStop.disabled = false;
       if (btnRestart) btnRestart.disabled = false;
     } else {
-      badgeStatus.className = 'badge offline';
-      badgeStatus.textContent = '🔴 Остановлен';
-      if (btnStart) btnStart.disabled = false;
+      if (badgeStatus && badgeStatus.textContent !== '🟡 Запускается...') {
+        badgeStatus.className = 'badge offline';
+        badgeStatus.textContent = '🔴 Остановлен';
+      }
+      if (btnStart && (!badgeStatus || badgeStatus.textContent !== '🟡 Запускается...')) {
+        btnStart.disabled = false;
+      }
       if (btnStop) btnStop.disabled = true;
       if (btnRestart) btnRestart.disabled = true;
     }
@@ -262,24 +299,40 @@ async function startServer() {
   const ram = parseInt(document.getElementById('srv-ram')?.value || '6');
 
   const btnStart = document.getElementById('btn-start');
+  const badgeStatus = document.getElementById('badge-status');
+
   if (btnStart) btnStart.disabled = true;
+  if (badgeStatus) {
+    badgeStatus.className = 'badge metric';
+    badgeStatus.textContent = '🟡 Запускается...';
+  }
+
+  appendConsoleLine(`[UI]: Отправлена команда запуска сервера '${name}' (${ram} GB RAM)...`);
 
   try {
     const res = await fetch('/api/server/start', {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ name: name, ram: ram })
+      body: JSON.stringify({ server_name: name, ram_gb: ram })
     });
     const d = await res.json();
     if (!d.success) {
       alert('Ошибка запуска: ' + d.message);
       if (btnStart) btnStart.disabled = false;
+      if (badgeStatus) {
+        badgeStatus.className = 'badge offline';
+        badgeStatus.textContent = '🔴 Остановлен';
+      }
     } else {
-      setTimeout(pollStatus, 1000);
+      setTimeout(pollStatus, 1500);
     }
   } catch (e) {
-    alert('Сетевая ошибка запуска');
+    alert('Сетевая ошибка запуска: ' + e);
     if (btnStart) btnStart.disabled = false;
+    if (badgeStatus) {
+      badgeStatus.className = 'badge offline';
+      badgeStatus.textContent = '🔴 Остановлен';
+    }
   }
 }
 
@@ -1050,7 +1103,7 @@ function renderMods(mods) {
       <tr>
         <th style="width: 50px;">СТАТУС</th>
         <th>WORKSHOP ID</th>
-        <th>НАЗВАНИЕ МОДА</th>
+        <th>МОД И ИДЕНТИФИКАТОРЫ (MOD ID)</th>
         <th style="text-align: right;">УПРАВЛЕНИЕ</th>
       </tr>
     </thead>
@@ -1064,21 +1117,89 @@ function renderMods(mods) {
     const wid = m.workshop_id || m.mod_id || '--';
     const name = m.name || ('Workshop Item ' + wid);
     const reason = m.reason ? ` title="${m.reason.replace(/"/g, '&quot;')}"` : '';
+    const modIds = (m.mod_ids && m.mod_ids.length > 0) ? m.mod_ids : (m.mod_id ? [m.mod_id] : []);
+    const modIdBadges = modIds.map(id => `<span style="display: inline-block; background: #1c2b3a; border: 1px solid #2a475e; color: #8bc34a; font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; margin-top: 3px;">${id}</span>`).join('');
+    const mapBadges = (m.map_folders && m.map_folders.length > 0) ? m.map_folders.map(map => `<span style="display: inline-block; background: #2d261a; border: 1px solid #5a452a; color: #ffb74d; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; margin-top: 3px;">🗺️ ${map}</span>`).join('') : '';
 
     html += `<tr>
       <td style="font-size: 16px; text-align: center;"${reason}>${dot}</td>
       <td style="font-family: var(--font-mono); font-size: 12px; color: #ffb74d;">${wid}</td>
-      <td><b>${name}</b></td>
+      <td>
+        <div style="font-weight: 700; color: #fff; font-size: 13.5px;">${name}</div>
+        <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
+          ${modIdBadges || '<span style="font-size: 11px; color: var(--text-muted);">[ID не указан]</span>'}
+          ${mapBadges}
+        </div>
+      </td>
       <td style="text-align: right; white-space: nowrap;">
-        <button class="btn btn-secondary" onclick="moveMod(${idx}, -1)" style="padding: 3px 8px; font-size: 11px;">⬆</button>
-        <button class="btn btn-secondary" onclick="moveMod(${idx}, 1)" style="padding: 3px 8px; font-size: 11px;">⬇</button>
-        <button class="btn btn-danger" onclick="removeMod(${idx})" style="padding: 3px 9px; font-size: 11px; margin-left: 6px;">✕</button>
+        <button class="btn btn-secondary" onclick="openEditModModal(${idx})" style="padding: 3px 9px; font-size: 11px;" title="Редактировать Mod ID и название">✏️ Изменить</button>
+        <button class="btn btn-secondary" onclick="moveMod(${idx}, -1)" style="padding: 3px 8px; font-size: 11px;" title="Переместить выше">⬆</button>
+        <button class="btn btn-secondary" onclick="moveMod(${idx}, 1)" style="padding: 3px 8px; font-size: 11px;" title="Переместить ниже">⬇</button>
+        <button class="btn btn-danger" onclick="removeMod(${idx})" style="padding: 3px 9px; font-size: 11px; margin-left: 6px;" title="Удалить мод">✕</button>
       </td>
     </tr>`;
   });
 
   html += `</tbody></table>`;
   container.innerHTML = html;
+}
+
+// ── Mod Edit Modal Logic ──────────────────────────────────────────
+let editingModIndex = -1;
+
+function openEditModModal(idx) {
+  if (idx < 0 || idx >= currentModsList.length) return;
+  editingModIndex = idx;
+  const m = currentModsList[idx];
+
+  document.getElementById('edit-mod-wid').value = m.workshop_id || '';
+  document.getElementById('edit-mod-name').value = m.name || '';
+  
+  const ids = (m.mod_ids && m.mod_ids.length > 0) ? m.mod_ids.join('; ') : (m.mod_id || '');
+  document.getElementById('edit-mod-ids').value = ids;
+
+  const maps = (m.map_folders && m.map_folders.length > 0) ? m.map_folders.join('; ') : '';
+  document.getElementById('edit-mod-maps').value = maps;
+
+  document.getElementById('edit-mod-modal').style.display = 'flex';
+}
+
+function closeEditModModal() {
+  document.getElementById('edit-mod-modal').style.display = 'none';
+  editingModIndex = -1;
+}
+
+async function saveEditMod() {
+  if (editingModIndex < 0 || editingModIndex >= currentModsList.length) return;
+  const m = currentModsList[editingModIndex];
+  const wid = m.workshop_id;
+
+  const newName = document.getElementById('edit-mod-name').value.trim();
+  const rawIds = document.getElementById('edit-mod-ids').value.split(/[;,]/).map(s => s.trim()).filter(Boolean);
+  const rawMaps = document.getElementById('edit-mod-maps').value.split(/[;,]/).map(s => s.trim()).filter(Boolean);
+
+  try {
+    const res = await fetch('/api/mods/update', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        workshop_id: String(wid),
+        name: newName,
+        mod_ids: rawIds,
+        mod_id: rawIds[0] || '',
+        map_folders: rawMaps
+      })
+    });
+    const d = await res.json();
+    if (d.success) {
+      closeEditModModal();
+      await loadMods();
+    } else {
+      alert('Ошибка обновления мода: ' + d.message);
+    }
+  } catch (e) {
+    alert('Сетевая ошибка сохранения: ' + e);
+  }
 }
 
 async function addMod() {
