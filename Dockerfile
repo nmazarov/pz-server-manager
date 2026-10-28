@@ -5,7 +5,8 @@ RUN apt-get update && apt-get install -y \
     libqt5gui5 \
     libqt5core5a \
     libqt5widgets5 \
-    libgl1-mesa-glx \
+    libx11-xcb1 \
+    libgl1 \
     gcc \
     g++ \
     python3-dev \

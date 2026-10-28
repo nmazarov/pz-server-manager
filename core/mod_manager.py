@@ -99,6 +99,7 @@ class ModManager:
     def _save_mods(self):
         """Save mods to local cache file."""
         try:
+            self._mods_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self._mods_file, 'w', encoding='utf-8') as f:
                 json.dump([m.to_dict() for m in self.mods], f, indent=2)
             logger.info(f"Saved {len(self.mods)} mods to cache")

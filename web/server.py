@@ -291,8 +291,8 @@ def create_app(
 
     @app.post("/api/login")
     @limiter.limit("5/minute")
-    def api_login(req: LoginReq):
-        if auth_manager.verify_password(req.password):
+    def api_login(request: Request, body: LoginReq):
+        if auth_manager.verify_password(body.password):
             token = auth_manager.create_session()
             return {"success": True, "token": token}
         raise HTTPException(status_code=400, detail="Invalid password")
