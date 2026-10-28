@@ -50,7 +50,7 @@ class ModManager:
     
     def __init__(self, paths: dict):
         self.paths = paths
-        self.server_config_dir = paths.get('server_config_dir')
+        self.server_config_dir = paths.get('server_config_dir') or (Path(paths.get('zomboid_dir', Path.home() / 'Zomboid')) / 'Server')
         self.mods: List[ModInfo] = []
         self._mods_file = Path('data') / 'pz_mods.json'
         if not self._mods_file.exists() and Path('pz_mods.json').exists():
@@ -99,6 +99,7 @@ class ModManager:
     def _save_mods(self):
         """Save mods to local cache file."""
         try:
+            self._mods_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self._mods_file, 'w', encoding='utf-8') as f:
                 json.dump([m.to_dict() for m in self.mods], f, indent=2)
             logger.info(f"Saved {len(self.mods)} mods to cache")

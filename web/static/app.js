@@ -1021,12 +1021,15 @@ async function deleteBackup(filename) {
 }
 
 // ── Mods Management ───────────────────────────────────────────────
+let currentModsList = [];
+
 async function loadMods() {
   try {
     const res = await fetch('/api/mods', { headers: getHeaders() });
     if (!res.ok) return;
-    const mods = await res.json();
-    renderMods(mods);
+    const data = await res.json();
+    currentModsList = Array.isArray(data) ? data : (data.mods || []);
+    renderMods(currentModsList);
   } catch (e) {
     console.error('loadMods error:', e);
   }
@@ -1036,12 +1039,13 @@ function renderMods(mods) {
   const container = document.getElementById('mods-container');
   if (!container) return;
 
-  if (!mods || mods.length === 0) {
-    container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 24px;">Моды не добавлены. Введите Workshop ID или выберите готовый набор выше.</div>';
+  if (!Array.isArray(mods) || mods.length === 0) {
+    container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 24px;">Моды не добавлены. Введите Workshop ID, ссылку на коллекцию Steam или выберите готовый набор выше.</div>';
     return;
   }
 
-  let html = `<table class="data-table">
+  let html = `<div style="margin-bottom: 8px; font-size: 12.5px; color: var(--text-muted);">Всего подключено модов: <b>${mods.length}</b></div>
+  <table class="data-table">
     <thead>
       <tr>
         <th style="width: 50px;">СТАТУС</th>
@@ -1055,16 +1059,20 @@ function renderMods(mods) {
   mods.forEach((m, idx) => {
     let dot = '🟢';
     if (m.status === 'incompatible') dot = '🔴';
-    else if (m.status === 'unknown') dot = '🟡';
+    else if (m.status === 'warning' || m.status === 'unknown') dot = '🟡';
+
+    const wid = m.workshop_id || m.mod_id || '--';
+    const name = m.name || ('Workshop Item ' + wid);
+    const reason = m.reason ? ` title="${m.reason.replace(/"/g, '&quot;')}"` : '';
 
     html += `<tr>
-      <td style="font-size: 16px; text-align: center;">${dot}</td>
-      <td style="font-family: var(--font-mono); font-size: 12px; color: #ffb74d;">${m.workshop_id}</td>
-      <td><b>${m.name || 'Workshop Item ' + m.workshop_id}</b></td>
-      <td style="text-align: right;">
-        <button class="btn btn-secondary" onclick="moveMod(${idx}, -1)" style="padding: 2px 7px; font-size: 11px;">⬆</button>
-        <button class="btn btn-secondary" onclick="moveMod(${idx}, 1)" style="padding: 2px 7px; font-size: 11px;">⬇</button>
-        <button class="btn btn-danger" onclick="removeMod(${idx})" style="padding: 2px 8px; font-size: 11px; margin-left: 6px;">✕</button>
+      <td style="font-size: 16px; text-align: center;"${reason}>${dot}</td>
+      <td style="font-family: var(--font-mono); font-size: 12px; color: #ffb74d;">${wid}</td>
+      <td><b>${name}</b></td>
+      <td style="text-align: right; white-space: nowrap;">
+        <button class="btn btn-secondary" onclick="moveMod(${idx}, -1)" style="padding: 3px 8px; font-size: 11px;">⬆</button>
+        <button class="btn btn-secondary" onclick="moveMod(${idx}, 1)" style="padding: 3px 8px; font-size: 11px;">⬇</button>
+        <button class="btn btn-danger" onclick="removeMod(${idx})" style="padding: 3px 9px; font-size: 11px; margin-left: 6px;">✕</button>
       </td>
     </tr>`;
   });
@@ -1073,105 +1081,165 @@ function renderMods(mods) {
   container.innerHTML = html;
 }
 
-let loadedModsList = [];
 async function addMod() {
   const inp = document.getElementById('mod-input-id');
   if (!inp) return;
   const val = inp.value.trim();
   if (!val) return;
 
-  const match = val.match(/\d{5,12}/);
-  const wid = match ? match[0] : val;
+  const btn = document.querySelector("button[onclick='addMod()']");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Добавление...';
+  }
 
   try {
-    const res = await fetch('/api/mods', { headers: getHeaders() });
-    const mods = await res.json();
-    mods.push({ workshop_id: wid, name: 'Item ' + wid });
-    await saveModsPayload(mods);
-    inp.value = '';
-    loadMods();
+    const res = await fetch('/api/mods/add', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ id_or_url: val })
+    });
+    const d = await res.json();
+    if (d.success) {
+      inp.value = '';
+      await loadMods();
+      if (d.is_collection) {
+        alert(d.message || 'Коллекция успешно импортирована!');
+      }
+    } else {
+      alert('Ошибка при добавлении: ' + (d.message || 'Не удалось распознать ID или коллекцию'));
+    }
   } catch (e) {
-    alert('Ошибка добавления мода');
+    alert('Сетевая ошибка при добавлении: ' + e);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '➕ Добавить мод';
+    }
   }
 }
 
 async function removeMod(idx) {
+  if (idx < 0 || idx >= currentModsList.length) return;
+  const m = currentModsList[idx];
+  const wid = m.workshop_id || m.mod_id;
   try {
-    const res = await fetch('/api/mods', { headers: getHeaders() });
-    const mods = await res.json();
-    mods.splice(idx, 1);
-    await saveModsPayload(mods);
-    loadMods();
-  } catch (e) {}
+    const res = await fetch('/api/mods/remove', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ id_or_url: String(wid) })
+    });
+    if (res.ok) {
+      await loadMods();
+    }
+  } catch (e) {
+    console.error('removeMod error:', e);
+  }
 }
 
 async function moveMod(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= currentModsList.length) return;
+  const temp = currentModsList[idx];
+  currentModsList[idx] = currentModsList[newIdx];
+  currentModsList[newIdx] = temp;
+  renderMods(currentModsList);
+  await saveModsPayload(currentModsList);
+}
+
+async function saveMods() {
   try {
-    const res = await fetch('/api/mods', { headers: getHeaders() });
-    const mods = await res.json();
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= mods.length) return;
-    const temp = mods[idx];
-    mods[idx] = mods[newIdx];
-    mods[newIdx] = temp;
-    await saveModsPayload(mods);
-    loadMods();
-  } catch (e) {}
+    const res = await fetch('/api/mods/save', {
+      method: 'POST',
+      headers: getHeaders()
+    });
+    const d = await res.json();
+    if (d.success) {
+      alert('Список модов успешно сохранен в конфигурации сервера!');
+    } else {
+      alert('Ошибка сохранения: ' + d.message);
+    }
+  } catch (e) {
+    alert('Ошибка сохранения модов: ' + e);
+  }
 }
 
 async function saveModsPayload(mods) {
-  await fetch('/api/mods/save', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ mods: mods })
-  });
+  try {
+    await fetch('/api/mods/save', {
+      method: 'POST',
+      headers: getHeaders()
+    });
+  } catch (e) {
+    console.error('saveModsPayload error:', e);
+  }
 }
 
-function clearMods() {
-  if (confirm('Очистить весь список подключенных модов?')) {
-    saveModsPayload([]).then(loadMods);
+async function clearMods() {
+  if (!confirm('Очистить весь список подключенных модов?')) return;
+  try {
+    const res = await fetch('/api/mods/clear', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ id_or_url: '' })
+    });
+    if (res.ok) {
+      await loadMods();
+    }
+  } catch (e) {
+    console.error('clearMods error:', e);
   }
 }
 
 async function checkAllModsCompatibility() {
-  loadMods();
-  alert('Проверка совместимости завершена!');
-}
-
-function analyzeMods() {
-  alert('Анализ зависимостей: Все активные моды проверены, конфликтов не обнаружено.');
-}
-
-function saveMods() {
-  alert('Список модов актуален и сохранен в конфигурации сервера!');
-}
-
-function applyModPack(pack) {
-  const packs = {
-    vehicles: ['2680473910', '2791656602', '2856230869'],
-    weapons: ['2200148440', '2297098490'],
-    qol: ['2392709985', '2169435997', '2617575329'],
-    hardcore: ['2714850307', '2684898108']
-  };
-
-  const items = packs[pack] || [];
-  if (items.length === 0) return;
-
-  fetch('/api/mods', { headers: getHeaders() })
-    .then(r => r.json())
-    .then(mods => {
-      const existing = new Set(mods.map(m => String(m.workshop_id)));
-      items.forEach(id => {
-        if (!existing.has(id)) {
-          mods.push({ workshop_id: id, name: 'Pack Mod ' + id });
-        }
-      });
-      return saveModsPayload(mods);
-    })
-    .then(() => {
-      loadMods();
-      alert(`Набор "${pack}" успешно применен!`);
+  try {
+    const res = await fetch('/api/mods/check', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ id_or_url: '' })
     });
+    const d = await res.json();
+    await loadMods();
+    if (d.success) {
+      alert(`Проверка завершена!\nВсего: ${d.total}\nСовместимо: ${d.compatible}\nПредупреждения: ${d.warning}\nНесовместимо: ${d.incompatible}`);
+    }
+  } catch (e) {
+    alert('Ошибка при проверке совместимости: ' + e);
+  }
+}
+
+async function analyzeMods() {
+  try {
+    const res = await fetch('/api/mods/analyze', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ id_or_url: '' })
+    });
+    const d = await res.json();
+    if (d.success) {
+      await loadMods();
+      alert('Анализ завершен! Оптимальный порядок загрузки применен.');
+    }
+  } catch (e) {
+    alert('Ошибка анализа зависимостей: ' + e);
+  }
+}
+
+async function applyModPack(pack) {
+  try {
+    const res = await fetch('/api/mods/preset', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ action: pack })
+    });
+    const d = await res.json();
+    if (d.success) {
+      await loadMods();
+      alert(`Набор "${pack}" успешно применен (добавлено модов: ${d.added || 0})!`);
+    }
+  } catch (e) {
+    alert('Ошибка применения набора: ' + e);
+  }
 }
 
 // ── Install & Steam Betas ─────────────────────────────────────────

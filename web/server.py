@@ -577,27 +577,38 @@ def create_app(
     def api_add_mod(req: ModReq, token: str = Depends(get_token)):
         cid = mod_manager.parse_collection_id(req.id_or_url.strip())
         if not cid:
-            return {"success": False, "message": "Invalid Workshop ID or URL"}
+            return {"success": False, "message": "Неверный Workshop ID или ссылка на коллекцию"}
 
         # Check if it is a collection
         col = mod_manager.get_collection_mods(cid)
-        if len(col) > 1:
+        if len(col) > 0:
             res = mod_manager.import_collection(cid)
+            try:
+                mod_manager.save_to_config()
+            except Exception:
+                pass
             return {
                 "success": True,
                 "is_collection": True,
-                "message": f"Collection imported: {res['added_count']} new mods added."
+                "added_count": res.get("added_count", 0),
+                "total_items": res.get("total_items", len(col)),
+                "message": f"Коллекция успешно импортирована: добавлено {res.get('added_count', 0)} модов (всего в коллекции {len(col)})."
             }
 
         try:
             info = mod_manager.add_mod(cid)
+            try:
+                mod_manager.save_to_config()
+            except Exception:
+                pass
             target_version = get_target_build_version()
             status_code, reason = mod_manager.check_compatibility(info, target_build=target_version)
             return {
                 "success": True,
                 "mod": info,
                 "status": status_code,
-                "reason": reason
+                "reason": reason,
+                "message": f"Мод {info.get('name', cid)} успешно добавлен."
             }
         except Exception as e:
             return {"success": False, "message": str(e)}
@@ -605,11 +616,19 @@ def create_app(
     @app.post("/api/mods/remove")
     def api_remove_mod(req: ModReq, token: str = Depends(get_token)):
         mod_manager.remove_mod(req.id_or_url.strip())
+        try:
+            mod_manager.save_to_config()
+        except Exception:
+            pass
         return {"success": True}
 
     @app.post("/api/mods/clear")
     def api_clear_mods(token: str = Depends(get_token)):
         mod_manager.clear_mods()
+        try:
+            mod_manager.save_to_config()
+        except Exception:
+            pass
         return {"success": True}
 
     @app.post("/api/mods/check")
