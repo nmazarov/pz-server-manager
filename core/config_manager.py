@@ -69,7 +69,7 @@ class ConfigManager:
     
     def __init__(self, paths: dict):
         self.paths = paths
-        self.server_config_dir = paths['server_config_dir']
+        self.server_config_dir = Path(paths['server_config_dir'])
         # Restore last saved server name if available
         prefs = AppPreferences.load(paths)
         self._server_name = prefs.get('last_server_name', 'servertest')

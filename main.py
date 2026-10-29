@@ -239,6 +239,25 @@ def _get_monospace_font() -> str:
         return 'DejaVu Sans Mono'
 
 
+def load_theme_stylesheet(mono_font: str = "JetBrains Mono") -> str:
+    """Load the modern dark tactical QSS stylesheet, supporting both dev and frozen mode."""
+    candidates = []
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        candidates.append(Path(sys._MEIPASS) / 'assets' / 'theme.qss')
+    candidates.append(Path(__file__).resolve().parent / 'assets' / 'theme.qss')
+    candidates.append(Path('assets/theme.qss'))
+
+    for p in candidates:
+        if p.exists():
+            try:
+                with open(p, 'r', encoding='utf-8') as f:
+                    qss = f.read()
+                    return qss.replace('{mono_font}', mono_font)
+            except Exception as e:
+                logger.warning(f"Failed to read stylesheet from {p}: {e}")
+    return ""
+
+
 def main():
     """Main entry point for the application."""
     # Check if invoked in web server mode
@@ -273,183 +292,10 @@ def main():
 
     # Determine monospace font family for stylesheets (JetBrains Mono)
     mono_font = _get_monospace_font()
-
-    # Apply dark theme stylesheet
-    app.setStyleSheet(f"""
-        QMainWindow, QWidget {{
-            background-color: #2b2b2b;
-            color: #ffffff;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }}
-        QLabel {{
-            background-color: transparent;
-        }}
-        QTabWidget::pane {{
-            border: 1px solid #3d3d3d;
-            background-color: #2b2b2b;
-        }}
-        QTabBar::tab {{
-            background-color: #3d3d3d;
-            color: #ffffff;
-            padding: 8px 20px;
-            margin-right: 2px;
-        }}
-        QTabBar::tab:selected {{
-            background-color: #4a4a4a;
-            border-bottom: 2px solid #5294e2;
-        }}
-        QPushButton {{
-            background-color: #3d3d3d;
-            color: #ffffff;
-            border: 1px solid #555555;
-            padding: 8px 16px;
-            border-radius: 4px;
-            min-width: 80px;
-        }}
-        QPushButton:hover {{
-            background-color: #4a4a4a;
-        }}
-        QPushButton:pressed {{
-            background-color: #5294e2;
-        }}
-        QPushButton:disabled {{
-            background-color: #2b2b2b;
-            color: #666666;
-        }}
-        QPushButton#startBtn {{
-            background-color: #2e7d32;
-        }}
-        QPushButton#startBtn:hover {{
-            background-color: #388e3c;
-        }}
-        QPushButton#stopBtn {{
-            background-color: #c62828;
-        }}
-        QPushButton#stopBtn:hover {{
-            background-color: #d32f2f;
-        }}
-        QLineEdit, QSpinBox, QComboBox {{
-            background-color: #3d3d3d;
-            color: #ffffff;
-            border: 1px solid #555555;
-            padding: 6px;
-            border-radius: 4px;
-        }}
-        QSpinBox::up-button, QSpinBox::down-button {{
-            width: 0px;
-            height: 0px;
-            border: none;
-        }}
-        QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{
-            border: 1px solid #5294e2;
-        }}
-        QTextEdit, QPlainTextEdit {{
-            background-color: #1e1e1e;
-            color: #ffffff;
-            border: 1px solid #3d3d3d;
-            font-family: {mono_font}, monospace;
-        }}
-        QListWidget {{
-            background-color: #212121;
-            alternate-background-color: #282828;
-            color: #ffffff;
-            border: 1px solid #383838;
-            border-radius: 4px;
-            outline: none;
-        }}
-        QListWidget::item {{
-            padding: 5px 8px;
-            border-radius: 3px;
-        }}
-        QListWidget::item:hover {{
-            background-color: #2f343a;
-        }}
-        QListWidget::item:selected {{
-            background-color: #283747;
-            color: #ffffff;
-            border-left: 3px solid #5294e2;
-        }}
-        QProgressBar {{
-            border: 1px solid #555555;
-            border-radius: 4px;
-            text-align: center;
-            background-color: #3d3d3d;
-        }}
-        QProgressBar::chunk {{
-            background-color: #5294e2;
-        }}
-        QLabel {{
-            color: #ffffff;
-        }}
-        QGroupBox {{
-            border: 1px solid #555555;
-            border-radius: 4px;
-            margin-top: 10px;
-            padding-top: 10px;
-        }}
-        QGroupBox::title {{
-            color: #5294e2;
-            subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 5px;
-        }}
-        QCheckBox {{
-            color: #ffffff;
-        }}
-        QCheckBox::indicator {{
-            width: 18px;
-            height: 18px;
-        }}
-        QScrollBar:vertical {{
-            background-color: #212121;
-            width: 10px;
-            border: none;
-        }}
-        QScrollBar::handle:vertical {{
-            background-color: #444444;
-            border-radius: 5px;
-            min-height: 20px;
-        }}
-        QScrollBar::handle:vertical:hover {{
-            background-color: #666666;
-        }}
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-            height: 0px;
-            border: none;
-        }}
-        QScrollBar:horizontal {{
-            background-color: #212121;
-            height: 10px;
-            border: none;
-        }}
-        QScrollBar::handle:horizontal {{
-            background-color: #444444;
-            border-radius: 5px;
-            min-width: 20px;
-        }}
-        QScrollBar::handle:horizontal:hover {{
-            background-color: #666666;
-        }}
-        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
-            width: 0px;
-            border: none;
-        }}
-        QMenuBar {{
-            background-color: #2b2b2b;
-            color: #ffffff;
-        }}
-        QMenuBar::item:selected {{
-            background-color: #3d3d3d;
-        }}
-        QMenu {{
-            background-color: #2b2b2b;
-            color: #ffffff;
-            border: 1px solid #3d3d3d;
-        }}
-        QMenu::item:selected {{
-            background-color: #5294e2;
-        }}
-    """)
+    # Apply modern dark tactical theme stylesheet
+    theme_qss = load_theme_stylesheet(mono_font)
+    if theme_qss:
+        app.setStyleSheet(theme_qss)
 
     try:
         # Get default paths

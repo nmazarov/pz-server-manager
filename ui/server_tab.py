@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (
     QSystemTrayIcon, QFrame, QApplication, QToolTip, QMenu
 )
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont, QCursor
+from PyQt5.QtGui import QTextCursor, QColor, QTextCharFormat, QFont, QCursor, QPainter, QRadialGradient, QBrush, QPen
 
 from core.translations import tr, get_language
 from core.server_process import check_ports_in_use
@@ -28,84 +28,188 @@ from core.network_helper import NetworkHelper
 
 START_BTN_STYLE = """
 QPushButton#start_btn {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2eb84d, stop:1 #208336);
-    border: 1px solid #1c6d2d;
-    border-radius: 6px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #10b981, stop:1 #059669);
+    border: 1px solid #34d399;
+    border-radius: 7px;
     color: #ffffff;
-    font-weight: bold;
+    font-weight: 700;
     font-size: 13px;
-    padding: 8px 20px;
+    padding: 9px 22px;
 }
 QPushButton#start_btn:hover {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3be060, stop:1 #269e40);
-    border: 1px solid #55ff88;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #34d399, stop:1 #10b981);
+    border: 1px solid #6ee7b7;
 }
 QPushButton#start_btn:pressed {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #186329, stop:1 #11471d);
-    border: 1px solid #0d3616;
-    padding-top: 10px;
-    padding-bottom: 6px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #047857, stop:1 #065f46);
+    border: 1px solid #064e3b;
+    padding-top: 11px;
+    padding-bottom: 7px;
 }
 QPushButton#start_btn:disabled {
-    background: #243026;
-    border: 1px solid #2d3d30;
-    color: #556b59;
+    background: #18231e;
+    border: 1px solid #1f3227;
+    color: #3e5246;
 }
 """
 
 STOP_BTN_STYLE = """
 QPushButton#stop_btn {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #d93838, stop:1 #a82222);
-    border: 1px solid #8f1c1c;
-    border-radius: 6px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ef4444, stop:1 #b91c1c);
+    border: 1px solid #f87171;
+    border-radius: 7px;
     color: #ffffff;
-    font-weight: bold;
+    font-weight: 700;
     font-size: 13px;
-    padding: 8px 20px;
+    padding: 9px 22px;
 }
 QPushButton#stop_btn:hover {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #fa4d4d, stop:1 #c92828);
-    border: 1px solid #ff7575;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f87171, stop:1 #dc2626);
+    border: 1px solid #fca5a5;
 }
 QPushButton#stop_btn:pressed {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7d1717, stop:1 #590f0f);
-    border: 1px solid #450b0b;
-    padding-top: 10px;
-    padding-bottom: 6px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #991b1b, stop:1 #7f1d1d);
+    border: 1px solid #450a0a;
+    padding-top: 11px;
+    padding-bottom: 7px;
 }
 QPushButton#stop_btn:disabled {
-    background: #332424;
-    border: 1px solid #3d2b2b;
-    color: #6b5555;
+    background: #251b1b;
+    border: 1px solid #332323;
+    color: #553e3e;
 }
 """
 
 RESTART_BTN_STYLE = """
 QPushButton#restart_btn {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2b6cb0, stop:1 #1d4e82);
-    border: 1px solid #163c63;
-    border-radius: 6px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b82f6, stop:1 #1d4ed8);
+    border: 1px solid #60a5fa;
+    border-radius: 7px;
     color: #ffffff;
-    font-weight: bold;
+    font-weight: 700;
     font-size: 13px;
-    padding: 8px 20px;
+    padding: 9px 22px;
 }
 QPushButton#restart_btn:hover {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b8be0, stop:1 #2463a6);
-    border: 1px solid #63b3ff;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #60a5fa, stop:1 #2563eb);
+    border: 1px solid #93c5fd;
 }
 QPushButton#restart_btn:pressed {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #143559, stop:1 #0e243d);
-    border: 1px solid #091829;
-    padding-top: 10px;
-    padding-bottom: 6px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1e40af, stop:1 #172554);
+    border: 1px solid #0f172a;
+    padding-top: 11px;
+    padding-bottom: 7px;
 }
 QPushButton#restart_btn:disabled {
-    background: #242930;
-    border: 1px solid #2d3440;
-    color: #555e6b;
+    background: #19202c;
+    border: 1px solid #242c3c;
+    color: #3f4c60;
 }
 """
+
+
+
+class PulseStatusIndicator(QWidget):
+    """
+    Tactical breathing glowing LED status indicator widget.
+    States:
+      - 'offline': deep crimson dot with calm subtle glow
+      - 'launching': breathing warm amber glow pulsating 0.35s
+      - 'running': breathing vibrant neon survival green aura
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(24, 24)
+        self._state = "offline"
+        self._phase = 0.0
+        self._timer = QTimer(self)
+        self._timer.setInterval(40)
+        self._timer.timeout.connect(self._on_tick)
+        self._timer.start()
+
+    def set_state(self, state: str):
+        if state != self._state:
+            self._state = state
+            self._phase = 0.0
+            self.update()
+
+    def setText(self, text: str):
+        # Compatibility with legacy setText calls
+        if "🟢" in text:
+            self.set_state("running")
+        elif "🟡" in text or "🟠" in text or "⏳" in text:
+            self.set_state("launching")
+        else:
+            self.set_state("offline")
+
+    def _on_tick(self):
+        import math
+        self._phase += 0.09
+        if self._phase > 2 * math.pi:
+            self._phase -= 2 * math.pi
+        self.update()
+
+    def paintEvent(self, event):
+        import math
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        cx, cy = self.width() / 2.0, self.height() / 2.0
+
+        if self._state == "running":
+            pulse = (math.sin(self._phase) + 1.0) / 2.0
+            outer_radius = 8.5 + pulse * 3.0
+            inner_radius = 5.5
+
+            halo_grad = QRadialGradient(cx, cy, outer_radius)
+            halo_grad.setColorAt(0.0, QColor(56, 239, 125, int(150 + pulse * 80)))
+            halo_grad.setColorAt(0.65, QColor(16, 185, 129, int(50 + pulse * 40)))
+            halo_grad.setColorAt(1.0, QColor(16, 185, 129, 0))
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(halo_grad))
+            painter.drawEllipse(int(cx - outer_radius), int(cy - outer_radius), int(outer_radius * 2), int(outer_radius * 2))
+
+            core_grad = QRadialGradient(cx - 1, cy - 1, inner_radius)
+            core_grad.setColorAt(0.0, QColor(220, 255, 230))
+            core_grad.setColorAt(0.6, QColor(64, 255, 64))
+            core_grad.setColorAt(1.0, QColor(20, 150, 70))
+            painter.setBrush(QBrush(core_grad))
+            painter.drawEllipse(int(cx - inner_radius), int(cy - inner_radius), int(inner_radius * 2), int(inner_radius * 2))
+
+        elif self._state == "launching":
+            pulse = (math.sin(self._phase * 1.5) + 1.0) / 2.0
+            outer_radius = 8.5 + pulse * 3.0
+            inner_radius = 5.5
+
+            halo_grad = QRadialGradient(cx, cy, outer_radius)
+            halo_grad.setColorAt(0.0, QColor(245, 158, 11, int(160 + pulse * 80)))
+            halo_grad.setColorAt(0.65, QColor(217, 119, 6, int(60 + pulse * 40)))
+            halo_grad.setColorAt(1.0, QColor(217, 119, 6, 0))
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(halo_grad))
+            painter.drawEllipse(int(cx - outer_radius), int(cy - outer_radius), int(outer_radius * 2), int(outer_radius * 2))
+
+            core_grad = QRadialGradient(cx - 1, cy - 1, inner_radius)
+            core_grad.setColorAt(0.0, QColor(254, 243, 199))
+            core_grad.setColorAt(0.6, QColor(245, 158, 11))
+            core_grad.setColorAt(1.0, QColor(180, 83, 9))
+            painter.setBrush(QBrush(core_grad))
+            painter.drawEllipse(int(cx - inner_radius), int(cy - inner_radius), int(inner_radius * 2), int(inner_radius * 2))
+
+        else:
+            inner_radius = 5.0
+            # Subtle crimson halo
+            halo_grad = QRadialGradient(cx, cy, 7.5)
+            halo_grad.setColorAt(0.0, QColor(239, 68, 68, 80))
+            halo_grad.setColorAt(1.0, QColor(239, 68, 68, 0))
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(halo_grad))
+            painter.drawEllipse(int(cx - 7.5), int(cy - 7.5), 15, 15)
+
+            # Core
+            painter.setPen(QPen(QColor(130, 25, 25), 1))
+            painter.setBrush(QBrush(QColor(220, 53, 69)))
+            painter.drawEllipse(int(cx - inner_radius), int(cy - inner_radius), int(inner_radius * 2), int(inner_radius * 2))
 
 
 class ServerTabMixin:
@@ -123,24 +227,24 @@ class ServerTabMixin:
 
         # ── Status Banner Card ─────────────────────────────────────────
         status_card = QFrame()
-        status_card.setStyleSheet("background-color: #252526; border: 1px solid #3c3c3c; border-radius: 6px;")
+        status_card.setObjectName("status_card")
         sc_layout = QHBoxLayout(status_card)
-        sc_layout.setContentsMargins(14, 8, 14, 8)
+        sc_layout.setContentsMargins(14, 9, 14, 9)
 
-        self.status_indicator = QLabel("🔴")
-        self.status_indicator.setStyleSheet("font-size: 22px;")
+        self.status_indicator = PulseStatusIndicator()
         sc_layout.addWidget(self.status_indicator)
 
         self.status_label = QLabel(tr('server_stopped'))
-        self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ff6666;")
+        self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ff6b6b;")
         sc_layout.addWidget(self.status_label)
 
         sc_layout.addStretch()
 
         self.status_detail_label = QLabel()
         self.status_detail_label.setStyleSheet(
-            "font-size: 13px; color: #a8c7fa; font-family: 'Segoe UI', monospace; "
-            "padding: 4px 10px; background-color: #1b2636; border: 1px solid #2d4263; border-radius: 4px; font-weight: 500;"
+            "font-size: 12px; color: #79c0ff; font-family: 'JetBrains Mono', monospace; "
+            "padding: 5px 12px; background-color: #121822; border: 1px solid #23354b; "
+            "border-radius: 6px; font-weight: 600;"
         )
         self.status_detail_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.status_detail_label.setCursor(Qt.PointingHandCursor)
@@ -224,7 +328,8 @@ class ServerTabMixin:
         self._launch_anim_timer.timeout.connect(self._step_launch_animation)
 
         del_save_btn = QPushButton("🗑️ " + ("Сбросить/Удалить сохранение этого мира" if get_language() == 'ru' else "Reset / Delete this World Save"))
-        del_save_btn.setStyleSheet("background-color: #553333; color: #ffcccc; font-size: 11px;")
+        del_save_btn.setStyleSheet("background-color: #261616; border: 1px solid #4a2222; color: #f87171; border-radius: 5px; font-size: 11px; padding: 4px 10px;")
+        del_save_btn.setCursor(Qt.PointingHandCursor)
         del_save_btn.setToolTip("Удаляет сохраненную карту этого мира, если возникла ошибка несовместимости версий карт (например, Build 42 в Build 41)" if get_language() == 'ru' else "Deletes the world save folder for this server if version mismatch occurs")
         del_save_btn.clicked.connect(self.delete_save_world_action)
         cl.addWidget(del_save_btn)
@@ -281,25 +386,33 @@ class ServerTabMixin:
         # ── Quick Actions Row ──────────────────────────────────────────
         quick_row = QHBoxLayout()
         quick_lbl = QLabel("⚡ " + ("Быстрые команды:" if get_language() == 'ru' else "Quick Actions:"))
-        quick_lbl.setStyleSheet("font-weight: bold; color: #5294e2;")
+        quick_lbl.setStyleSheet("font-weight: bold; color: #4ea8de; font-size: 12px;")
         quick_row.addWidget(quick_lbl)
 
         btn_save_world = QPushButton("💾 " + ("Сохранить" if get_language() == 'ru' else "Save"))
+        btn_save_world.setObjectName("quick_btn")
+        btn_save_world.setCursor(Qt.PointingHandCursor)
         btn_save_world.setToolTip("Отправить команду 'save' для немедленного сохранения мира" if get_language() == 'ru' else "Send 'save' command")
         btn_save_world.clicked.connect(lambda: self.send_quick_server_cmd("save"))
         quick_row.addWidget(btn_save_world)
 
         btn_rain = QPushButton("🌧️ " + ("Дождь" if get_language() == 'ru' else "Rain"))
+        btn_rain.setObjectName("quick_btn")
+        btn_rain.setCursor(Qt.PointingHandCursor)
         btn_rain.setToolTip("Вызвать или остановить дождь на сервере" if get_language() == 'ru' else "Start or stop rain")
         btn_rain.clicked.connect(self.toggle_rain_action)
         quick_row.addWidget(btn_rain)
 
         btn_heli = QPushButton("🚁 " + ("Вертолет" if get_language() == 'ru' else "Heli"))
+        btn_heli.setObjectName("quick_btn")
+        btn_heli.setCursor(Qt.PointingHandCursor)
         btn_heli.setToolTip("Запустить вертолетное событие над случайным игроком" if get_language() == 'ru' else "Trigger helicopter event")
         btn_heli.clicked.connect(lambda: self.send_quick_server_cmd("chopper"))
         quick_row.addWidget(btn_heli)
 
         btn_broadcast = QPushButton("📢 " + ("Объявление" if get_language() == 'ru' else "Broadcast"))
+        btn_broadcast.setObjectName("quick_btn")
+        btn_broadcast.setCursor(Qt.PointingHandCursor)
         btn_broadcast.setToolTip("Отправить глобальное системное сообщение всем игрокам в чат" if get_language() == 'ru' else "Send global server message to all players")
         btn_broadcast.clicked.connect(self.broadcast_message_action)
         quick_row.addWidget(btn_broadcast)
@@ -704,10 +817,13 @@ class ServerTabMixin:
     def on_server_launching(self):
         """Called when server process is initiated and loading mods/world."""
         if hasattr(self, 'status_indicator'):
-            self.status_indicator.setText("🟡")
+            if hasattr(self.status_indicator, 'set_state'):
+                self.status_indicator.set_state("launching")
+            else:
+                self.status_indicator.setText("🟡")
         if hasattr(self, 'status_label'):
             self.status_label.setText(tr('server_launching'))
-            self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffcc00;")
+            self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #f59e0b;")
         if hasattr(self, 'status_detail_label'):
             self.status_detail_label.setText("Загрузка модов и мира..." if get_language() == 'ru' else "Loading mods & world...")
         if hasattr(self, 'start_btn'):
@@ -739,10 +855,13 @@ class ServerTabMixin:
         if hasattr(self, 'restart_btn'):
             self.restart_btn.setEnabled(True)
         if hasattr(self, 'status_indicator'):
-            self.status_indicator.setText("🟢")
+            if hasattr(self.status_indicator, 'set_state'):
+                self.status_indicator.set_state("running")
+            else:
+                self.status_indicator.setText("🟢")
         if hasattr(self, 'status_label'):
             self.status_label.setText(tr('server_ready'))
-            self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #00ff66;")
+            self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #38ef7d;")
         self._server_is_ready = True
         self.update_connection_info('ready')
 
@@ -803,10 +922,13 @@ class ServerTabMixin:
         if hasattr(self, 'restart_btn'):
             self.restart_btn.setEnabled(False)
         if hasattr(self, 'status_indicator'):
-            self.status_indicator.setText("🔴")
+            if hasattr(self.status_indicator, 'set_state'):
+                self.status_indicator.set_state("offline")
+            else:
+                self.status_indicator.setText("🔴")
         if hasattr(self, 'status_label'):
             self.status_label.setText(tr('server_stopped'))
-            self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ff6666;")
+            self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #ff6b6b;")
         self.update_connection_info('stopped')
         if hasattr(self, 'tray_icon') and self.tray_icon.isVisible():
             self.tray_icon.showMessage(tr('app_title'), tr('tray_server_stopped'), QSystemTrayIcon.Information, 3000)

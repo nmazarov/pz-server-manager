@@ -118,7 +118,7 @@ class MainWindow(
 
         # Top Header Banner with Zombie Logo
         header = QFrame()
-        header.setStyleSheet("background-color: #252526; border-radius: 6px; border: 1px solid #3c3c3c;")
+        header.setObjectName("header_banner")
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(12, 6, 12, 6)
 
@@ -158,12 +158,14 @@ class MainWindow(
         header_layout.addStretch()
 
         fw_btn = QPushButton("🔓 " + ("Открыть порты" if get_language() == 'ru' else "Open Firewall Ports"))
-        fw_btn.setStyleSheet("background-color: #2b5b2b; color: #ffffff; padding: 4px 10px;")
+        fw_btn.setObjectName("header_btn_ports")
+        fw_btn.setCursor(Qt.PointingHandCursor)
         fw_btn.clicked.connect(self.open_firewall_ports_action)
         header_layout.addWidget(fw_btn)
 
         share_btn = QPushButton("📋 " + ("Поделиться с друзьями" if get_language() == 'ru' else "Share with Friends"))
-        share_btn.setStyleSheet("background-color: #1e4b7a; color: #ffffff; padding: 4px 10px; font-weight: bold;")
+        share_btn.setObjectName("header_btn_share")
+        share_btn.setCursor(Qt.PointingHandCursor)
         share_btn.setToolTip(
             "Скопировать IP и порт сервера в буфер обмена для отправки друзьям"
             if get_language() == 'ru' else
@@ -173,13 +175,15 @@ class MainWindow(
         header_layout.addWidget(share_btn)
 
         self.backup_btn = QPushButton("📦 " + ("Бэкапы" if get_language() == 'ru' else "Backups"))
-        self.backup_btn.setStyleSheet("background-color: #5c4018; color: #ffffff; padding: 4px 10px; font-weight: bold;")
+        self.backup_btn.setObjectName("header_btn_backups")
+        self.backup_btn.setCursor(Qt.PointingHandCursor)
         self.backup_btn.setToolTip(tr('backup_mgr_title'))
         self.backup_btn.clicked.connect(self.open_backup_manager)
         header_layout.addWidget(self.backup_btn)
 
         self.web_btn = QPushButton("🌐 " + ("Веб-панель" if get_language() == 'ru' else "Web Dashboard"))
-        self.web_btn.setStyleSheet("background-color: #4a287a; color: #ffffff; padding: 4px 10px; font-weight: bold;")
+        self.web_btn.setObjectName("header_btn_web")
+        self.web_btn.setCursor(Qt.PointingHandCursor)
         self.web_btn.setToolTip(tr('web_dashboard_tooltip'))
         self.web_btn.clicked.connect(self.toggle_web_dashboard)
         header_layout.addWidget(self.web_btn)
@@ -190,7 +194,7 @@ class MainWindow(
         self.setStatusBar(self.statusBar)
 
         self.server_metrics_lbl = QLabel("")
-        self.server_metrics_lbl.setStyleSheet("color: #a0ffa0; font-weight: bold; padding-right: 12px;")
+        self.server_metrics_lbl.setStyleSheet("color: #38ef7d; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: bold; padding-right: 12px;")
         self.statusBar.addPermanentWidget(self.server_metrics_lbl)
 
         # Timer to monitor server resource usage (CPU & RAM)
@@ -199,6 +203,7 @@ class MainWindow(
         self.metrics_timer.start(2000)
 
         self.tabs = QTabWidget()
+        self.tabs.currentChanged.connect(self._animate_tab_transition)
         main_layout.addWidget(self.tabs)
 
         self.create_server_tab()
@@ -232,6 +237,25 @@ class MainWindow(
                     NetworkHelper.add_windows_firewall_rules()
             except Exception as e:
                 logger.debug(f"Auto firewall check: {e}")
+
+    def _animate_tab_transition(self, index: int):
+        """Play a smooth fade-in opacity animation when changing tabs."""
+        widget = self.tabs.widget(index)
+        if not widget:
+            return
+        from PyQt5.QtWidgets import QGraphicsOpacityEffect
+        from PyQt5.QtCore import QPropertyAnimation, QEasingCurve
+        effect = widget.graphicsEffect()
+        if not isinstance(effect, QGraphicsOpacityEffect):
+            effect = QGraphicsOpacityEffect(widget)
+            widget.setGraphicsEffect(effect)
+        anim = QPropertyAnimation(effect, b"opacity")
+        anim.setDuration(160)
+        anim.setStartValue(0.2)
+        anim.setEndValue(1.0)
+        anim.setEasingCurve(QEasingCurve.OutCubic)
+        widget._tab_anim = anim
+        anim.start()
 
     def update_target_server_build(self):
         """Update target build (42 or 41) based on user's selected branch and installed server."""

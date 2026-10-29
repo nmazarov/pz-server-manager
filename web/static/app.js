@@ -190,13 +190,13 @@ function updateServerButtons(running) {
     btnStop.disabled = false;
     btnRestart.disabled = false;
     badgeStatus.className = 'badge online';
-    badgeStatus.textContent = '🟢 Работает';
+    badgeStatus.textContent = 'Онлайн';
   } else {
     btnStart.disabled = false;
     btnStop.disabled = true;
     btnRestart.disabled = true;
     badgeStatus.className = 'badge offline';
-    badgeStatus.textContent = '🔴 Остановлен';
+    badgeStatus.textContent = 'Остановлен';
   }
 }
 
@@ -217,6 +217,13 @@ function updateMetricsUI(m) {
 }
 
 async function startServer() {
+  const badgeStatus = document.getElementById('badge-status');
+  if (badgeStatus) {
+    badgeStatus.className = 'badge launching';
+    badgeStatus.textContent = 'Запуск...';
+  }
+  const btnStart = document.getElementById('btn-start');
+  if (btnStart) btnStart.disabled = true;
   const name = document.getElementById('srv-name').value.trim() || 'servertest';
   const ram = parseInt(document.getElementById('srv-ram').value) || 6;
   const res = await fetch('/api/server/start', {
