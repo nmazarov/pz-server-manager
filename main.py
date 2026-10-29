@@ -262,6 +262,10 @@ def load_theme_stylesheet(mono_font: str = "JetBrains Mono") -> str:
                     qss = qss.replace('{mono_font}', mono_font)
                     chk_p = (p.parent / 'checkmark.png').resolve().as_posix()
                     qss = qss.replace('{checkmark_url}', f"url('{chk_p}')")
+                    arr_p = (p.parent / 'arrow_down.png').resolve().as_posix()
+                    qss = qss.replace('{arrow_down_url}', f"url('{arr_p}')")
+                    arr_h_p = (p.parent / 'arrow_down_hover.png').resolve().as_posix()
+                    qss = qss.replace('{arrow_down_hover_url}', f"url('{arr_h_p}')")
                     return qss
             except Exception as e:
                 logger.warning(f"Failed to read stylesheet from {p}: {e}")

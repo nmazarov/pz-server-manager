@@ -52,10 +52,15 @@ _NATURE_ABU   = [('very_abundant', 1), ('abundant', 2), ('normal', 3), ('scarce'
 _TIME_APO     = [('months_0_3', 1), ('months_3_6', 2), ('months_6_12', 3),
                  ('several_years', 4), ('many_years', 5)]
 
-_CAR_SPAWN    = [('none', 1), ('very_low', 2), ('low', 3), ('normal', 4), ('high', 5)]
-_CAR_LEVEL    = [('very_low', 1), ('low', 2), ('normal', 3), ('high', 4), ('very_high', 5)]
-_EVENT_FREQ   = [('never', 1), ('once', 2), ('sometimes', 3), ('often', 4)]
-_META_FREQ    = [('never', 1), ('sometimes', 2), ('often', 3)]
+_CAR_SPAWN       = [('none', 1), ('very_low', 2), ('low', 3), ('normal', 4), ('high', 5)]
+_CAR_LEVEL       = [('very_low', 1), ('low', 2), ('normal', 3), ('high', 4), ('very_high', 5)]
+_EVENT_FREQ      = [('never', 1), ('once', 2), ('sometimes', 3), ('often', 4)]
+_META_FREQ       = [('never', 1), ('sometimes', 2), ('often', 3)]
+_RECENT_SURVIVOR = [('never', 1), ('rare', 2), ('normal', 3)]
+_LOCKED_CAR      = [('never', 1), ('extremely_rare', 2), ('rare', 3), ('sometimes', 4), ('often', 5)]
+_CAR_ALARM       = [('never', 1), ('extremely_rare', 2), ('rare', 3), ('sometimes', 4), ('often', 5)]
+_CAR_DAMAGE      = [('very_low', 1), ('low', 2), ('normal', 3), ('high', 4), ('very_high', 5)]
+_PED_DAMAGE      = [('none', 1), ('low', 2), ('normal', 3), ('high', 4), ('deadly', 5)]
 _FARMING_SPD  = [('very_fast', 1), ('fast', 2), ('normal', 3), ('slow', 4), ('very_slow', 5)]
 _GENERATOR_SP = [('extremely_rare', 1), ('rare', 2), ('normal', 3), ('common', 4), ('abundant', 5)]
 _EROSION_SPD  = [('very_fast', 1), ('fast', 2), ('normal', 3), ('slow', 4), ('very_slow', 5)]
@@ -134,11 +139,22 @@ class SandboxTabMixin:
         top_bar.addWidget(lbl_p)
 
         self.preset_combo = QComboBox()
-        self.preset_combo.addItems(['Custom', 'Apocalypse', 'Survivor', 'Builder'])
         self.preset_combo.setMinimumWidth(160)
         self.preset_combo.setMaximumWidth(220)
         self.preset_combo.currentTextChanged.connect(self.on_preset_changed)
         top_bar.addWidget(self.preset_combo)
+
+        self.b_save_preset = QPushButton(tr('btn_save_custom_preset'))
+        self.b_save_preset.setStyleSheet("background-color: #2563eb; color: #ffffff; font-weight: bold; padding: 6px 14px; border-radius: 4px;")
+        self.b_save_preset.clicked.connect(self.save_custom_preset)
+        top_bar.addWidget(self.b_save_preset)
+
+        self.b_del_preset = QPushButton("🗑️")
+        self.b_del_preset.setToolTip(tr('confirm_delete_preset'))
+        self.b_del_preset.setStyleSheet("background-color: #7f1d1d; color: #fca5a5; font-weight: bold; padding: 6px 10px; border-radius: 4px;")
+        self.b_del_preset.clicked.connect(self.delete_custom_preset)
+        self.b_del_preset.setVisible(False)
+        top_bar.addWidget(self.b_del_preset)
 
         top_bar.addSpacing(10)
 
@@ -193,6 +209,7 @@ class SandboxTabMixin:
 
         layout.addWidget(self.sandbox_subtabs)
         self.tabs.addTab(tab, tr('tab_sandbox'))
+        self._populate_presets_combo()
 
     def filter_sandbox_settings(self, query: str):
         """Filter visible settings rows across all sandbox subtabs dynamically."""
@@ -654,7 +671,7 @@ class SandboxTabMixin:
         scroll.setWidget(sw)
         return scroll
 
-    # ── Subtab 4: Vehicles (2 Columns) ─────────────────────────────────
+    # ── Subtab 4: Vehicles (2 Columns - Full 17 Settings) ──────────────
     def _create_vehicles_subtab(self) -> QWidget:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -666,9 +683,13 @@ class SandboxTabMixin:
         cols.setSpacing(14)
 
         # Left Column: Spawns & State
-        g_veh = QGroupBox("Появление и состояние транспорта" if get_language() == 'ru' else "Vehicle Spawn & Condition")
+        g_veh = QGroupBox("🚗 Появление и состояние транспорта" if get_language() == 'ru' else "🚗 Vehicle Spawn & Condition")
         f_veh = QFormLayout(g_veh)
         _style_form(f_veh)
+
+        self.sandbox_enable_vehicles = QCheckBox("Включить транспорт в игровом мире (EnableVehicles)" if get_language() == 'ru' else "Enable vehicles in world (EnableVehicles)")
+        self.sandbox_enable_vehicles.setChecked(True)
+        f_veh.addRow(self.sandbox_enable_vehicles)
 
         self.sandbox_car_spawn = QComboBox()
         self.sandbox_car_spawn.addItems(_combo_items(_CAR_SPAWN))
@@ -676,15 +697,27 @@ class SandboxTabMixin:
         _set_ctl_limits(self.sandbox_car_spawn, 260)
         f_veh.addRow(tr('lbl_car_spawn'), self.sandbox_car_spawn)
 
-        self.sandbox_vehicle_easy_use = QCheckBox("Легкое управление (без ключа зажигания и взлома)" if get_language() == 'ru' else "Easy use (no keys/hotwiring needed)")
-        self.sandbox_vehicle_easy_use.setChecked(False)
-        f_veh.addRow(self.sandbox_vehicle_easy_use)
-
         self.sandbox_car_condition = QComboBox()
         self.sandbox_car_condition.addItems(_combo_items(_CAR_LEVEL))
         self.sandbox_car_condition.setCurrentIndex(2)  # normal
         _set_ctl_limits(self.sandbox_car_condition, 260)
         f_veh.addRow(tr('lbl_car_condition'), self.sandbox_car_condition)
+
+        self.sandbox_recent_survivor = QComboBox()
+        self.sandbox_recent_survivor.addItems(_combo_items(_RECENT_SURVIVOR))
+        self.sandbox_recent_survivor.setCurrentIndex(2)  # normal
+        _set_ctl_limits(self.sandbox_recent_survivor, 260)
+        f_veh.addRow(tr('lbl_survivor_vehicles'), self.sandbox_recent_survivor)
+
+        self.sandbox_locked_car = QComboBox()
+        self.sandbox_locked_car.addItems(_combo_items(_LOCKED_CAR))
+        self.sandbox_locked_car.setCurrentIndex(3)  # sometimes
+        _set_ctl_limits(self.sandbox_locked_car, 260)
+        f_veh.addRow(tr('lbl_locked_cars'), self.sandbox_locked_car)
+
+        self.sandbox_vehicle_easy_use = QCheckBox("Легкое управление (без ключа зажигания и навыка взлома)" if get_language() == 'ru' else "Easy use (no keys/hotwiring needed)")
+        self.sandbox_vehicle_easy_use.setChecked(False)
+        f_veh.addRow(self.sandbox_vehicle_easy_use)
 
         self.sandbox_traffic_jam = QCheckBox("Заторы и пробки из разбитых машин на дорогах" if get_language() == 'ru' else "Traffic jams on roads")
         self.sandbox_traffic_jam.setChecked(True)
@@ -692,10 +725,53 @@ class SandboxTabMixin:
 
         cols.addWidget(g_veh, 1)
 
-        # Right Column: Fuel & Mechanics
-        g_fuel = QGroupBox("Топливо и механика" if get_language() == 'ru' else "Fuel & Mechanics")
+        # Right Column: Speed, Fuel & Physics
+        g_fuel = QGroupBox("⛽ Скорость, топливо и физика" if get_language() == 'ru' else "⛽ Speed, Fuel & Physics")
         f_fuel = QFormLayout(g_fuel)
         _style_form(f_fuel)
+
+        # Speed limit with quick preset buttons
+        speed_widget = QWidget()
+        speed_layout = QHBoxLayout(speed_widget)
+        speed_layout.setContentsMargins(0, 0, 0, 0)
+        speed_layout.setSpacing(6)
+
+        self.sandbox_speed_limit = QSpinBox()
+        self.sandbox_speed_limit.setRange(0, 250)
+        self.sandbox_speed_limit.setValue(70)
+        self.sandbox_speed_limit.setSuffix(" км/ч" if get_language() == 'ru' else " km/h")
+        self.sandbox_speed_limit.setFixedWidth(110)
+        speed_layout.addWidget(self.sandbox_speed_limit)
+
+        for limit, txt in [(60, '60'), (80, '80'), (100, '100'), (120, '120'), (0, 'Без лимита' if get_language() == 'ru' else 'No limit')]:
+            btn = QPushButton(txt)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #212836;
+                    color: #94a3b8;
+                    border: 1px solid #334155;
+                    border-radius: 4px;
+                    padding: 3px 7px;
+                    font-size: 11px;
+                }
+                QPushButton:hover {
+                    background-color: #3b82f6;
+                    color: #ffffff;
+                    border-color: #60a5fa;
+                }
+            """)
+            btn.clicked.connect(lambda _, val=limit: self.sandbox_speed_limit.setValue(val))
+            speed_layout.addWidget(btn)
+        speed_layout.addStretch()
+
+        f_fuel.addRow(tr('lbl_speed_limit'), speed_widget)
+
+        self.sandbox_zombie_attraction = QDoubleSpinBox()
+        self.sandbox_zombie_attraction.setRange(0.0, 10.0)
+        self.sandbox_zombie_attraction.setSingleStep(0.1)
+        self.sandbox_zombie_attraction.setValue(1.0)
+        _set_ctl_limits(self.sandbox_zombie_attraction, 140)
+        f_fuel.addRow(tr('lbl_zombie_attraction'), self.sandbox_zombie_attraction)
 
         self.sandbox_chance_gas = QComboBox()
         self.sandbox_chance_gas.addItems(_combo_items(_CAR_LEVEL))
@@ -704,7 +780,7 @@ class SandboxTabMixin:
         f_fuel.addRow(tr('lbl_gas_chance'), self.sandbox_chance_gas)
 
         self.sandbox_initial_gas = QComboBox()
-        self.sandbox_initial_gas.addItems(_combo_items(_CAR_LEVEL))
+        self.sandbox_initial_gas.addItems([tr('very_low'), tr('low'), tr('normal'), tr('high'), tr('full')])
         self.sandbox_initial_gas.setCurrentIndex(1)  # low
         _set_ctl_limits(self.sandbox_initial_gas, 260)
         f_fuel.addRow(tr('lbl_initial_gas'), self.sandbox_initial_gas)
@@ -717,12 +793,32 @@ class SandboxTabMixin:
         f_fuel.addRow(tr('lbl_gas_consumption'), self.sandbox_gas_consumption)
 
         self.sandbox_car_alarm = QComboBox()
-        self.sandbox_car_alarm.addItems(_combo_items(_EVENT_FREQ))
-        self.sandbox_car_alarm.setCurrentIndex(2)  # sometimes
+        self.sandbox_car_alarm.addItems(_combo_items(_CAR_ALARM))
+        self.sandbox_car_alarm.setCurrentIndex(2)  # rare
         _set_ctl_limits(self.sandbox_car_alarm, 260)
         f_fuel.addRow(tr('lbl_car_alarm'), self.sandbox_car_alarm)
 
-        self.sandbox_crash_damage = QCheckBox("Урон игроку при столкновении на машине" if get_language() == 'ru' else "Player damaged in vehicle crashes")
+        self.sandbox_siren_shutoff = QDoubleSpinBox()
+        self.sandbox_siren_shutoff.setRange(0.0, 168.0)
+        self.sandbox_siren_shutoff.setSingleStep(0.5)
+        self.sandbox_siren_shutoff.setValue(0.0)
+        self.sandbox_siren_shutoff.setSuffix(" ч." if get_language() == 'ru' else " h.")
+        _set_ctl_limits(self.sandbox_siren_shutoff, 140)
+        f_fuel.addRow(tr('lbl_siren_shutoff'), self.sandbox_siren_shutoff)
+
+        self.sandbox_car_damage_impact = QComboBox()
+        self.sandbox_car_damage_impact.addItems(_combo_items(_CAR_DAMAGE))
+        self.sandbox_car_damage_impact.setCurrentIndex(2)  # normal
+        _set_ctl_limits(self.sandbox_car_damage_impact, 260)
+        f_fuel.addRow(tr('lbl_car_damage_impact'), self.sandbox_car_damage_impact)
+
+        self.sandbox_damage_hit_by_car = QComboBox()
+        self.sandbox_damage_hit_by_car.addItems(_combo_items(_PED_DAMAGE))
+        self.sandbox_damage_hit_by_car.setCurrentIndex(2)  # normal
+        _set_ctl_limits(self.sandbox_damage_hit_by_car, 260)
+        f_fuel.addRow(tr('lbl_player_hit_damage'), self.sandbox_damage_hit_by_car)
+
+        self.sandbox_crash_damage = QCheckBox("Урон игроку при аварии на машине" if get_language() == 'ru' else "Player damaged in vehicle crashes")
         self.sandbox_crash_damage.setChecked(True)
         f_fuel.addRow(self.sandbox_crash_damage)
 
@@ -870,188 +966,396 @@ class SandboxTabMixin:
                     gb_visible = True
             gb.setVisible(gb_visible or not t)
 
+    def _populate_presets_combo(self, select_preset: str = None):
+        """Populate preset dropdown with built-in presets and custom named presets."""
+        self.preset_combo.blockSignals(True)
+        current = select_preset or self.preset_combo.currentText() or 'Custom'
+        self.preset_combo.clear()
+        self.preset_combo.addItems(['Custom', 'Apocalypse', 'Survivor', 'Builder'])
+
+        try:
+            from core.config_manager import AppPreferences
+            prefs = AppPreferences.load(getattr(self, 'paths', {}))
+            loaded = prefs.get('custom_sandbox_presets', {})
+            if not hasattr(self, 'custom_presets') or self.custom_presets is None:
+                self.custom_presets = {}
+            self.custom_presets.update(loaded)
+        except Exception as e:
+            logger.warning(f"Could not load custom sandbox presets: {e}")
+            self.custom_presets = getattr(self, 'custom_presets', {})
+
+        if self.custom_presets:
+            for name in sorted(self.custom_presets.keys()):
+                self.preset_combo.addItem(f"⭐ {name}")
+
+        idx = self.preset_combo.findText(current)
+        if idx >= 0:
+            self.preset_combo.setCurrentIndex(idx)
+        else:
+            self.preset_combo.setCurrentText('Custom')
+        self.preset_combo.blockSignals(False)
+
+        is_custom = self._get_pure_preset_name(self.preset_combo.currentText()) in getattr(self, 'custom_presets', {})
+        if hasattr(self, 'b_del_preset'):
+            self.b_del_preset.setVisible(is_custom)
+
+    def _get_pure_preset_name(self, text: str) -> str:
+        t = (text or '').strip()
+        if t.startswith('⭐ '):
+            return t[2:].strip()
+        return t
+
+    def save_custom_preset(self):
+        """Prompt user for a preset name and save the current state."""
+        from PyQt5.QtWidgets import QInputDialog
+        from core.config_manager import AppPreferences
+
+        name, ok = QInputDialog.getText(
+            self,
+            tr('lbl_preset'),
+            tr('prompt_custom_preset_name'),
+            QLineEdit.Normal,
+            ""
+        )
+        if not ok or not name.strip():
+            return
+
+        pure_name = name.strip()
+        if pure_name.lower() in ['custom', 'apocalypse', 'survivor', 'builder']:
+            QMessageBox.warning(self, tr('error'), "Cannot overwrite built-in preset.")
+            return
+
+        state = self._gather_sandbox_state()
+        if not hasattr(self, 'custom_presets') or self.custom_presets is None:
+            self.custom_presets = {}
+
+        self.custom_presets[pure_name] = state
+        try:
+            AppPreferences.save(getattr(self, 'paths', {}), {'custom_sandbox_presets': self.custom_presets})
+        except Exception as e:
+            logger.error(f"Failed to save custom presets: {e}")
+
+        self._populate_presets_combo(select_preset=f"⭐ {pure_name}")
+        if hasattr(self, 'b_del_preset'):
+            self.b_del_preset.setVisible(True)
+        msg = tr('preset_saved').replace('{name}', pure_name) if '{name}' in tr('preset_saved') else f"Preset '{pure_name}' saved!"
+        QMessageBox.information(self, tr('success'), msg)
+
+    def delete_custom_preset(self):
+        """Delete currently selected custom preset."""
+        from core.config_manager import AppPreferences
+        raw_name = self.preset_combo.currentText()
+        pure_name = self._get_pure_preset_name(raw_name)
+
+        if not getattr(self, 'custom_presets', {}) or pure_name not in self.custom_presets:
+            return
+
+        confirm_msg = tr('confirm_delete_preset').replace('{name}', pure_name) if '{name}' in tr('confirm_delete_preset') else f"Delete preset '{pure_name}'?"
+        reply = QMessageBox.question(self, tr('confirm'), confirm_msg, QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            del self.custom_presets[pure_name]
+            try:
+                AppPreferences.save(getattr(self, 'paths', {}), {'custom_sandbox_presets': self.custom_presets})
+            except Exception as e:
+                logger.error(f"Failed to delete custom preset: {e}")
+            self._populate_presets_combo(select_preset='Custom')
+            if hasattr(self, 'b_del_preset'):
+                self.b_del_preset.setVisible(False)
+            del_msg = tr('preset_deleted').replace('{name}', pure_name) if '{name}' in tr('preset_deleted') else f"Preset '{pure_name}' deleted."
+            self.statusBar.showMessage(del_msg, 4000)
+
+    def _gather_sandbox_state(self) -> dict:
+        """Gather all current widget values across all 6 sandbox subtabs into a SandboxVars dictionary."""
+        vars_dict = {
+            'Speed':                self.sandbox_day_length.currentIndex() + 1,
+            'Zombie':               self.sandbox_zombie_distribution.currentIndex() + 1,
+            'ZombieLore': {
+                'Speed':               _combo_value(_ZOMBIE_SPEED, self.sandbox_zombie_speed.currentIndex(), 3),
+                'Strength':            _combo_value(_ZOMBIE_STRENGTH, self.sandbox_zombie_strength.currentIndex(), 2),
+                'Toughness':           _combo_value(_ZOMBIE_TOUGHNESS, self.sandbox_zombie_toughness.currentIndex(), 2),
+                'Transmission':        _combo_value(_ZOMBIE_TRANSMISSION, self.sandbox_zombie_transmission.currentIndex(), 1),
+                'Mortality':           _combo_value(_INFECTION, self.sandbox_infection_mortality.currentIndex(), 6),
+                'Cognition':           _combo_value(_ZOMBIE_COGNITION, self.sandbox_zombie_cognition.currentIndex(), 3),
+                'Memory':              _combo_value(_ZOMBIE_MEMORY, self.sandbox_memory.currentIndex(), 2),
+                'Decomp':              _combo_value(_ZOMBIE_DECOMP, self.sandbox_decomp.currentIndex(), 1),
+                'Sight':               _combo_value(_ZOMBIE_SIGHT, self.sandbox_sight.currentIndex(), 2),
+                'Hearing':             _combo_value(_ZOMBIE_HEARING, self.sandbox_hearing.currentIndex(), 2),
+                'Smell':               _combo_value(_ZOMBIE_SMELL, self.sandbox_smell.currentIndex(), 2),
+                'Active':              _combo_value(_ZOMBIE_ACTIVE, self.sandbox_zombie_active.currentIndex(), 1),
+                'Distribution':        _combo_value(_ZOMBIE_DISTRIBUTION, self.sandbox_zombie_distribution.currentIndex(), 1),
+                'ThumpNoChasing':      self.sandbox_thump_no_chasing.isChecked(),
+                'ThumpOnConstruction': self.sandbox_thump_on_construction.isChecked(),
+                'TriggerHouseAlarm':   self.sandbox_trigger_alarm.isChecked(),
+            },
+            'ZombieConfig': {
+                'PopulationMultiplier':      round(self.sandbox_pop_mult.value(), 2),
+                'PopulationStartMultiplier': round(self.sandbox_pop_start_mult.value(), 2),
+                'PopulationPeakMultiplier':  round(self.sandbox_pop_peak_mult.value(), 2),
+                'PopulationPeakDay':         self.sandbox_pop_peak_day.value(),
+                'RespawnHours':              self.sandbox_respawn_hours.value(),
+                'RespawnUnseenHours':        self.sandbox_respawn_unseen_hours.value(),
+                'RespawnMultiplier':         round(self.sandbox_respawn_mult.value(), 2),
+                'RedistributeHours':         self.sandbox_redistribute_hours.value(),
+                'RallyGroupSize':            self.sandbox_rally_size.value(),
+                'RallyGroupRadius':          self.sandbox_rally_radius.value(),
+            },
+            # Loot
+            'Loot': {
+                'HoursForLootRespawn':          _combo_value(_LOOT_RESPAWN, self.sandbox_loot_respawn.currentIndex(), 0),
+                'MaxItemsForLootRespawn':       self.sandbox_max_items_respawn.value(),
+                'ConstructionPreventsLootRespawn': self.sandbox_construction_respawn.isChecked(),
+            },
+            'WaterShutModifier':         self.sandbox_water_shutoff.value(),
+            'ElecShutModifier':          self.sandbox_electricity_shutoff.value(),
+            'WaterShut':                 self.sandbox_water_shutoff.value(),
+            'ElecShut':                  self.sandbox_electricity_shutoff.value(),
+            'HoursForLootRespawn':       _combo_value(_LOOT_RESPAWN, self.sandbox_loot_respawn.currentIndex(), 0),
+            'MaxItemsForLootRespawn':    self.sandbox_max_items_respawn.value(),
+            'ConstructionPreventsLootRespawn': self.sandbox_construction_respawn.isChecked(),
+
+            # GameTime & World
+            'GameTime': {
+                'DayLength':   _combo_value(_DAY_LENGTH, self.sandbox_day_length.currentIndex(), 3),
+                'StartYear':   self.sandbox_start_year.value(),
+                'StartMonth':  self.sandbox_start_month.currentIndex() + 1,
+                'StartDay':    self.sandbox_start_day.value(),
+                'StartTime':   _combo_value(_START_TIMES, self.sandbox_start_time.currentIndex(), 2),
+                'NightDarkness': _combo_value(_NIGHT_DARK, self.sandbox_night_darkness.currentIndex(), 3),
+            },
+            'DayLength':        _combo_value(_DAY_LENGTH, self.sandbox_day_length.currentIndex(), 3),
+            'StartYear':        self.sandbox_start_year.value(),
+            'StartMonth':       self.sandbox_start_month.currentIndex() + 1,
+            'StartDay':         self.sandbox_start_day.value(),
+            'StartTime':        _combo_value(_START_TIMES, self.sandbox_start_time.currentIndex(), 2),
+            'NightDarkness':    _combo_value(_NIGHT_DARK, self.sandbox_night_darkness.currentIndex(), 3),
+            'TimeSinceApo':     _combo_value(_TIME_APO, self.sandbox_time_since_apo.currentIndex(), 1),
+            'FireSpread':       self.sandbox_fire_spread.isChecked(),
+            'NatureAbundance':  _combo_value(_NATURE_ABU, self.sandbox_nature_abundance.currentIndex(), 3),
+            'Helicopter':       _combo_value(_EVENT_FREQ, self.sandbox_helicopter.currentIndex(), 2),
+            'MetaEvent':        _combo_value(_META_FREQ, self.sandbox_meta_event.currentIndex(), 2),
+            'SleepingEvent':    _combo_value(_META_FREQ, self.sandbox_sleeping_event.currentIndex(), 2),
+            'ErosionSpeed':     _combo_value(_EROSION_SPD, self.sandbox_erosion_speed.currentIndex(), 3),
+            'ErosionDays':      self.sandbox_erosion_days.value(),
+
+            # Vehicles (17 parameters)
+            'EnableVehicles':              self.sandbox_enable_vehicles.isChecked(),
+            'CarSpawnRate':                _combo_value(_CAR_SPAWN, self.sandbox_car_spawn.currentIndex(), 4),
+            'CarGeneralCondition':         _combo_value(_CAR_LEVEL, self.sandbox_car_condition.currentIndex(), 3),
+            'CarCondition':                _combo_value(_CAR_LEVEL, self.sandbox_car_condition.currentIndex(), 3),
+            'RecentlySurvivorVehicles':    _combo_value(_RECENT_SURVIVOR, self.sandbox_recent_survivor.currentIndex(), 3),
+            'LockedCar':                   _combo_value(_LOCKED_CAR, self.sandbox_locked_car.currentIndex(), 4),
+            'VehicleEasyUse':              self.sandbox_vehicle_easy_use.isChecked(),
+            'TrafficJam':                  self.sandbox_traffic_jam.isChecked(),
+            'SpeedLimit':                  self.sandbox_speed_limit.value(),
+            'ZombieAttractionMultiplier':  round(self.sandbox_zombie_attraction.value(), 2),
+            'ChanceHasGas':                _combo_value(_CAR_LEVEL, self.sandbox_chance_gas.currentIndex(), 3),
+            'InitialGas':                  _combo_value(_CAR_LEVEL, self.sandbox_initial_gas.currentIndex(), 2),
+            'CarGasConsumption':           round(self.sandbox_gas_consumption.value(), 2),
+            'CarAlarm':                    _combo_value(_CAR_ALARM, self.sandbox_car_alarm.currentIndex(), 3),
+            'SirenShutoffHours':           round(self.sandbox_siren_shutoff.value(), 2),
+            'CarDamageOnImpact':           _combo_value(_CAR_DAMAGE, self.sandbox_car_damage_impact.currentIndex(), 3),
+            'DamageToPlayerFromHitByCar':  _combo_value(_PED_DAMAGE, self.sandbox_damage_hit_by_car.currentIndex(), 3),
+            'PlayerDamagedFromCarCrash':   self.sandbox_crash_damage.isChecked(),
+            'PlayerDamageFromCarCrash':    self.sandbox_crash_damage.isChecked(),
+
+            # Character & Farming
+            'XPMultiplier':             round(self.sandbox_xp_mult.value(), 2),
+            'FreePoints':               self.sandbox_char_free_points.value(),
+            'DamageToPlayer':           _combo_value(_PLAYER_DMG, self.sandbox_player_damage.currentIndex(), 3),
+            'FarmingSpeed':             _combo_value(_FARMING_SPD, self.sandbox_farming_speed.currentIndex(), 3),
+            'Farming':                  _combo_value(_FARMING_SPD, self.sandbox_farming_speed.currentIndex(), 3),
+            'PlantResilience':          _combo_value(_CAR_LEVEL, self.sandbox_plant_resilience.currentIndex(), 3),
+            'PlantAbundance':           _combo_value(_CAR_LEVEL, self.sandbox_plant_abundance.currentIndex(), 3),
+            'GeneratorSpawning':        _combo_value(_GENERATOR_SP, self.sandbox_generator_spawn.currentIndex(), 3),
+            'GeneratorFuelConsumption': round(self.sandbox_generator_fuel.value(), 2),
+        }
+
+        for k, cb in self.loot_combos.items():
+            val = _combo_value(_LOOT_RARITY, cb.currentIndex(), 2)
+            vars_dict[k] = val
+            vars_dict['Loot'][k] = val
+
+        if hasattr(self, 'mod_widgets'):
+            for (mod_name, key), widget in self.mod_widgets.items():
+                if mod_name not in vars_dict:
+                    vars_dict[mod_name] = {}
+                if isinstance(widget, QCheckBox):
+                    vars_dict[mod_name][key] = widget.isChecked()
+                elif isinstance(widget, QSpinBox):
+                    vars_dict[mod_name][key] = widget.value()
+                elif isinstance(widget, QDoubleSpinBox):
+                    vars_dict[mod_name][key] = round(widget.value(), 3)
+                elif isinstance(widget, QLineEdit):
+                    vars_dict[mod_name][key] = widget.text().strip()
+
+        return vars_dict
+
+    def _apply_sandbox_state(self, sb: dict):
+        """Apply a SandboxVars dictionary to all widgets across the 6 subtabs."""
+        def _get_val(key, subcat=None, default=None):
+            if key in sb:
+                return sb[key]
+            if subcat and subcat in sb and isinstance(sb[subcat], dict):
+                return sb[subcat].get(key, default)
+            return default
+
+        zl = sb.get('ZombieLore') if isinstance(sb.get('ZombieLore'), dict) else {}
+        zc = sb.get('ZombieConfig') if isinstance(sb.get('ZombieConfig'), dict) else {}
+
+        # 1. Zombies
+        self.sandbox_zombie_speed.setCurrentIndex(_combo_index(_ZOMBIE_SPEED, zl.get('Speed', 3)))
+        self.sandbox_zombie_strength.setCurrentIndex(_combo_index(_ZOMBIE_STRENGTH, zl.get('Strength', 2)))
+        self.sandbox_zombie_toughness.setCurrentIndex(_combo_index(_ZOMBIE_TOUGHNESS, zl.get('Toughness', 2)))
+        self.sandbox_zombie_transmission.setCurrentIndex(_combo_index(_ZOMBIE_TRANSMISSION, zl.get('Transmission', 1)))
+        self.sandbox_infection_mortality.setCurrentIndex(_combo_index(_INFECTION, zl.get('Mortality', 6)))
+        self.sandbox_zombie_cognition.setCurrentIndex(_combo_index(_ZOMBIE_COGNITION, zl.get('Cognition', 3)))
+        self.sandbox_memory.setCurrentIndex(_combo_index(_ZOMBIE_MEMORY, zl.get('Memory', 2)))
+        self.sandbox_decomp.setCurrentIndex(_combo_index(_ZOMBIE_DECOMP, zl.get('Decomp', 1)))
+        self.sandbox_sight.setCurrentIndex(_combo_index(_ZOMBIE_SIGHT, zl.get('Sight', 2)))
+        self.sandbox_hearing.setCurrentIndex(_combo_index(_ZOMBIE_HEARING, zl.get('Hearing', 2)))
+        self.sandbox_smell.setCurrentIndex(_combo_index(_ZOMBIE_SMELL, zl.get('Smell', 2)))
+        self.sandbox_zombie_active.setCurrentIndex(_combo_index(_ZOMBIE_ACTIVE, zl.get('Active', 1)))
+        self.sandbox_zombie_distribution.setCurrentIndex(_combo_index(_ZOMBIE_DISTRIBUTION, zl.get('Distribution', 1)))
+        self.sandbox_thump_no_chasing.setChecked(bool(zl.get('ThumpNoChasing', False)))
+        self.sandbox_thump_on_construction.setChecked(bool(zl.get('ThumpOnConstruction', True)))
+        self.sandbox_trigger_alarm.setChecked(bool(zl.get('TriggerHouseAlarm', False)))
+
+        # Advanced ZombieConfig
+        self.sandbox_pop_mult.setValue(_safe_float(zc.get('PopulationMultiplier', 1.0), 1.0))
+        self.sandbox_pop_start_mult.setValue(_safe_float(zc.get('PopulationStartMultiplier', 1.0), 1.0))
+        self.sandbox_pop_peak_mult.setValue(_safe_float(zc.get('PopulationPeakMultiplier', 1.5), 1.5))
+        self.sandbox_pop_peak_day.setValue(_safe_int(zc.get('PopulationPeakDay', 28), 28))
+        self.sandbox_respawn_hours.setValue(_safe_int(zc.get('RespawnHours', 72), 72))
+        self.sandbox_respawn_unseen_hours.setValue(_safe_int(zc.get('RespawnUnseenHours', 16), 16))
+        self.sandbox_respawn_mult.setValue(_safe_float(zc.get('RespawnMultiplier', 0.1), 0.1))
+        self.sandbox_redistribute_hours.setValue(_safe_int(zc.get('RedistributeHours', 12), 12))
+        self.sandbox_rally_size.setValue(_safe_int(zc.get('RallyGroupSize', 20), 20))
+        self.sandbox_rally_radius.setValue(_safe_int(zc.get('RallyGroupRadius', 3), 3))
+
+        # 2. Loot
+        for k, cb in self.loot_combos.items():
+            val = _get_val(k, 'Loot', 2)
+            cb.setCurrentIndex(_combo_index(_LOOT_RARITY, val, default=1))
+
+        self.sandbox_loot_respawn.setCurrentIndex(
+            _combo_index(_LOOT_RESPAWN, _get_val('HoursForLootRespawn', 'Loot', 0))
+        )
+        self.sandbox_max_items_respawn.setValue(
+            _safe_int(_get_val('MaxItemsForLootRespawn', 'Loot', 4), 4)
+        )
+        self.sandbox_construction_respawn.setChecked(
+            bool(_get_val('ConstructionPreventsLootRespawn', 'Loot', True))
+        )
+        self.sandbox_water_shutoff.setValue(
+            _safe_int(_get_val('WaterShutModifier', 'Loot', _get_val('WaterShut', None, 14)), 14)
+        )
+        self.sandbox_electricity_shutoff.setValue(
+            _safe_int(_get_val('ElecShutModifier', 'Loot', _get_val('ElecShut', None, 14)), 14)
+        )
+
+        # 3. World & Time
+        self.sandbox_day_length.setCurrentIndex(
+            _combo_index(_DAY_LENGTH, _get_val('DayLength', 'GameTime', 3), default=2)
+        )
+        self.sandbox_start_year.setValue(_safe_int(_get_val('StartYear', 'GameTime', 1), 1))
+        self.sandbox_start_month.setCurrentIndex(
+            max(0, _safe_int(_get_val('StartMonth', 'GameTime', 7), 7) - 1)
+        )
+        self.sandbox_start_day.setValue(_safe_int(_get_val('StartDay', 'GameTime', 9), 9))
+        self.sandbox_start_time.setCurrentIndex(
+            _combo_index(_START_TIMES, _get_val('StartTime', 'GameTime', 2), default=1)
+        )
+        self.sandbox_night_darkness.setCurrentIndex(
+            _combo_index(_NIGHT_DARK, _get_val('NightDarkness', 'GameTime', 3), default=2)
+        )
+        self.sandbox_fire_spread.setChecked(bool(_get_val('FireSpread', None, True)))
+        self.sandbox_nature_abundance.setCurrentIndex(
+            _combo_index(_NATURE_ABU, _get_val('NatureAbundance', None, 3), default=2)
+        )
+        self.sandbox_time_since_apo.setCurrentIndex(
+            _combo_index(_TIME_APO, _get_val('TimeSinceApo', None, 1), default=0)
+        )
+        self.sandbox_helicopter.setCurrentIndex(
+            _combo_index(_EVENT_FREQ, _get_val('Helicopter', None, 2), default=1)
+        )
+        self.sandbox_meta_event.setCurrentIndex(
+            _combo_index(_META_FREQ, _get_val('MetaEvent', None, 2), default=1)
+        )
+        self.sandbox_sleeping_event.setCurrentIndex(
+            _combo_index(_META_FREQ, _get_val('SleepingEvent', None, 2), default=1)
+        )
+        self.sandbox_erosion_speed.setCurrentIndex(
+            _combo_index(_EROSION_SPD, _get_val('ErosionSpeed', None, 3), default=2)
+        )
+        self.sandbox_erosion_days.setValue(_safe_int(_get_val('ErosionDays', None, 100), 100))
+
+        # 4. Vehicles (17 parameters)
+        self.sandbox_enable_vehicles.setChecked(bool(_get_val('EnableVehicles', 'Cars', True)))
+        self.sandbox_car_spawn.setCurrentIndex(_combo_index(_CAR_SPAWN, _get_val('CarSpawnRate', 'Cars', 4), default=3))
+        self.sandbox_car_condition.setCurrentIndex(_combo_index(_CAR_LEVEL, _get_val('CarGeneralCondition', 'Cars', _get_val('CarCondition', 'Cars', 3)), default=2))
+        self.sandbox_recent_survivor.setCurrentIndex(_combo_index(_RECENT_SURVIVOR, _get_val('RecentlySurvivorVehicles', 'Cars', 3), default=2))
+        self.sandbox_locked_car.setCurrentIndex(_combo_index(_LOCKED_CAR, _get_val('LockedCar', 'Cars', 4), default=3))
+        self.sandbox_vehicle_easy_use.setChecked(bool(_get_val('VehicleEasyUse', 'Cars', False)))
+        self.sandbox_traffic_jam.setChecked(bool(_get_val('TrafficJam', 'Cars', True)))
+
+        ini_speed = None
+        if hasattr(self, 'config_manager'):
+            try:
+                ini_speed = self.config_manager.load_server_ini().get('SpeedLimit')
+            except Exception:
+                pass
+        speed_val = _safe_int(_get_val('SpeedLimit', 'Cars', ini_speed or 70), 70)
+        self.sandbox_speed_limit.setValue(speed_val)
+
+        self.sandbox_zombie_attraction.setValue(_safe_float(_get_val('ZombieAttractionMultiplier', 'Cars', 1.0), 1.0))
+        self.sandbox_chance_gas.setCurrentIndex(_combo_index(_CAR_LEVEL, _get_val('ChanceHasGas', 'Cars', 3), default=2))
+        self.sandbox_initial_gas.setCurrentIndex(_combo_index(_CAR_LEVEL, _get_val('InitialGas', 'Cars', 2), default=1))
+        self.sandbox_gas_consumption.setValue(_safe_float(_get_val('CarGasConsumption', 'Cars', 1.0), 1.0))
+        self.sandbox_car_alarm.setCurrentIndex(_combo_index(_CAR_ALARM, _get_val('CarAlarm', 'Cars', 3), default=2))
+        self.sandbox_siren_shutoff.setValue(_safe_float(_get_val('SirenShutoffHours', 'Cars', 0.0), 0.0))
+        self.sandbox_car_damage_impact.setCurrentIndex(_combo_index(_CAR_DAMAGE, _get_val('CarDamageOnImpact', 'Cars', 3), default=2))
+        self.sandbox_damage_hit_by_car.setCurrentIndex(_combo_index(_PED_DAMAGE, _get_val('DamageToPlayerFromHitByCar', 'Cars', 3), default=2))
+        self.sandbox_crash_damage.setChecked(bool(_get_val('PlayerDamagedFromCarCrash', 'Cars', _get_val('PlayerDamageFromCarCrash', 'Cars', True))))
+
+        # 5. Character
+        self.sandbox_xp_mult.setValue(_safe_float(_get_val('XPMultiplier', 'Character', 1.0), 1.0))
+        self.sandbox_char_free_points.setValue(_safe_int(_get_val('FreePoints', 'Character', 0), 0))
+        self.sandbox_player_damage.setCurrentIndex(_combo_index(_PLAYER_DMG, _get_val('DamageToPlayer', 'Character', 3), default=2))
+        self.sandbox_farming_speed.setCurrentIndex(_combo_index(_FARMING_SPD, _get_val('FarmingSpeed', 'Farming', _get_val('Farming', None, 3)), default=2))
+        self.sandbox_plant_resilience.setCurrentIndex(_combo_index(_CAR_LEVEL, _get_val('PlantResilience', 'Farming', 3), default=2))
+        self.sandbox_plant_abundance.setCurrentIndex(_combo_index(_CAR_LEVEL, _get_val('PlantAbundance', 'Farming', 3), default=2))
+        self.sandbox_generator_spawn.setCurrentIndex(_combo_index(_GENERATOR_SP, _get_val('GeneratorSpawning', 'Farming', 3), default=2))
+        self.sandbox_generator_fuel.setValue(_safe_float(_get_val('GeneratorFuelConsumption', 'Farming', 1.0), 1.0))
+
     def load_sandbox_settings(self):
-        """Load all sandbox settings and populate both vanilla tabs and dynamic mod options."""
+        """Load sandbox settings from SandboxVars.lua."""
         try:
             name = self.server_name_input.text().strip() or 'servertest'
             self.config_manager.set_server_name(name)
             sb, meta = self.config_manager.load_sandbox_vars_full()
 
-            def _get_val(key, subcat=None, default=None):
-                if key in sb:
-                    return sb[key]
-                if subcat and subcat in sb and isinstance(sb[subcat], dict):
-                    return sb[subcat].get(key, default)
-                return default
+            self._apply_sandbox_state(sb)
+            self._render_mod_options(sb, meta)
+            self._populate_presets_combo()
 
-            zl = sb.get('ZombieLore') if isinstance(sb.get('ZombieLore'), dict) else {}
-            zc = sb.get('ZombieConfig') if isinstance(sb.get('ZombieConfig'), dict) else {}
-
-            # 1. Zombies
-            self.sandbox_zombie_speed.setCurrentIndex(_combo_index(_ZOMBIE_SPEED, zl.get('Speed', 3)))
-            self.sandbox_zombie_strength.setCurrentIndex(_combo_index(_ZOMBIE_STRENGTH, zl.get('Strength', 2)))
-            self.sandbox_zombie_toughness.setCurrentIndex(_combo_index(_ZOMBIE_TOUGHNESS, zl.get('Toughness', 2)))
-            self.sandbox_zombie_transmission.setCurrentIndex(_combo_index(_ZOMBIE_TRANSMISSION, zl.get('Transmission', 1)))
-            self.sandbox_infection_mortality.setCurrentIndex(_combo_index(_INFECTION, zl.get('Mortality', 6)))
-            self.sandbox_zombie_cognition.setCurrentIndex(_combo_index(_ZOMBIE_COGNITION, zl.get('Cognition', 3)))
-            self.sandbox_memory.setCurrentIndex(_combo_index(_ZOMBIE_MEMORY, zl.get('Memory', 2)))
-            self.sandbox_decomp.setCurrentIndex(_combo_index(_ZOMBIE_DECOMP, zl.get('Decomp', 1)))
-            self.sandbox_sight.setCurrentIndex(_combo_index(_ZOMBIE_SIGHT, zl.get('Sight', 2)))
-            self.sandbox_hearing.setCurrentIndex(_combo_index(_ZOMBIE_HEARING, zl.get('Hearing', 2)))
-            self.sandbox_smell.setCurrentIndex(_combo_index(_ZOMBIE_SMELL, zl.get('Smell', 2)))
-            self.sandbox_zombie_active.setCurrentIndex(_combo_index(_ZOMBIE_ACTIVE, zl.get('Active', 1)))
-            self.sandbox_zombie_distribution.setCurrentIndex(_combo_index(_ZOMBIE_DISTRIBUTION, zl.get('Distribution', 1)))
-            self.sandbox_thump_no_chasing.setChecked(bool(zl.get('ThumpNoChasing', False)))
-            self.sandbox_thump_on_construction.setChecked(bool(zl.get('ThumpOnConstruction', True)))
-            self.sandbox_trigger_alarm.setChecked(bool(zl.get('TriggerHouseAlarm', False)))
-
-            # Advanced ZombieConfig
-            self.sandbox_pop_mult.setValue(_safe_float(zc.get('PopulationMultiplier', 1.0), 1.0))
-            self.sandbox_pop_start_mult.setValue(_safe_float(zc.get('PopulationStartMultiplier', 1.0), 1.0))
-            self.sandbox_pop_peak_mult.setValue(_safe_float(zc.get('PopulationPeakMultiplier', 1.5), 1.5))
-            self.sandbox_pop_peak_day.setValue(_safe_int(zc.get('PopulationPeakDay', 28), 28))
-            self.sandbox_respawn_hours.setValue(_safe_int(zc.get('RespawnHours', 72), 72))
-            self.sandbox_respawn_unseen_hours.setValue(_safe_int(zc.get('RespawnUnseenHours', 16), 16))
-            self.sandbox_respawn_mult.setValue(_safe_float(zc.get('RespawnMultiplier', 0.1), 0.1))
-            self.sandbox_redistribute_hours.setValue(_safe_int(zc.get('RedistributeHours', 12), 12))
-            self.sandbox_rally_size.setValue(_safe_int(zc.get('RallyGroupSize', 20), 20))
-            self.sandbox_rally_radius.setValue(_safe_int(zc.get('RallyGroupRadius', 3), 3))
-
-            # 2. Loot
-            for k, cb in self.loot_combos.items():
-                val = _get_val(k, 'Loot', 2)
-                cb.setCurrentIndex(_combo_index(_LOOT_RARITY, val, default=1))
-
-            self.sandbox_loot_respawn.setCurrentIndex(
-                _combo_index(_LOOT_RESPAWN, _get_val('HoursForLootRespawn', 'Loot', 0))
-            )
-            self.sandbox_max_items_respawn.setValue(
-                _safe_int(_get_val('MaxItemsForLootRespawn', 'Loot', 4), 4)
-            )
-            self.sandbox_construction_respawn.setChecked(
-                bool(_get_val('ConstructionPreventsLootRespawn', 'Loot', True))
-            )
-            self.sandbox_water_shutoff.setValue(
-                _safe_int(_get_val('WaterShutModifier', 'Loot', _get_val('WaterShut', None, 14)), 14)
-            )
-            self.sandbox_electricity_shutoff.setValue(
-                _safe_int(_get_val('ElecShutModifier', 'Loot', _get_val('ElecShut', None, 14)), 14)
-            )
-
-            # 3. World & Time
-            self.sandbox_day_length.setCurrentIndex(
-                _combo_index(_DAY_LENGTH, _get_val('DayLength', 'GameTime', 3), default=2)
-            )
-            self.sandbox_start_year.setValue(_safe_int(_get_val('StartYear', 'GameTime', 1), 1))
-            self.sandbox_start_month.setCurrentIndex(
-                max(0, _safe_int(_get_val('StartMonth', 'GameTime', 7), 7) - 1)
-            )
-            self.sandbox_start_day.setValue(_safe_int(_get_val('StartDay', 'GameTime', 9), 9))
-            self.sandbox_start_time.setCurrentIndex(
-                _combo_index(_START_TIMES, _get_val('StartTime', 'GameTime', 2), default=1)
-            )
-            self.sandbox_night_darkness.setCurrentIndex(
-                _combo_index(_NIGHT_DARK, _get_val('NightDarkness', 'GameTime', 3), default=2)
-            )
-            self.sandbox_time_since_apo.setCurrentIndex(
-                _combo_index(_TIME_APO, _get_val('TimeSinceApo', 'GameTime', 1), default=0)
-            )
-
-            self.sandbox_fire_spread.setChecked(bool(_get_val('FireSpread', 'Climate', True)))
-            self.sandbox_nature_abundance.setCurrentIndex(
-                _combo_index(_NATURE_ABU, _get_val('NatureAbundance', 'Climate', 3), default=2)
-            )
-            self.sandbox_helicopter.setCurrentIndex(
-                _combo_index(_EVENT_FREQ, _get_val('Helicopter', None, 2), default=1)
-            )
-            self.sandbox_meta_event.setCurrentIndex(
-                _combo_index(_META_FREQ, _get_val('MetaEvent', None, 2), default=1)
-            )
-            self.sandbox_sleeping_event.setCurrentIndex(
-                _combo_index(_META_FREQ, _get_val('SleepingEvent', None, 2), default=1)
-            )
-            self.sandbox_erosion_speed.setCurrentIndex(
-                _combo_index(_EROSION_SPD, _get_val('ErosionSpeed', None, 3), default=2)
-            )
-            self.sandbox_erosion_days.setValue(_safe_int(_get_val('ErosionDays', None, 100), 100))
-
-            # 4. Vehicles
-            self.sandbox_car_spawn.setCurrentIndex(
-                _combo_index(_CAR_SPAWN, _get_val('CarSpawnRate', 'Cars', 4), default=3)
-            )
-            self.sandbox_vehicle_easy_use.setChecked(
-                bool(_get_val('VehicleEasyUse', 'Cars', False))
-            )
-            self.sandbox_chance_gas.setCurrentIndex(
-                _combo_index(_CAR_LEVEL, _get_val('ChanceHasGas', 'Cars', 3), default=2)
-            )
-            self.sandbox_initial_gas.setCurrentIndex(
-                _combo_index(_CAR_LEVEL, _get_val('InitialGas', 'Cars', 2), default=1)
-            )
-            self.sandbox_gas_consumption.setValue(
-                _safe_float(_get_val('CarGasConsumption', 'Cars', 1.0), 1.0)
-            )
-            self.sandbox_car_condition.setCurrentIndex(
-                _combo_index(_CAR_LEVEL, _get_val('CarGeneralCondition', 'Cars', 3), default=2)
-            )
-            self.sandbox_traffic_jam.setChecked(bool(_get_val('TrafficJam', 'Cars', True)))
-            self.sandbox_car_alarm.setCurrentIndex(
-                _combo_index(_EVENT_FREQ, _get_val('CarAlarm', 'Cars', 3), default=2)
-            )
-            self.sandbox_crash_damage.setChecked(
-                bool(_get_val('PlayerDamagedFromCarCrash', 'Cars', True))
-            )
-
-            # 5. Character
-            self.sandbox_xp_mult.setValue(
-                _safe_float(_get_val('XPMultiplier', 'Character', 1.0), 1.0)
-            )
-            self.sandbox_char_free_points.setValue(
-                _safe_int(_get_val('FreePoints', 'Character', 0), 0)
-            )
-            self.sandbox_player_damage.setCurrentIndex(
-                _combo_index(_PLAYER_DMG, _get_val('DamageToPlayer', 'Character', 3), default=2)
-            )
-            self.sandbox_farming_speed.setCurrentIndex(
-                _combo_index(_FARMING_SPD, _get_val('FarmingSpeed', 'Farming', _get_val('Farming', None, 3)), default=2)
-            )
-            self.sandbox_plant_resilience.setCurrentIndex(
-                _combo_index(_CAR_LEVEL, _get_val('PlantResilience', 'Farming', 3), default=2)
-            )
-            self.sandbox_plant_abundance.setCurrentIndex(
-                _combo_index(_CAR_LEVEL, _get_val('PlantAbundance', 'Farming', 3), default=2)
-            )
-            self.sandbox_generator_spawn.setCurrentIndex(
-                _combo_index(_GENERATOR_SP, _get_val('GeneratorSpawning', 'Meta', 3), default=2)
-            )
-            self.sandbox_generator_fuel.setValue(
-                _safe_float(_get_val('GeneratorFuelConsumption', 'Meta', 1.0), 1.0)
-            )
-
-            # 6. Populate Dynamic Mod Options
-            self._populate_mod_options(sb, meta)
-
-            self.statusBar.showMessage(tr('settings_loaded'), 3000)
-
-        except FileNotFoundError:
-            pass
+            self.statusBar.showMessage(tr('sandbox_loaded'), 3000)
         except Exception as e:
             logger.exception('Failed to load sandbox settings')
+            QMessageBox.critical(self, tr('error'), f"Failed to load sandbox settings: {e}")
 
-    def _populate_mod_options(self, sb: dict, meta: dict):
-        """Dynamically render informative 3-column rows for all mod tables in SandboxVars."""
+    def _render_mod_options(self, sb: dict, meta: dict):
+        """Render dynamic controls for all third-party mod sections."""
         # Clear existing mod widgets
-        for i in reversed(range(self.mod_options_layout.count())):
-            item = self.mod_options_layout.itemAt(i)
-            w = item.widget()
-            if w and w != self.mod_empty_label:
-                w.deleteLater()
+        for i in reversed(range(self.mods_scroll_layout.count())):
+            item = self.mods_scroll_layout.itemAt(i)
+            if item.widget() and item.widget() != self.mod_empty_label:
+                item.widget().setParent(None)
 
         self.mod_widgets.clear()
         self.mod_group_boxes.clear()
 
         # Vanilla tables to skip (they have dedicated tabs)
-        vanilla_tables = {'ZombieLore', 'ZombieConfig', 'MultiplierConfig', 'Map', 'Basement', 'SandboxVars'}
+        vanilla_tables = {'ZombieLore', 'ZombieConfig', 'MultiplierConfig', 'Map', 'Basement', 'SandboxVars', 'Cars', 'Loot', 'GameTime', 'Character', 'Farming'}
 
         mod_tables = {k: v for k, v in sb.items() if isinstance(v, dict) and k not in vanilla_tables}
 
@@ -1084,7 +1388,6 @@ class SandboxTabMixin:
             gb_vbox = QVBoxLayout(gb)
             gb_vbox.setContentsMargins(12, 10, 12, 10)
             gb_vbox.setSpacing(6)
-            gb_items = []
 
             for key, val in mod_data.items():
                 comment = meta.get((mod_name, key), '')
@@ -1128,125 +1431,27 @@ class SandboxTabMixin:
 
                 gb_vbox.addWidget(row_widget)
                 self.mod_widgets[(mod_name, key)] = w
-                gb_items.append((row_widget, key, comment))
 
-            self.mod_group_boxes.append((gb, gb_items))
-            self.mod_options_layout.addWidget(gb)
+            self.mods_scroll_layout.addWidget(gb)
+            self.mod_group_boxes[mod_name] = gb
 
     def save_sandbox_settings(self):
-        """Save all sandbox settings non-destructively to SandboxVars.lua."""
+        """Save all sandbox settings back to SandboxVars.lua."""
         try:
-            vars_dict = {
-                # ── Root variables ──
-                # 10 Loot Categories
-                'WeaponLoot':        _combo_value(_LOOT_RARITY, self.loot_combos['WeaponLoot'].currentIndex(), 2),
-                'RangedWeaponLoot':  _combo_value(_LOOT_RARITY, self.loot_combos['RangedWeaponLoot'].currentIndex(), 2),
-                'AmmoLoot':          _combo_value(_LOOT_RARITY, self.loot_combos['AmmoLoot'].currentIndex(), 2),
-                'FoodLoot':          _combo_value(_LOOT_RARITY, self.loot_combos['FoodLoot'].currentIndex(), 3),
-                'CannedFoodLoot':    _combo_value(_LOOT_RARITY, self.loot_combos['CannedFoodLoot'].currentIndex(), 2),
-                'MedicalLoot':       _combo_value(_LOOT_RARITY, self.loot_combos['MedicalLoot'].currentIndex(), 2),
-                'LiteratureLoot':    _combo_value(_LOOT_RARITY, self.loot_combos['LiteratureLoot'].currentIndex(), 2),
-                'SurvivalGearsLoot': _combo_value(_LOOT_RARITY, self.loot_combos['SurvivalGearsLoot'].currentIndex(), 2),
-                'MechanicsLoot':     _combo_value(_LOOT_RARITY, self.loot_combos['MechanicsLoot'].currentIndex(), 2),
-                'OtherLoot':         _combo_value(_LOOT_RARITY, self.loot_combos['OtherLoot'].currentIndex(), 3),
-
-                # Loot Respawn & Utilities
-                'HoursForLootRespawn':              _combo_value(_LOOT_RESPAWN, self.sandbox_loot_respawn.currentIndex(), 0),
-                'MaxItemsForLootRespawn':            self.sandbox_max_items_respawn.value(),
-                'ConstructionPreventsLootRespawn':   self.sandbox_construction_respawn.isChecked(),
-                'WaterShutModifier':                self.sandbox_water_shutoff.value(),
-                'ElecShutModifier':                 self.sandbox_electricity_shutoff.value(),
-                'WaterShut':                        self.sandbox_water_shutoff.value(),
-                'ElecShut':                         self.sandbox_electricity_shutoff.value(),
-
-                # World & Time
-                'DayLength':     _combo_value(_DAY_LENGTH, self.sandbox_day_length.currentIndex(), 3),
-                'StartYear':     self.sandbox_start_year.value(),
-                'StartMonth':    self.sandbox_start_month.currentIndex() + 1,
-                'StartDay':      self.sandbox_start_day.value(),
-                'StartTime':     _combo_value(_START_TIMES, self.sandbox_start_time.currentIndex(), 2),
-                'NightDarkness': _combo_value(_NIGHT_DARK, self.sandbox_night_darkness.currentIndex(), 3),
-                'TimeSinceApo':  _combo_value(_TIME_APO, self.sandbox_time_since_apo.currentIndex(), 1),
-
-                'FireSpread':       self.sandbox_fire_spread.isChecked(),
-                'NatureAbundance':  _combo_value(_NATURE_ABU, self.sandbox_nature_abundance.currentIndex(), 3),
-                'Helicopter':       _combo_value(_EVENT_FREQ, self.sandbox_helicopter.currentIndex(), 2),
-                'MetaEvent':        _combo_value(_META_FREQ, self.sandbox_meta_event.currentIndex(), 2),
-                'SleepingEvent':    _combo_value(_META_FREQ, self.sandbox_sleeping_event.currentIndex(), 2),
-                'ErosionSpeed':     _combo_value(_EROSION_SPD, self.sandbox_erosion_speed.currentIndex(), 3),
-                'ErosionDays':      self.sandbox_erosion_days.value(),
-
-                # Vehicles
-                'CarSpawnRate':              _combo_value(_CAR_SPAWN, self.sandbox_car_spawn.currentIndex(), 4),
-                'VehicleEasyUse':            self.sandbox_vehicle_easy_use.isChecked(),
-                'ChanceHasGas':              _combo_value(_CAR_LEVEL, self.sandbox_chance_gas.currentIndex(), 3),
-                'InitialGas':                _combo_value(_CAR_LEVEL, self.sandbox_initial_gas.currentIndex(), 2),
-                'CarGasConsumption':         round(self.sandbox_gas_consumption.value(), 2),
-                'CarGeneralCondition':       _combo_value(_CAR_LEVEL, self.sandbox_car_condition.currentIndex(), 3),
-                'TrafficJam':                self.sandbox_traffic_jam.isChecked(),
-                'CarAlarm':                  _combo_value(_EVENT_FREQ, self.sandbox_car_alarm.currentIndex(), 3),
-                'PlayerDamagedFromCarCrash': self.sandbox_crash_damage.isChecked(),
-
-                # Character & Farming
-                'XPMultiplier':             round(self.sandbox_xp_mult.value(), 2),
-                'FreePoints':               self.sandbox_char_free_points.value(),
-                'DamageToPlayer':           _combo_value(_PLAYER_DMG, self.sandbox_player_damage.currentIndex(), 3),
-                'FarmingSpeed':             _combo_value(_FARMING_SPD, self.sandbox_farming_speed.currentIndex(), 3),
-                'Farming':                  _combo_value(_FARMING_SPD, self.sandbox_farming_speed.currentIndex(), 3),
-                'PlantResilience':          _combo_value(_CAR_LEVEL, self.sandbox_plant_resilience.currentIndex(), 3),
-                'PlantAbundance':           _combo_value(_CAR_LEVEL, self.sandbox_plant_abundance.currentIndex(), 3),
-                'GeneratorSpawning':        _combo_value(_GENERATOR_SP, self.sandbox_generator_spawn.currentIndex(), 3),
-                'GeneratorFuelConsumption': round(self.sandbox_generator_fuel.value(), 2),
-
-                # ── Nested Vanilla Tables ──
-                'ZombieLore': {
-                    'Speed':               _combo_value(_ZOMBIE_SPEED, self.sandbox_zombie_speed.currentIndex(), 3),
-                    'Strength':            _combo_value(_ZOMBIE_STRENGTH, self.sandbox_zombie_strength.currentIndex(), 2),
-                    'Toughness':           _combo_value(_ZOMBIE_TOUGHNESS, self.sandbox_zombie_toughness.currentIndex(), 2),
-                    'Transmission':        _combo_value(_ZOMBIE_TRANSMISSION, self.sandbox_zombie_transmission.currentIndex(), 1),
-                    'Mortality':           _combo_value(_INFECTION, self.sandbox_infection_mortality.currentIndex(), 6),
-                    'Cognition':           _combo_value(_ZOMBIE_COGNITION, self.sandbox_zombie_cognition.currentIndex(), 3),
-                    'Memory':              _combo_value(_ZOMBIE_MEMORY, self.sandbox_memory.currentIndex(), 2),
-                    'Decomp':              _combo_value(_ZOMBIE_DECOMP, self.sandbox_decomp.currentIndex(), 1),
-                    'Sight':               _combo_value(_ZOMBIE_SIGHT, self.sandbox_sight.currentIndex(), 2),
-                    'Hearing':             _combo_value(_ZOMBIE_HEARING, self.sandbox_hearing.currentIndex(), 2),
-                    'Smell':               _combo_value(_ZOMBIE_SMELL, self.sandbox_smell.currentIndex(), 2),
-                    'Active':              _combo_value(_ZOMBIE_ACTIVE, self.sandbox_zombie_active.currentIndex(), 1),
-                    'Distribution':        _combo_value(_ZOMBIE_DISTRIBUTION, self.sandbox_zombie_distribution.currentIndex(), 1),
-                    'ThumpNoChasing':      self.sandbox_thump_no_chasing.isChecked(),
-                    'ThumpOnConstruction': self.sandbox_thump_on_construction.isChecked(),
-                    'TriggerHouseAlarm':   self.sandbox_trigger_alarm.isChecked(),
-                },
-                'ZombieConfig': {
-                    'PopulationMultiplier':      round(self.sandbox_pop_mult.value(), 2),
-                    'PopulationStartMultiplier': round(self.sandbox_pop_start_mult.value(), 2),
-                    'PopulationPeakMultiplier':  round(self.sandbox_pop_peak_mult.value(), 2),
-                    'PopulationPeakDay':         self.sandbox_pop_peak_day.value(),
-                    'RespawnHours':              self.sandbox_respawn_hours.value(),
-                    'RespawnUnseenHours':        self.sandbox_respawn_unseen_hours.value(),
-                    'RespawnMultiplier':         round(self.sandbox_respawn_mult.value(), 2),
-                    'RedistributeHours':         self.sandbox_redistribute_hours.value(),
-                    'RallyGroupSize':            self.sandbox_rally_size.value(),
-                    'RallyGroupRadius':          self.sandbox_rally_radius.value(),
-                },
-            }
-
-            # Collect Mod options
-            for (mod_name, key), widget in self.mod_widgets.items():
-                if mod_name not in vars_dict:
-                    vars_dict[mod_name] = {}
-                if isinstance(widget, QCheckBox):
-                    vars_dict[mod_name][key] = widget.isChecked()
-                elif isinstance(widget, QSpinBox):
-                    vars_dict[mod_name][key] = widget.value()
-                elif isinstance(widget, QDoubleSpinBox):
-                    vars_dict[mod_name][key] = round(widget.value(), 3)
-                elif isinstance(widget, QLineEdit):
-                    vars_dict[mod_name][key] = widget.text().strip()
-
+            vars_dict = self._gather_sandbox_state()
             name = self.server_name_input.text().strip() or 'servertest'
             self.config_manager.set_server_name(name)
             self.config_manager.save_sandbox_vars(vars_dict)
+
+            # Sync SpeedLimit with Server INI
+            try:
+                ini = self.config_manager.load_server_ini()
+                ini['SpeedLimit'] = str(self.sandbox_speed_limit.value())
+                self.config_manager.save_server_ini(ini)
+                if hasattr(self, 'setting_speed_limit'):
+                    self.setting_speed_limit.setValue(self.sandbox_speed_limit.value())
+            except Exception as e:
+                logger.warning(f"Failed to sync SpeedLimit to INI: {e}")
 
             if hasattr(self, 'preset_combo'):
                 try:
@@ -1266,7 +1471,17 @@ class SandboxTabMixin:
 
     def on_preset_changed(self, preset: str):
         """Apply preset values to sandbox widgets."""
-        p = preset.lower()
+        pure_name = self._get_pure_preset_name(preset)
+        is_custom = pure_name in getattr(self, 'custom_presets', {})
+        if hasattr(self, 'b_del_preset'):
+            self.b_del_preset.setVisible(is_custom)
+
+        if is_custom:
+            self._apply_sandbox_state(self.custom_presets[pure_name])
+            self.statusBar.showMessage(f"Применен пресет: {pure_name}" if get_language() == 'ru' else f"Applied preset: {pure_name}", 3000)
+            return
+
+        p = pure_name.lower()
         if p == 'apocalypse':
             self.sandbox_pop_mult.setValue(1.5)
             self.sandbox_zombie_speed.setCurrentIndex(1)  # fast shamblers
@@ -1276,6 +1491,8 @@ class SandboxTabMixin:
                 cb.setCurrentIndex(0)  # extremely rare
             self.sandbox_xp_mult.setValue(1.0)
             self.sandbox_player_damage.setCurrentIndex(3)  # high
+            self.sandbox_car_spawn.setCurrentIndex(2)  # low
+            self.sandbox_car_condition.setCurrentIndex(1)  # low
         elif p == 'survivor':
             self.sandbox_pop_mult.setValue(1.0)
             self.sandbox_zombie_speed.setCurrentIndex(1)  # fast shamblers
@@ -1284,6 +1501,8 @@ class SandboxTabMixin:
                 cb.setCurrentIndex(1)  # rare
             self.sandbox_xp_mult.setValue(1.0)
             self.sandbox_player_damage.setCurrentIndex(2)  # normal
+            self.sandbox_car_spawn.setCurrentIndex(3)  # normal
+            self.sandbox_car_condition.setCurrentIndex(2)  # normal
         elif p == 'builder':
             self.sandbox_pop_mult.setValue(0.35)
             self.sandbox_zombie_speed.setCurrentIndex(2)  # shamblers
@@ -1292,3 +1511,5 @@ class SandboxTabMixin:
                 cb.setCurrentIndex(3)  # common
             self.sandbox_xp_mult.setValue(1.5)
             self.sandbox_player_damage.setCurrentIndex(0)  # very low
+            self.sandbox_car_spawn.setCurrentIndex(4)  # high
+            self.sandbox_car_condition.setCurrentIndex(3)  # high
