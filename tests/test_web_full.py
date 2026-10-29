@@ -30,7 +30,7 @@ def test_web_index_html_has_all_ids():
     content = index_path.read_text(encoding="utf-8")
 
     required_ids = [
-        "autoscroll-chk", "backups-container", "badge-srv-ram", "badge-version",
+        "btn-lang", "autoscroll-chk", "backups-container", "badge-srv-ram", "badge-version",
         "badge-vps-ram", "beta-access-code", "beta-code-msg", "beta-hidden-branch",
         "btn-do-install", "btn-restart", "btn-start", "btn-stop", "chk-auto-backup",
         "chk-watchdog", "conn-text", "console-cmd", "console-output", "install-branch",
@@ -42,7 +42,8 @@ def test_web_index_html_has_all_ids():
         "sb-ZombieLore-Toughness", "sb-ZombieLore-Transmission", "srv-name",
         "srv-ram", "status-sub", "status-title", "steam-branch-rows", "toast",
         "sandbox-preset", "ini-PublicName", "ini-Password", "ini-MaxPlayers",
-        "ini-DefaultPort", "ini-PVP"
+        "ini-DefaultPort", "ini-PVP", "ini-AutoCreateUserInWhiteList",
+        "sb-ZombieLore-Decomposition", "sb-NightDarkness", "sb-TimeSinceApo"
     ]
 
     for elem_id in required_ids:
@@ -69,12 +70,20 @@ def test_web_settings_and_sandbox_api(temp_env):
     ini_data = res.json()
     assert isinstance(ini_data, dict)
 
-    save_res = client.post("/api/settings", json={"PublicName": "My Awesome Server", "MaxPlayers": "24", "PVP": "true"}, headers=headers)
+    save_res = client.post("/api/settings", json={
+        "PublicName": "My Awesome Server",
+        "MaxPlayers": "24",
+        "PVP": "true",
+        "AutoCreateUserInWhiteList": "true",
+        "SafetySystem": "true",
+        "VoiceMinDistance": "15"
+    }, headers=headers)
     assert save_res.status_code == 200
     assert save_res.json()["success"] is True
 
     res2 = client.get("/api/settings", headers=headers)
     assert res2.json().get("PublicName") == "My Awesome Server"
+    assert res2.json().get("VoiceMinDistance") == "15"
 
     # 2. Sandbox
     res = client.get("/api/sandbox", headers=headers)
@@ -83,11 +92,23 @@ def test_web_settings_and_sandbox_api(temp_env):
     assert isinstance(sb_data, dict)
 
     save_sb = client.post("/api/sandbox", json={
-        "ZombieLore": {"Speed": 1, "Strength": 2, "Toughness": 3, "Transmission": 1},
-        "Loot": {"Food": 2, "Weapon": 1, "Literature": 3, "Medical": 4}
+        "ZombieLore": {"Speed": 1, "Strength": 2, "Toughness": 3, "Transmission": 1, "Decomposition": 2},
+        "ZombieConfig": {"RallyGroupSize": 25, "RallyGroupRadius": 4},
+        "Loot": {"Food": 2, "Weapon": 1, "Literature": 3, "Medical": 4},
+        "NightDarkness": 2,
+        "TimeSinceApo": 3
     }, headers=headers)
     assert save_sb.status_code == 200
     assert save_sb.json()["success"] is True
+
+    # 3. Translations endpoint
+    trans_res = client.get("/api/translations")
+    assert trans_res.status_code == 200
+    trans_data = trans_res.json()
+    assert "ru" in trans_data
+    assert "en" in trans_data
+    assert trans_data["ru"]["tab_server"] != ""
+    assert trans_data["en"]["tab_server"] != ""
 
 def test_web_sandbox_subtabs_exist():
     index_path = Path("web/static/index.html")

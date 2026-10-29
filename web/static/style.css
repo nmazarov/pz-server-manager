@@ -252,6 +252,28 @@ header {
   border-radius: 6px;
   font-size: 12px;
 }
+
+.header-btn-lang {
+  background: linear-gradient(180deg, #1b263b 0%, #111a29 100%);
+  border: 1px solid #3b82f6;
+  color: #60a5fa;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.header-btn-lang:hover {
+  background: linear-gradient(180deg, #253956 0%, #16243a 100%);
+  border-color: #93c5fd;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.4);
+}
+
 .header-btn-logout:hover {
   background: #2a3346;
   border-color: #f87171;
@@ -1147,4 +1169,16 @@ select.form-control {
   .row {
     flex-direction: column;
   }
+}
+
+.subtab-nav, nav.tab-nav {
+  scrollbar-width: thin;
+  scrollbar-color: #2e3848 transparent;
+}
+.subtab-nav::-webkit-scrollbar, nav.tab-nav::-webkit-scrollbar {
+  height: 5px;
+}
+.subtab-nav::-webkit-scrollbar-thumb, nav.tab-nav::-webkit-scrollbar-thumb {
+  background: #2e3848;
+  border-radius: 4px;
 }

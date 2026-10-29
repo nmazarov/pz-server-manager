@@ -5,255 +5,100 @@
 # 🧟 Project Zomboid Dedicated Server Manager
 
 <p align="center">
-  <a href="#-project-zomboid-dedicated-server-manager-русский"><b>🇷🇺 Русский</b></a> |
-  <a href="#-project-zomboid-dedicated-server-manager-english"><b>🇬🇧 English</b></a>
+  <a href="README.md"><b>🇬🇧 English</b></a> |
+  <a href="README_RU.md"><b>🇷🇺 Русский</b></a>
 </p>
 
 <p align="center">
-  <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.8+-3776AB.svg?logo=python&logoColor=white" alt="Python 3.8+"/></a>
-  <a href="https://pypi.org/project/PyQt5/"><img src="https://img.shields.io/badge/GUI-PyQt5-41CD52.svg?logo=qt&logoColor=white" alt="PyQt5"/></a>
-  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/Web-FastAPI-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI"/></a>
-  <img src="https://img.shields.io/badge/Platform-Windows%2010%2F11%20%7C%20Linux%20(Desktop%20%26%20VPS)-lightgrey.svg" alt="Platform"/>
-  <img src="https://img.shields.io/badge/PZ%20Build-41.78%20%7C%2042.21+-red.svg" alt="PZ Build"/>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"/></a>
+  <a href="https://github.com/nmazarov/pz-server-manager/releases"><img src="https://img.shields.io/badge/Release-v1.5.0-success.svg?style=flat-square" alt="Version v1.5.0"/></a>
+  <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.8+-3776AB.svg?logo=python&logoColor=white&style=flat-square" alt="Python 3.8+"/></a>
+  <a href="https://pypi.org/project/PyQt5/"><img src="https://img.shields.io/badge/GUI-PyQt5-41CD52.svg?logo=qt&logoColor=white&style=flat-square" alt="PyQt5"/></a>
+  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/Web-FastAPI-009688.svg?logo=fastapi&logoColor=white&style=flat-square" alt="FastAPI"/></a>
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20(Desktop%20%26%20VPS)-blue.svg?style=flat-square" alt="Platform"/>
+  <img src="https://img.shields.io/badge/PZ%20Build-41.78%20%7C%2042+-red.svg?style=flat-square" alt="PZ Build"/>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT"/></a>
 </p>
 
 ---
 
-# 🇷🇺 Project Zomboid Dedicated Server Manager (Русский)
+A modern, high-performance dedicated server manager and administration suite for **Project Zomboid** (fully supporting **Build 41** and the next-generation **Build 42+**). 
 
-Универсальный менеджер с графическим интерфейсом (Desktop GUI) и удаленной веб-панелью (Headless Web Dashboard) для автоматической установки, настройки, обновления, проверки модов и администрирования выделенного сервера игры **Project Zomboid** (полная поддержка **Build 41** и **Build 42+**).
-
-Поддерживает работу на **Windows (10/11)**, **Linux Desktop** (Ubuntu, Debian, Fedora, Arch) и **Linux VPS / VDS** (Headless серверный режим без монитора).
-
----
-
-## 🌟 Ключевые возможности
-
-### 👥 1. Панель онлайн-игроков (Live Player Dashboard)
-* **Список игроков в реальном времени**: автоматическое отслеживание подключений и отключений игроков из серверной консоли.
-* **Быстрые действия администратора в один клик**:
-  * 👢 **Кик** с указанием причины (`kickuser`).
-  * 🚫 **Бан** по SteamID / имени (`banuser`).
-  * 🌀 **Телепорт** игрока к другому игроку (`teleport`).
-  * 👑 **Выдача прав Администратора** (`setaccesslevel admin`).
-  * 📜 **Добавление в Whitelist** в SQLite базу сервера.
-* **Контекстное меню**: правый клик по игроку в списке для мгновенного доступа к действиям.
-
-### 🛡️ 2. Сторожевой таймер и авто-перезапуск (Watchdog)
-* **Защита от сбоев**: автоматическое определение непредвиденного падения игрового сервера.
-* **Авто-перезапуск**: запуск таймера обратного отсчета (10 секунд) и автоматический рестарт сервера при краше.
-* **Ограничение попыток**: защита от циклических сбоев при поврежденных модах.
-* **Discord Webhook уведомления**: отправка цветных карточек в Discord о запуске, остановке и падениях сервера.
-
-### 🔍 3. Живой поиск по SandboxVars и модам
-* **Глобальный поиск настроек песочницы**: строка `[ 🔍 Поиск по всем категориям... ]` мгновенно фильтрует сотни параметров по ключевым словам и подсказкам, подсвечивая количество совпадений на вкладках.
-* **Поиск по модам**: быстрый фильтр установленных модов по названию и Workshop ID.
-
-### 📦 4. Графический менеджер бэкапов (Backup GUI)
-* **Полное резервное копирование**: архивация сохранений мира (`Saves/Multiplayer/`), конфигураций (`Server/`) и SQLite базы данных (`db/`) в `.zip`.
-* **Автоматические бэкапы перед каждым стартом** с метками времени.
-* **Удобное диалоговое окно**:
-  * Таблица всех доступных бэкапов (имя архива, размер в МБ, точная дата создания).
-  * ➕ **Создать бэкап сейчас** с возможностью ввода пользовательской метки/комментария.
-  * 🔄 **Восстановить выбранный бэкап** в один клик с защитой от случайного нажатия.
-  * 🗑️ **Удалить старые архивы**.
-  * 📂 **Открыть папку бэкапов** в проводнике.
-
-### 🌐 5. Веб-панель для VPS и удаленного доступа (FastAPI Web Panel)
-* **Запуск в один клик из GUI**: кнопка `🌐 Веб-панель` запускает локальный веб-сервер на порту 8080 и открывает его в браузере.
-* **Автономный запуск на Linux VPS**: управление сервером через браузер или со смартфона без X11/монитора.
-* **Живая веб-консоль** через WebSockets с поддержкой команд в реальном времени.
-
-### 🧩 6. Менеджер модов и проверка Build 41 / Build 42
-* **Цветовая индикация совместимости**:
-  * 🟢 **Зеленый**: проверен и совместим с выбранной версией игры.
-  * 🔴 **Красный**: несовместим или устарел.
-  * 🟡 **Желтый**: универсальный мод.
-* **Импорт коллекций Steam Workshop** по ссылке в 1 клик.
-* **Кураторские паки модов**: Автопарк (KI5), Арсенал (Brita), QoL и Хардкор.
-* **Порядок загрузки карт (Map Load Order)**: удобное перемещение модовых карт выше vanilla карты *Muldraugh, KY*.
-
----
-
-## 🚀 Установка и запуск (Инструкции)
-
-### 🪟 Вариант 1: Windows (Готовый EXE)
-1. Скачайте релиз или запустите файл [`PZ Server Manager.exe`](PZ%20Server%20Manager.exe) из папки проекта.
-2. Никаких дополнительных установок не требуется — все библиотеки и зависимости уже упакованы.
-
-#### Запуск из исходников (Windows):
-```cmd
-setup.bat
-run.bat
-```
-
-#### Запуск только Веб-панели (Windows):
-```cmd
-run-web.bat
-```
-
----
-
-### 🐧 Вариант 2: Linux Desktop (С графической оболочкой)
-
-1. **Установите системные зависимости:**
-   * **Ubuntu / Debian**:
-     ```bash
-     sudo apt update && sudo apt install -y python3 python3-venv python3-pip libxcb-xinerama0
-     ```
-   * **Arch Linux / Manjaro**:
-     ```bash
-     sudo pacman -S python python-pip
-     ```
-   * **Fedora**:
-     ```bash
-     sudo dnf install -y python3 python3-pip
-     ```
-
-2. **Запустите автоматическую настройку:**
-   ```bash
-   chmod +x setup.sh run.sh run-web.sh build.sh
-   ./setup.sh
-   ```
-
-3. **Запустите приложение:**
-   ```bash
-   ./run.sh
-   ```
-
----
-
-### 🖥️ Вариант 3: Выделенный Linux VPS / VDS Сервер (Headless)
-
-Для серверов без графического интерфейса (Ubuntu Server, Debian, etc.) предусмотрен серверный режим с полноценной веб-панелью.
-
-#### 🚀 Автоматическая установка через скрипт `setup_vps.sh`:
-```bash
-git clone https://github.com/nmazarov/pz-server-manager.git
-cd pz-server-manager
-chmod +x setup_vps.sh
-sudo ./setup_vps.sh
-```
-
-**Скрипт автоматически:**
-1. Установит необходимые пакеты, библиотеки SteamCMD (`lib32gcc-s1`) и **OpenJDK 17 JRE**.
-2. Развернет виртуальное окружение и установит веб-зависимости FastAPI & Uvicorn.
-3. Настроит пароль администратора.
-4. Откроет необходимые порты в фаерволе `ufw`.
-5. Создаст и запустит фоновую службу **systemd** (`pz-web-manager.service`) с автозапуском при перезагрузке сервера.
-6. Выведет URL для входа: `http://<IP-вашего-VPS>:8080`.
-
-#### 🛠️ Управление веб-службой на VPS:
-* Проверить статус: `sudo systemctl status pz-web-manager`
-* Просмотр логов: `sudo journalctl -u pz-web-manager -f`
-* Перезапуск службы: `sudo systemctl restart pz-web-manager`
-* Остановка службы: `sudo systemctl stop pz-web-manager`
-
-#### Ручной запуск веб-панели (без systemd):
-```bash
-./run-web.sh
-```
-
----
-
-## 🌐 Настройка сетевых портов (Port Forwarding)
-
-Для подключения игроков откройте следующие порты на вашем роутере или VPS фаерволе:
-
-| Порт | Протокол | Назначение |
-| :--- | :--- | :--- |
-| **16261** | **UDP** | Основной порт игры Project Zomboid |
-| **16261** | **TCP** | Handshake авторизация |
-| **16262** | **UDP** | Прямое подключение игроков |
-| **8766** | **UDP** | Steam Master Server |
-| **8767** | **UDP** | Steam P2P |
-| **8080** | **TCP** | Веб-панель управления (VPS Web Dashboard) |
-
-> [!TIP]
-> В Windows нажмите кнопку **«🔓 Открыть порты»** в шапке программы для автоматической настройки брандмауэра Windows.
-
----
----
-
-# 🇬🇧 Project Zomboid Dedicated Server Manager (English)
-
-A comprehensive, cross-platform server manager featuring both a modern **Desktop GUI** and a lightweight **Remote Web Dashboard** for automatic installation, configuration, mod management, crash protection, and administration of **Project Zomboid Dedicated Server** (supporting both **Build 41** and **Build 42+**).
-
-Runs seamlessly on **Windows (10/11)**, **Linux Desktop** (Ubuntu, Debian, Fedora, Arch), and **Linux VPS / Headless Dedicated Servers**.
+Featuring both a tactical **Desktop GUI** (Windows & Linux) and an ultra-fast **Headless Web Dashboard** (FastAPI & WebSockets) optimized for dedicated Linux VPS hosting.
 
 ---
 
 ## 🌟 Key Features
 
-### 👥 1. Live Player Dashboard
-* **Real-time online player tracking**: auto-detects player connect and disconnect events directly from console output.
-* **One-click Admin actions**:
-  * 👢 **Kick** player with optional custom reason (`kickuser`).
-  * 🚫 **Ban** player by username / SteamID (`banuser`).
-  * 🌀 **Teleport** player to another connected player (`teleport`).
-  * 👑 **Grant Administrator rank** (`setaccesslevel admin`).
-  * 📜 **Add to Whitelist** in the server's SQLite database.
-* **Context Menu**: right-click any player in the list for quick access to actions.
+### 🌐 1. Dual Interface: Desktop GUI & Headless VPS Web Panel
+* **Tactical Desktop GUI**: Built with PyQt5, modern dark glassmorphic UI, custom typography (`Inter` & `JetBrains Mono`), and reactive controls.
+* **Modern Web Dashboard**: Powered by FastAPI, WebSockets, and a responsive tactical SPA. Control your server remotely from any browser, tablet, or smartphone without needing an X11/desktop environment.
+* **Live Bilingual Switcher**: Seamless 1-click toggle between **English** and **Russian** across both the Desktop app and the Web Panel.
 
-### 🛡️ 2. Watchdog & Auto-Restart on Crash
-* **Crash Supervision**: automatically detects unexpected server shutdowns.
-* **Auto-recovery**: starts a 10-second countdown and restarts the server automatically.
-* **Loop Protection**: limits maximum consecutive crash attempts to prevent boot loops with broken mods.
-* **Discord Notifications**: embeds status cards to Discord webhooks on startup, shutdown, and crashes.
+### 🎮 2. Interactive Console & Live Player Management
+* **Real-time Terminal Output**: Stream live game logs with automatic auto-scroll, color-coded severity levels, and instant command dispatch.
+* **Live Player Roster**: Automatic player detection on connect/disconnect directly from the server log.
+* **Admin Actions in 1 Click**:
+  * 👢 **Kick Player** with optional customized message.
+  * 🚫 **Ban Player** by Username / SteamID64.
+  * 👑 **Grant Admin Rank** (`setaccesslevel admin`).
+  * 📜 **Whitelist Player** directly into the server's SQLite database.
+* **Quick Actions Bar**: Save world, toggle rain, spawn helicopter meta-events, or broadcast announcements with a single click.
 
-### 🔍 3. Global SandboxVars & Mod Search
-* **Instant Sandbox Search**: search field `[ 🔍 Search settings across all categories... ]` filters hundreds of settings dynamically across tabs. Displays match count badges on category tabs.
-* **Mod Search**: filter installed mods list instantly by title or Steam Workshop ID.
+### 🧟 3. 1:1 In-Game Sandbox Configurator (`SandboxVars.lua`)
+Organized into 6 clean sub-tabs matching the in-game Project Zomboid menu:
+1. **🧟 Zombies & Population**: Speed (Sprinters, Fast Shamblers, Shamblers), Strength, Toughness, Infection Transmission, Mortality, Reanimation, Cognition, Memory, Sight, Hearing, Smell, Decomposition, plus advanced `ZombieConfig` (Population Multiplier, Peak Day, Respawn, Drag Down, Fence Lunge, Rally Groups).
+2. **📦 Loot & Resources**: 10 granular loot rarity categories, loot respawn timers, container limits, water and electricity shutoff.
+3. **🌍 World & Time**: Day length (up to 24h real-time), starting calendar date/time, temperature, rainfall, world erosion speed and days, helicopter frequency, meta-events, night darkness, and time since apocalypse.
+4. **🚗 Vehicles**: Spawn rates, initial mechanical condition, easy hotwiring mode, highway traffic jams, collision damage, fuel availability, and car alarms.
+5. **👤 Character & Skills**: XP multiplier quick-presets (`1x`, `1.5x`, `2x`, `3x`, `5x`), starting free trait points, nutritional system, farming speeds, and generator fuel consumption.
+6. **🧩 Mod Options**: Dynamic Lua table editor with real-time live search. Automatically detects and renders custom tables for mods like Brita, KI5, TrueActions, etc.
 
-### 📦 4. Graphical Backup Manager (Backup GUI)
-* **Complete World Archiving**: backs up save files (`Saves/Multiplayer/`), configs (`Server/`), and database (`db/`) into compressed `.zip` archives.
-* **Pre-launch Backups**: automatically creates safety snapshots before every server start.
-* **Interactive Dialog**:
-  * Full table showing archive name, size in MB, and exact timestamp.
-  * ➕ **Create Backup Now** with custom note / tag.
-  * 🔄 **Restore Selected Backup** in one click with overwrite protection.
-  * 🗑️ **Delete Old Backups**.
-  * 📂 **Open Backups Folder** in file explorer.
+### ⚙️ 4. Comprehensive Server Configuration (`servertest.ini`)
+* Complete coverage of networking (`DefaultPort`, `UDPPort`, `SteamPort1`, `SteamPort2`, `RCONPort`).
+* Safehouse permissions (player vs admin safehouses, trespassing, fire, loot, respawn).
+* Security rules (Auto-whitelist on connect, Lua checksum verification, duplicate Steam ID block, safety spawn protection, max accounts per user).
+* In-game VOIP audio and global chat toggles.
 
-### 🌐 5. Web Dashboard for VPS Remote Control (FastAPI)
-* **One-Click Launch**: `🌐 Web Dashboard` header button launches a local FastAPI server on port 8080 and opens it in your default browser.
-* **Headless Linux VPS Mode**: manage your dedicated server remotely from any PC, tablet, or smartphone without needing a desktop environment.
-* **Live WebSocket Console** with real-time command input and color-coded output.
+### 🧩 5. Steam Workshop Mod Master
+* **Build 41 & Build 42 Compatibility Engine**: Color-coded badges (🟢 Verified, 🟡 Universal, 🔴 Outdated/Incompatible).
+* **Steam Workshop Collection Import**: Paste any Steam Collection URL or Workshop ID to bulk-import mods automatically.
+* **Curated Mod Packs**: Quick 1-click presets for KI5 Vehicle Fleet, Brita Weapon Pack, QoL Essentials, and Hardcore Survival.
+* **Map Load Order**: Easy reordering to ensure modded maps load before vanilla *Muldraugh, KY*.
 
-### 🧩 6. Mod Manager & Build 41 / Build 42 Verification
-* **Color-Coded Compatibility**:
-  * 🟢 **Green**: verified compatible with current game build.
-  * 🔴 **Red**: outdated or incompatible.
-  * 🟡 **Yellow**: universal mod.
-* **Steam Workshop Collection Import** via URL.
-* **Curated Mod Packs**: Vehicles (KI5), Weapons & Armor (Brita), Quality of Life (QoL), and Hardcore Survival.
-* **Map Load Order**: arrange mod maps above vanilla *Muldraugh, KY* easily.
+### 🛡️ 6. Watchdog & Crash Supervisor
+* Continuous background heartbeat monitoring.
+* Detects unexpected server crashes and initiates an automatic 10-second restart sequence.
+* Infinite loop protection against broken or incompatible mods.
+* Optional **Discord Webhook alerts** on startup, shutdown, and crashes.
+
+### 💾 7. Automated Backups & One-Click Restore
+* Full snapshot archives (`.zip`) containing world saves (`Saves/Multiplayer/`), configuration files (`Server/`), and player databases (`db/`).
+* Pre-launch safety backups created automatically before every start.
+* Backup manager dialog with creation date, size in MB, 1-click restore, and clean deletion.
 
 ---
 
-## 🚀 Installation & Launch Guide
+## 🚀 Quick Start Guide
 
-### 🪟 Option 1: Windows (Standalone .exe)
-1. Download the release and launch [`PZ Server Manager.exe`](PZ%20Server%20Manager.exe).
-2. No Python installation required — all runtime components and dependencies are included.
+### 🪟 Windows (Recommended: Standalone Executable)
+1. Download [`PZ Server Manager.exe`](PZ%20Server%20Manager.exe) or run the installer [`PZ_Server_Manager_Setup.exe`](PZ_Server_Manager_Setup.exe).
+2. Launch the application. All dependencies and Python runtime are self-contained.
 
-#### Run from source (Windows):
+#### Running from source on Windows:
 ```cmd
 setup.bat
 run.bat
 ```
 
-#### Launch Web Dashboard directly (Windows):
+#### Launching only the Web Panel on Windows:
 ```cmd
 run-web.bat
 ```
 
 ---
 
-### 🐧 Option 2: Linux Desktop (GUI)
-
-1. **Install dependencies:**
+### 🐧 Linux Desktop (GUI)
+1. **Install system packages:**
    * **Ubuntu / Debian**:
      ```bash
      sudo apt update && sudo apt install -y python3 python3-venv python3-pip libxcb-xinerama0
@@ -266,25 +111,19 @@ run-web.bat
      ```bash
      sudo dnf install -y python3 python3-pip
      ```
-
-2. **Run setup script:**
+2. **Setup and launch:**
    ```bash
-   chmod +x setup.sh run.sh run-web.sh build.sh
+   chmod +x setup.sh run.sh run-web.sh
    ./setup.sh
-   ```
-
-3. **Launch the application:**
-   ```bash
    ./run.sh
    ```
 
 ---
 
-### 🖥️ Option 3: Headless Linux VPS / Dedicated Server
+### 🖥️ Headless Linux VPS / Dedicated Server (Web Panel)
+Designed specifically for remote VPS hosting without graphical desktop environments.
 
-Designed for headless Linux servers without a display or desktop environment.
-
-#### 🚀 1-Command Automated Installer (`setup_vps.sh`):
+#### 1-Command Automated Installer (`setup_vps.sh`):
 ```bash
 git clone https://github.com/nmazarov/pz-server-manager.git
 cd pz-server-manager
@@ -293,95 +132,91 @@ sudo ./setup_vps.sh
 ```
 
 **What the installer does automatically:**
-1. Installs system packages, SteamCMD 32-bit libraries (`lib32gcc-s1`), and **OpenJDK 17 JRE**.
+1. Installs Java 17 JRE, SteamCMD 32-bit dependencies (`lib32gcc-s1`), and Python 3.
 2. Creates virtual environment and installs FastAPI & Uvicorn dependencies.
-3. Sets up your web administrator password.
-4. Opens firewall ports via `ufw`.
-5. Creates and enables the **systemd** service (`pz-web-manager.service`) with auto-restart on boot.
-6. Prints your dashboard URL: `http://<YOUR-VPS-IP>:8080`.
+3. Sets up your administrator password for the Web Panel.
+4. Automatically opens firewall ports via `ufw`.
+5. Installs and starts a **systemd** service (`pz-web-manager.service`) running 24/7 with auto-restart on system reboot.
+6. Displays your web login URL: `http://<YOUR-VPS-IP>:8080`.
 
-#### 🛠️ Managing the VPS Web Service:
-* Service status: `sudo systemctl status pz-web-manager`
-* Live web logs: `sudo journalctl -u pz-web-manager -f`
-* Restart service: `sudo systemctl restart pz-web-manager`
-* Stop service: `sudo systemctl stop pz-web-manager`
-
-#### Manual Launch (without systemd):
+#### Managing the Linux VPS Service:
 ```bash
-./run-web.sh
+sudo systemctl status pz-web-manager   # Check service status
+sudo journalctl -u pz-web-manager -f    # View live web logs
+sudo systemctl restart pz-web-manager  # Restart panel
+sudo systemctl stop pz-web-manager     # Stop panel
 ```
 
 ---
 
-## 🌐 Network & Port Forwarding
+## 🌐 Network Ports & Port Forwarding
 
-Forward these ports on your router or cloud security group to allow incoming player connections:
+Forward these ports on your router or cloud provider security group (AWS, Hetzner, DigitalOcean, OVH):
 
 | Port | Protocol | Purpose |
 | :--- | :--- | :--- |
 | **16261** | **UDP** | Primary Game Port |
-| **16261** | **TCP** | Handshake authentication |
-| **16262** | **UDP** | Direct player connection |
+| **16261** | **TCP** | Handshake Authentication |
+| **16262** | **UDP** | Direct Client Connection |
 | **8766** | **UDP** | Steam Master Server |
 | **8767** | **UDP** | Steam P2P Communication |
 | **8080** | **TCP** | Web Management Dashboard |
 
 > [!TIP]
-> On Windows, click **«🔓 Open Firewall Ports»** in the application header to automatically configure Windows Defender Firewall.
+> On Windows, click **«🔓 Open Firewall Ports»** in the application header to automatically configure Windows Defender Firewall rules with one click.
 
 ---
 
-## 📁 Project Architecture
+## 📁 Repository Structure
 
 ```text
 pz-server-manager/
-├── main.py                     # Desktop GUI application entry point
-├── web_main.py                 # FastAPI Web runner for remote / VPS dashboard
+├── main.py                     # Desktop GUI application & CLI dispatcher
+├── web_main.py                 # Standalone FastAPI Web runner for headless VPS
 │
 ├── core/                       # Core backend managers & engines
-│   ├── config_manager.py       # INI and LUA parser & serializer
-│   ├── mod_manager.py          # Steam Workshop API parser & mod dependencies
-│   ├── server_installer.py     # SteamCMD downloader & version checker
-│   ├── server_process.py       # Server process lifecycle & port checker
-│   ├── backup_manager.py       # Full world ZIP backup, restore, and rotate engine
-│   ├── network_helper.py       # IP detection, Firewall & UPnP
+│   ├── config_manager.py       # INI and Lua parser, serializer & preferences
+│   ├── mod_manager.py          # Steam Workshop parser, dependencies & presets
+│   ├── server_installer.py     # SteamCMD downloader & branch manager
+│   ├── server_process.py       # Server lifecycle supervisor & port monitor
+│   ├── backup_manager.py       # ZIP backup, restore, and rotation engine
+│   ├── network_helper.py       # IP discovery, Windows firewall & UPnP
 │   ├── translations.py         # Complete bilingual localization (RU / EN)
-│   ├── player_manager.py       # Live player tracking, RCON commands, Whitelist/Bans
-│   ├── watchdog_manager.py     # Crash watchdog & Discord webhook alerts
-│   ├── diagnostics_manager.py  # System diagnostic tools
-│   └── profile_manager.py      # Server profiles manager
+│   ├── player_manager.py       # Real-time player tracking & SQLite whitelist
+│   ├── watchdog_manager.py     # Crash supervisor & Discord webhook engine
+│   └── diagnostics_manager.py  # System diagnostic tools
 │
-├── ui/                         # Modular PyQt5 interface package
-│   ├── main_window.py          # Main Window coordinator & header actions
+├── ui/                         # Modular PyQt5 Desktop GUI package
+│   ├── main_window.py          # Window coordinator & header action buttons
 │   ├── server_tab.py           # Server control, console, live players panel, RAM
-│   ├── mods_tab.py             # Mod manager, search, B41/B42 compatibility, presets
 │   ├── settings_tab.py         # servertest.ini configuration
 │   ├── sandbox_tab.py          # SandboxVars.lua settings & global search
+│   ├── mods_tab.py             # Mod manager, B41/B42 compatibility & presets
 │   ├── install_tab.py          # SteamCMD installation & branch selector
-│   └── dialogs.py              # Graphical Backup GUI, Firewall rules, icons
+│   └── dialogs.py              # Backup GUI, Firewall rules & custom icons
 │
-├── web/                        # Remote Web Dashboard (FastAPI + SPA)
+├── web/                        # Headless Web Dashboard (FastAPI + SPA)
 │   ├── server.py               # REST API & WebSockets server
-│   ├── auth.py                 # Web authentication & session manager
-│   └── static/                 # Frontend SPA (HTML, CSS, JS)
+│   ├── auth.py                 # Session tokens & password hashing
+│   └── static/                 # Glassmorphic Single Page App (HTML, CSS, JS)
 │
 ├── scripts/                    # Build, installer, and utility scripts
-│   ├── build.bat / build.sh    # Standalone executable builders (PyInstaller)
-│   ├── pz_server_manager.spec  # PyInstaller spec configuration
-│   ├── installer.iss           # Inno Setup Windows installer script
 │   ├── setup_vps.sh            # Automated 1-command Linux VPS installer
-│   ├── run_web.bat / .sh       # Web Dashboard launch scripts
-│   └── update_exe.bat          # Binary replacement helper
+│   ├── pz_server_manager.spec  # PyInstaller spec for single-file EXE
+│   ├── installer.iss           # Inno Setup Windows installer script
+│   └── run-web.sh / .bat       # Dedicated web dashboard launch scripts
 │
-├── assets/                     # Icons, logos, and fonts
-├── setup.bat / setup.sh        # Setup & dependency installers
-├── run.bat / run.sh            # Desktop launch scripts
-├── run-web.bat / run-web.sh    # Web dashboard launch scripts
-└── README.md                   # Full bilingual documentation (RU & EN)
+├── assets/                     # Logos, dark theme QSS, checkmarks, fonts
+├── requirements.txt            # Desktop dependencies (PyQt5, psutil, etc.)
+├── requirements-web.txt        # VPS headless dependencies (FastAPI, uvicorn, psutil)
+├── LICENSE                     # MIT License
+├── README.md                   # English documentation
+└── README_RU.md                # Russian documentation
 ```
 
 ---
 
 ## 📄 License
 
-This project is licensed under the open-source **MIT License**. See the [LICENSE](LICENSE) file for details.
+This project is open-source and released under the [MIT License](LICENSE).
+Contributions, bug reports, and pull requests are welcome!

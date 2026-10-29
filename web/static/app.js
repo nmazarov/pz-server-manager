@@ -1,3 +1,439 @@
+
+// ── Internationalization (Bilingual RU / EN System) ───────────────
+let currentLang = localStorage.getItem('pz_lang') || 'ru';
+
+const TRANSLATIONS_WEB = {
+  ru: {
+    app_title: "Project Zomboid Server Manager",
+    app_subtitle: "Тактическая веб-панель • Готова к Build 41 & 42",
+    btn_share: "📋 Поделиться",
+    btn_backups: "📦 Бэкапы",
+    btn_logout: "🚪 Выйти",
+    tab_server: "🎮 Управление",
+    tab_settings: "⚙️ Настройки (INI)",
+    tab_sandbox: "🧟 Sandbox",
+    tab_mods: "🧩 Моды",
+    tab_install: "📦 Установка & Обновления",
+    tab_backups: "💾 Бэкапы",
+
+    status_offline: "СЕРВЕР ОСТАНОВЛЕН",
+    status_offline_sub: "Нажмите «Запустить сервер» для старта",
+    status_launching: "ЗАПУСК И ЗАГРУЗКА...",
+    status_launching_sub: "Инициализация мира и загрузка модов Steam",
+    status_ready: "СЕРВЕР ОНЛАЙН И ГОТОВ К ИГРЕ",
+    status_ready_sub: "Игроки могут подключаться по IP и портам сервера",
+    status_unknown: "СТАТУС НЕИЗВЕСТЕН",
+    status_unknown_sub: "Ожидание ответа от серверного процесса",
+    copy_conn: "📋 Скопировать",
+    copied_toast: "Адрес подключения скопирован в буфер обмена!",
+
+    group_server_control: "⚡ Управление сервером",
+    lbl_server_name: "Имя сервера:",
+    lbl_srv_ram: "Выделение ОЗУ (RAM):",
+    btn_start: "▶ Запустить сервер",
+    btn_stop: "⏹ Остановить",
+    btn_restart: "🔄 Перезапустить",
+    chk_auto_backup: "📦 Авто-бэкап мира перед запуском",
+    chk_watchdog: "🛡️ Watchdog: авто-перезапуск при падении",
+    quick_actions: "⚡ Быстрые команды:",
+    qa_save: "💾 Сохранить",
+    qa_rain: "🌧️ Дождь",
+    qa_chopper: "🚁 Вертолет",
+    qa_broadcast: "📢 Объявление",
+
+    terminal_title: "📟 Интерактивная консоль сервера",
+    chk_autoscroll: "Автопрокрутка",
+    btn_clear: "Очистить",
+    ph_command: "Введите команду (например: save, chopper, players, servermsg 'текст')...",
+    btn_send: "Отправить",
+    players_title: "👥 Игроки онлайн",
+    empty_players: "Нет игроков на сервере",
+    btn_kick: "Кикнуть",
+    btn_ban: "Забанить",
+
+    settings_title: "⚙️ Настройки сервера (servertest.ini)",
+    btn_save_settings: "💾 Сохранить настройки",
+    group_basic: "📌 Основные параметры",
+    lbl_public_name: "Название сервера (PublicName):",
+    lbl_public_desc: "Описание сервера (PublicDescription):",
+    lbl_password: "Пароль сервера (Password):",
+    lbl_max_players: "Максимум игроков (MaxPlayers):",
+    lbl_map: "Карта мира (Map):",
+    lbl_welcome_msg: "Приветствие сервера (ServerWelcomeMessage):",
+    group_network: "🌐 Сеть и RCON",
+    lbl_game_port: "Игровой порт (DefaultPort - UDP):",
+    lbl_direct_port: "Прямой порт (UDPPort):",
+    lbl_steam_port1: "Steam порт 1 (SteamPort1):",
+    lbl_steam_port2: "Steam порт 2 (SteamPort2):",
+    lbl_rcon_port: "RCON порт (RCONPort - TCP):",
+    lbl_rcon_password: "Пароль RCON / Администратора:",
+    chk_open: "Публичный сервер (Open)",
+    chk_public: "Отображать в публичном списке Steam (Public)",
+    group_gameplay: "⚔️ Игровой процесс",
+    chk_pvp: "Разрешить PvP (PVP)",
+    chk_pause_empty: "Пауза когда сервер пуст (PauseEmpty)",
+    chk_allow_coop: "Разрешить кооператив (AllowCoop)",
+    chk_sleep_allowed: "Сон разрешен (SleepAllowed)",
+    chk_sleep_needed: "Сон необходим (SleepNeeded)",
+    chk_announce_death: "Оповещать в чате о смерти (AnnounceDeath)",
+    chk_no_fire: "Отключить распространение огня (NoFire)",
+    chk_allow_destruction: "Разрушение стен кувалдой",
+    lbl_drop_on_death: "Потеря вещей при смерти (DropOnDeath):",
+    lbl_spawn_point: "Координаты спавна (SpawnPoint):",
+    group_safehouses: "🏠 Убежища и Безопасность",
+    chk_player_safehouse: "Разрешить игрокам создавать убежища (PlayerSafehouse)",
+    chk_admin_safehouse: "Только админские убежища (AdminSafehouse)",
+    chk_safehouse_trespassing: "Разрешить вход посторонним в убежище",
+    chk_safehouse_fire: "Разрешить огонь в убежищах",
+    chk_safehouse_loot: "Разрешить лутать чужие убежища",
+    chk_safehouse_respawn: "Разрешить респавн в убежище",
+    chk_voice_enable: "Включить голосовой VOIP чат (VoiceEnable)",
+    chk_voice_3d: "Позиционный 3D звук голоса",
+    chk_global_chat: "Глобальный чат (GlobalChat)",
+    lbl_auto_save: "Автосохранение (мин):",
+    lbl_speed_limit: "Лимит скорости авто (км/ч):",
+    group_security: "🛡️ Безопасность и Авторизация",
+    chk_auto_whitelist: "Авто-добавление в белый список (AutoCreateUserInWhiteList)",
+    chk_safety_system: "Система безопасности / защита спавна (SafetySystem)",
+    chk_show_safety: "Показывать индикаторы защиты (ShowSafety)",
+    chk_display_username: "Отображать никнеймы игроков над головой (DisplayUserName)",
+    chk_lua_checksum: "Проверка контрольных сумм Lua (DoLuaChecksum)",
+    chk_deny_same_id: "Запрет одновременного входа с одного Steam ID",
+    lbl_max_accounts: "Макс. аккаунтов на игрока (0 = без ограничений):",
+    group_admin: "🎛️ Администрирование и Лимиты",
+    lbl_voice_min: "Мин. дистанция голоса:",
+    lbl_voice_max: "Макс. дистанция голоса:",
+    lbl_backups_count: "Количество резервных копий:",
+    lbl_backups_period: "Период бэкапов (ч, 0=при старте):",
+    lbl_fast_forward: "Ускорение времени (x):",
+    lbl_corpse_removal: "Часов до удаления трупов:",
+
+    sandbox_title: "🧟 Параметры песочницы (SandboxVars.lua)",
+    btn_save_sandbox: "💾 Сохранить Sandbox",
+    preset_default: "-- Пресеты сложности --",
+    preset_apocalypse: "💀 Апокалипсис",
+    preset_survivor: "🏕️ Выживание",
+    preset_builder: "🏗️ Строитель",
+    subtab_zombies: "🧟 Зомби и Популяция",
+    subtab_loot: "📦 Ресурсы и Лут",
+    subtab_world: "🌍 Мир и Время",
+    subtab_vehicles: "🚗 Транспорт",
+    subtab_character: "👤 Персонаж и Навыки",
+    subtab_mods: "🧩 Настройки модов",
+
+    sprinters: "Спринтеры (Sprinters)",
+    fast_shamblers: "Быстрые ходячие (Fast Shamblers)",
+    shamblers: "Медленные ходячие (Shamblers)",
+    random: "Случайно (Random)",
+    superhuman: "Сверхчеловеческая",
+    normal: "Обычная / Нормально",
+    weak: "Слабая",
+    tough: "Высокая",
+    fragile: "Хрупкая",
+    blood_saliva: "Кровь и слюна (Blood + Saliva)",
+    saliva_only: "Только слюна / укус (Saliva Only)",
+    everyone_infected: "Все заражены (Everyone's Infected)",
+    none: "Отключена / Нет",
+    instant: "Мгновенно",
+    slow: "Медленное",
+    fast: "Быстрое",
+    disabled: "Отключено",
+    extremely_rare: "Крайне редко",
+    rare: "Редко",
+    common: "Часто",
+    abundant: "Изобилие",
+    never: "Никогда",
+    sometimes: "Иногда",
+    often: "Часто",
+    pitch_black: "Кромешная тьма",
+    dark: "Тёмная",
+    bright: "Светлая",
+    very_abundant: "Очень богатые",
+    scarce: "Скудные",
+    very_scarce: "Очень скудные",
+    months_0_3: "0–3 месяца",
+    months_3_6: "3–6 месяцев",
+    months_6_12: "6–12 месяцев",
+    several_years: "Несколько лет",
+    many_years: "Много лет",
+
+    mods_title: "🧩 Мастер модификаций Workshop",
+    btn_check_mods: "🔍 Проверить актуальность",
+    btn_analyze_mods: "⚡ Анализ зависимостей",
+    btn_save_mods: "💾 Сохранить список",
+    ph_mod_input: "Введите Workshop ID или ссылку на мод/коллекцию Steam...",
+    btn_add_mod: "➕ Добавить мод",
+    mod_packs_label: "🎁 Готовые наборы:",
+    pack_vehicles: "🚗 Автопарк KI5",
+    pack_weapons: "⚔️ Оружие Brita",
+    pack_qol: "🖥️ Удобный QoL",
+    pack_hardcore: "🧟 Хардкор",
+    btn_clear_mods: "🧹 Очистить все",
+
+    install_title: "📦 Установка и обновление игрового сервера (SteamCMD)",
+    btn_check_update: "🔍 Проверить обновления в Steam",
+    install_desc: "Выберите желаемую ветку обновления Project Zomboid Dedicated Server (Steam AppID 380870).",
+    col_branch_name: "НАЗВАНИЕ И ОПИСАНИЕ",
+    col_branch_update: "ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ",
+    lbl_hidden_branch: "🔑 Скрытая версия:",
+    ph_hidden_branch: "Название ветки (необязательно)",
+    ph_access_code: "Код доступа или пароль",
+    btn_check_code: "Проверить код",
+    btn_do_install: "🚀 Установить / Обновить сервер",
+
+    backups_title: "💾 Резервные копии мира и конфигураций",
+    btn_create_backup: "📦 Создать бэкап сейчас",
+
+    toast_settings_saved: "💾 Настройки сервера успешно сохранены!",
+    toast_sandbox_saved: "💾 Параметры Sandbox успешно сохранены!",
+    toast_mods_saved: "💾 Список модов сохранен!",
+    toast_backup_created: "📦 Резервная копия успешно создана!"
+  },
+  en: {
+    app_title: "Project Zomboid Server Manager",
+    app_subtitle: "Tactical Web Dashboard • Build 41 & 42 Ready",
+    btn_share: "📋 Share",
+    btn_backups: "📦 Backups",
+    btn_logout: "🚪 Logout",
+    tab_server: "🎮 Server Control",
+    tab_settings: "⚙️ Server Settings (INI)",
+    tab_sandbox: "🧟 Sandbox",
+    tab_mods: "🧩 Mods",
+    tab_install: "📦 Install & Updates",
+    tab_backups: "💾 Backups",
+
+    status_offline: "SERVER STOPPED",
+    status_offline_sub: "Click 'Start Server' to launch",
+    status_launching: "STARTING & LOADING...",
+    status_launching_sub: "Initializing world and downloading Steam workshop items",
+    status_ready: "SERVER ONLINE & READY TO PLAY",
+    status_ready_sub: "Players can connect using server IP and game ports",
+    status_unknown: "STATUS UNKNOWN",
+    status_unknown_sub: "Waiting for server process feedback",
+    copy_conn: "📋 Copy Address",
+    copied_toast: "Connection address copied to clipboard!",
+
+    group_server_control: "⚡ Server Controls",
+    lbl_server_name: "Server Name:",
+    lbl_srv_ram: "RAM Allocation:",
+    btn_start: "▶ Start Server",
+    btn_stop: "⏹ Stop",
+    btn_restart: "🔄 Restart",
+    chk_auto_backup: "📦 Auto-backup world before launch",
+    chk_watchdog: "🛡️ Watchdog: auto-restart on crash",
+    quick_actions: "⚡ Quick Commands:",
+    qa_save: "💾 Save World",
+    qa_rain: "🌧️ Toggle Rain",
+    qa_chopper: "🚁 Spawn Helicopter",
+    qa_broadcast: "📢 Broadcast Msg",
+
+    terminal_title: "📟 Interactive Server Console",
+    chk_autoscroll: "Auto-scroll",
+    btn_clear: "Clear",
+    ph_command: "Enter command (e.g. save, chopper, players, servermsg 'text')...",
+    btn_send: "Send",
+    players_title: "👥 Players Online",
+    empty_players: "No players connected to the server",
+    btn_kick: "Kick",
+    btn_ban: "Ban",
+
+    settings_title: "⚙️ Server Settings (servertest.ini)",
+    btn_save_settings: "💾 Save Settings",
+    group_basic: "📌 Basic Parameters",
+    lbl_public_name: "Server Name (PublicName):",
+    lbl_public_desc: "Description (PublicDescription):",
+    lbl_password: "Server Password (Password):",
+    lbl_max_players: "Max Players (MaxPlayers):",
+    lbl_map: "World Map (Map):",
+    lbl_welcome_msg: "Welcome Message (ServerWelcomeMessage):",
+    group_network: "🌐 Network & RCON",
+    lbl_game_port: "Game Port (DefaultPort - UDP):",
+    lbl_direct_port: "Direct Connect Port (UDPPort):",
+    lbl_steam_port1: "Steam Port 1 (SteamPort1):",
+    lbl_steam_port2: "Steam Port 2 (SteamPort2):",
+    lbl_rcon_port: "RCON Port (RCONPort - TCP):",
+    lbl_rcon_password: "RCON / Admin Password:",
+    chk_open: "Public Server (Open)",
+    chk_public: "Display in Steam Public Server Browser (Public)",
+    group_gameplay: "⚔️ Gameplay",
+    chk_pvp: "Enable PvP (PVP)",
+    chk_pause_empty: "Pause when server is empty (PauseEmpty)",
+    chk_allow_coop: "Allow Co-op (AllowCoop)",
+    chk_sleep_allowed: "Sleep Allowed (SleepAllowed)",
+    chk_sleep_needed: "Sleep Needed for Time Passing (SleepNeeded)",
+    chk_announce_death: "Announce Player Deaths in Chat (AnnounceDeath)",
+    chk_no_fire: "Disable Fire Spread (NoFire)",
+    chk_allow_destruction: "Allow Sledgehammer Wall Destruction",
+    lbl_drop_on_death: "Drop on Death (DropOnDeath):",
+    lbl_spawn_point: "Spawn Point Coordinates (SpawnPoint):",
+    group_safehouses: "🏠 Safehouses & Voice",
+    chk_player_safehouse: "Allow Player Safehouses (PlayerSafehouse)",
+    chk_admin_safehouse: "Admin Safehouses Only (AdminSafehouse)",
+    chk_safehouse_trespassing: "Allow Non-members to Enter Safehouse",
+    chk_safehouse_fire: "Allow Fire inside Safehouses",
+    chk_safehouse_loot: "Allow Looting other Safehouses",
+    chk_safehouse_respawn: "Allow Respawn in Safehouse",
+    chk_voice_enable: "Enable VOIP Voice Chat (VoiceEnable)",
+    chk_voice_3d: "Directional 3D Voice Audio",
+    chk_global_chat: "Enable Global Chat (GlobalChat)",
+    lbl_auto_save: "Auto-save Interval (minutes):",
+    lbl_speed_limit: "Vehicle Speed Limit (km/h):",
+    group_security: "🛡️ Security & Authentication",
+    chk_auto_whitelist: "Auto-add Players to Whitelist on Connect",
+    chk_safety_system: "Enable Safety System (Spawn Protection)",
+    chk_show_safety: "Show Safety Indicator on Screen",
+    chk_display_username: "Display Usernames Overhead",
+    chk_lua_checksum: "Verify Lua File Checksums (DoLuaChecksum)",
+    chk_deny_same_id: "Deny Multiple Logins with Same Steam ID",
+    lbl_max_accounts: "Max Accounts per Player (0 = unlimited):",
+    group_admin: "🎛️ Administration & Limits",
+    lbl_voice_min: "VOIP Voice Min Distance:",
+    lbl_voice_max: "VOIP Voice Max Distance:",
+    lbl_backups_count: "Backup History Count:",
+    lbl_backups_period: "Backup Interval (hours, 0=on start):",
+    lbl_fast_forward: "Time Fast Forward Multiplier (x):",
+    lbl_corpse_removal: "Hours Before Corpse Removal:",
+
+    sandbox_title: "🧟 Sandbox Settings (SandboxVars.lua)",
+    btn_save_sandbox: "💾 Save Sandbox",
+    preset_default: "-- Difficulty Presets --",
+    preset_apocalypse: "💀 Apocalypse",
+    preset_survivor: "🏕️ Survivor",
+    preset_builder: "🏗️ Builder",
+    subtab_zombies: "🧟 Zombies & Population",
+    subtab_loot: "📦 Loot & Resources",
+    subtab_world: "🌍 World & Time",
+    subtab_vehicles: "🚗 Vehicles",
+    subtab_character: "👤 Character & Skills",
+    subtab_mods: "🧩 Mod Options",
+
+    sprinters: "Sprinters",
+    fast_shamblers: "Fast Shamblers",
+    shamblers: "Shamblers",
+    random: "Random",
+    superhuman: "Superhuman",
+    normal: "Normal",
+    weak: "Weak",
+    tough: "Tough",
+    fragile: "Fragile",
+    blood_saliva: "Blood + Saliva",
+    saliva_only: "Saliva Only (Bites)",
+    everyone_infected: "Everyone's Infected",
+    none: "None / Disabled",
+    instant: "Instant",
+    slow: "Slow",
+    fast: "Fast",
+    disabled: "Disabled",
+    extremely_rare: "Extremely Rare",
+    rare: "Rare",
+    common: "Common",
+    abundant: "Abundant",
+    never: "Never",
+    sometimes: "Sometimes",
+    often: "Often",
+    pitch_black: "Pitch Black",
+    dark: "Dark",
+    bright: "Bright",
+    very_abundant: "Very Abundant",
+    scarce: "Scarce",
+    very_scarce: "Very Scarce",
+    months_0_3: "0–3 Months",
+    months_3_6: "3–6 Months",
+    months_6_12: "6–12 Months",
+    several_years: "Several Years",
+    many_years: "Many Years",
+
+    mods_title: "🧩 Workshop Mod Manager",
+    btn_check_mods: "🔍 Check Updates",
+    btn_analyze_mods: "⚡ Dependency Analysis",
+    btn_save_mods: "💾 Save Mod List",
+    ph_mod_input: "Enter Workshop ID or Steam Collection URL...",
+    btn_add_mod: "➕ Add Mod",
+    mod_packs_label: "🎁 Curated Mod Packs:",
+    pack_vehicles: "🚗 KI5 Vehicle Pack",
+    pack_weapons: "⚔️ Brita Weapon Pack",
+    pack_qol: "🖥️ QoL Essentials",
+    pack_hardcore: "🧟 Hardcore Survival",
+    btn_clear_mods: "🧹 Clear All",
+
+    install_title: "📦 Install & Update Dedicated Server (SteamCMD)",
+    btn_check_update: "🔍 Check Updates on Steam",
+    install_desc: "Select the desired branch for Project Zomboid Dedicated Server (Steam AppID 380870).",
+    col_branch_name: "NAME AND DESCRIPTION",
+    col_branch_update: "LAST UPDATED",
+    lbl_hidden_branch: "🔑 Private Beta:",
+    ph_hidden_branch: "Branch name (optional)",
+    ph_access_code: "Access code or password",
+    btn_check_code: "Check Code",
+    btn_do_install: "🚀 Install / Update Server",
+
+    backups_title: "💾 World & Configuration Backups",
+    btn_create_backup: "📦 Create Backup Now",
+
+    toast_settings_saved: "💾 Server settings successfully saved!",
+    toast_sandbox_saved: "💾 Sandbox parameters successfully saved!",
+    toast_mods_saved: "💾 Mod list saved!",
+    toast_backup_created: "📦 World backup created successfully!"
+  }
+};
+
+function t(key) {
+  const dict = TRANSLATIONS_WEB[currentLang] || TRANSLATIONS_WEB['ru'];
+  return dict[key] !== undefined ? dict[key] : (TRANSLATIONS_WEB['ru'][key] || key);
+}
+
+function toggleLanguage() {
+  currentLang = (currentLang === 'ru') ? 'en' : 'ru';
+  localStorage.setItem('pz_lang', currentLang);
+  applyTranslations();
+  showToast(currentLang === 'ru' ? '🌐 Язык переключен: Русский' : '🌐 Language switched: English');
+}
+
+function applyTranslations() {
+  const btnLang = document.getElementById('btn-lang');
+  if (btnLang) {
+    btnLang.textContent = (currentLang === 'ru') ? '🌐 RU' : '🌐 EN';
+  }
+
+  // Update elements with data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (val) el.textContent = val;
+  });
+
+  // Update inputs with data-i18n-ph
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.getAttribute('data-i18n-ph');
+    const val = t(key);
+    if (val) el.placeholder = val;
+  });
+
+  // Update select options with data-i18n-opt
+  document.querySelectorAll('option[data-i18n-opt]').forEach(opt => {
+    const key = opt.getAttribute('data-i18n-opt');
+    const val = t(key);
+    if (val) opt.textContent = val;
+  });
+
+  // Update elements with data-i18n-title
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    const val = t(key);
+    if (val) el.title = val;
+  });
+
+  // Update active status card if server stopped/running
+  if (!isServerRunning) {
+    const stTitle = document.getElementById('status-title');
+    const stSub = document.getElementById('status-sub');
+    if (stTitle && stSub) {
+      stTitle.textContent = t('status_offline');
+      stSub.textContent = t('status_offline_sub');
+    }
+  }
+}
+
 // 🧟 Project Zomboid Server Manager - Web Panel Client
 
 let authToken = localStorage.getItem('pz_token') || '';
@@ -546,6 +982,7 @@ async function loadSandbox() {
       setVal('sb-ZombieLore-Hearing', sb.ZombieLore.Hearing);
       setVal('sb-ZombieLore-Smell', sb.ZombieLore.Smell);
       setVal('sb-ZombieLore-ActiveOnly', sb.ZombieLore.ActiveOnly);
+      setVal('sb-ZombieLore-Decomposition', sb.ZombieLore.Decomposition);
       setVal('sb-ZombieLore-TriggerHouseAlarm', sb.ZombieLore.TriggerHouseAlarm);
       setVal('sb-ZombieLore-ThumpOnConstruction', sb.ZombieLore.ThumpOnConstruction);
       setVal('sb-ZombieLore-ThumpNoChasing', sb.ZombieLore.ThumpNoChasing);
@@ -560,6 +997,9 @@ async function loadSandbox() {
       setVal('sb-ZombieConfig-PopulationPeakDay', sb.ZombieConfig.PopulationPeakDay);
       setVal('sb-ZombieConfig-RespawnHours', sb.ZombieConfig.RespawnHours);
       setVal('sb-ZombieConfig-RespawnMultiplier', sb.ZombieConfig.RespawnMultiplier);
+      setVal('sb-ZombieConfig-RallyGroupSize', sb.ZombieConfig.RallyGroupSize);
+      setVal('sb-ZombieConfig-RallyGroupRadius', sb.ZombieConfig.RallyGroupRadius);
+      setVal('sb-ZombieConfig-RedistributeHours', sb.ZombieConfig.RedistributeHours);
     }
 
     // Subtab 2: Loot
@@ -593,6 +1033,10 @@ async function loadSandbox() {
     setVal('sb-ErosionDays', sb.ErosionDays);
     setVal('sb-Helicopter', sb.Helicopter);
     setVal('sb-MetaEvent', sb.MetaEvent);
+    setVal('sb-TimeSinceApo', sb.TimeSinceApo);
+    setVal('sb-NightDarkness', sb.NightDarkness);
+    setVal('sb-NatureAbundance', sb.NatureAbundance);
+    setVal('sb-FireSpread', sb.FireSpread);
 
     // Subtab 4: Vehicles
     setVal('sb-CarSpawnRate', sb.CarSpawnRate);
@@ -772,6 +1216,7 @@ async function saveSandbox() {
     ThumpNoChasing: getBool('sb-ZombieLore-ThumpNoChasing', false),
     ZombiesDragDown: getBool('sb-ZombieLore-ZombiesDragDown', true),
     ZombiesFenceLunge: getBool('sb-ZombieLore-ZombiesFenceLunge', true),
+    Decomposition: getInt('sb-ZombieLore-Decomposition', 2),
   };
 
   sb.ZombieConfig = {
@@ -781,6 +1226,9 @@ async function saveSandbox() {
     PopulationPeakDay: getInt('sb-ZombieConfig-PopulationPeakDay', 28),
     RespawnHours: getInt('sb-ZombieConfig-RespawnHours', 72),
     RespawnMultiplier: getFloat('sb-ZombieConfig-RespawnMultiplier', 0.1),
+    RallyGroupSize: getInt('sb-ZombieConfig-RallyGroupSize', 20),
+    RallyGroupRadius: getInt('sb-ZombieConfig-RallyGroupRadius', 3),
+    RedistributeHours: getInt('sb-ZombieConfig-RedistributeHours', 12),
   };
 
   // Subtab 2: Loot
@@ -815,6 +1263,10 @@ async function saveSandbox() {
   sb.ErosionDays = getInt('sb-ErosionDays', 100);
   sb.Helicopter = getInt('sb-Helicopter', 2);
   sb.MetaEvent = getInt('sb-MetaEvent', 2);
+  sb.TimeSinceApo = getInt('sb-TimeSinceApo', 1);
+  sb.NightDarkness = getInt('sb-NightDarkness', 3);
+  sb.NatureAbundance = getInt('sb-NatureAbundance', 3);
+  sb.FireSpread = getBool('sb-FireSpread', true);
 
   // Subtab 4: Vehicles
   sb.CarSpawnRate = getInt('sb-CarSpawnRate', 3);

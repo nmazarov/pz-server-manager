@@ -41,6 +41,7 @@
       <span id="badge-version" class="badge metric">🎯 Build 42</span>
       <span id="badge-vps-ram" class="badge metric">🖥️ VPS RAM: -- / --</span>
       <span id="badge-srv-ram" class="badge metric">🎮 Server RAM: 0 MB</span>
+      <button class="btn header-btn-lang" onclick="toggleLanguage()" id="btn-lang" title="Сменить язык / Switch Language">🌐 RU</button>
       <button class="btn header-btn-share" onclick="copyConnectAddress()" title="Скопировать IP и порт сервера">📋 Поделиться</button>
       <button class="btn header-btn-backups" onclick="switchTab('backups')" title="Перейти к резервным копиям">📦 Бэкапы</button>
       <button class="btn header-btn-logout" onclick="logout()" title="Завершить сессию">🚪 Выйти</button>
@@ -375,6 +376,94 @@
             </div>
           </div>
         </div>
+        <!-- Row 3: Security & Rights / Administration & Audio -->
+        <div class="row" style="margin-top: 20px;">
+          <!-- Col 5: Security & Whitelist -->
+          <div class="col">
+            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;" data-i18n="group_security">
+              🛡️ Безопасность и Авторизация
+            </h4>
+            <div style="display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px;">
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-AutoCreateUserInWhiteList">
+                <span data-i18n="chk_auto_whitelist">Авто-добавление в белый список (AutoCreateUserInWhiteList)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-SafetySystem" checked>
+                <span data-i18n="chk_safety_system">Система безопасности / защита спавна (SafetySystem)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-ShowSafety" checked>
+                <span data-i18n="chk_show_safety">Показывать индикаторы защиты (ShowSafety)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-DisplayUserName" checked>
+                <span data-i18n="chk_display_username">Отображать никнеймы игроков над головой (DisplayUserName)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-DoLuaChecksum" checked>
+                <span data-i18n="chk_lua_checksum">Проверка контрольных сумм Lua (DoLuaChecksum)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-DenySameId" checked>
+                <span data-i18n="chk_deny_same_id">Запрет одновременного входа с одного Steam ID</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label data-i18n="lbl_max_accounts">Макс. аккаунтов на игрока (0 = без ограничений):</label>
+              <input type="number" id="ini-MaxAccountsPerUser" class="form-control" value="0" min="0" max="100">
+            </div>
+          </div>
+
+          <!-- Col 6: Administration & Limits -->
+          <div class="col">
+            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;" data-i18n="group_admin">
+              🎛️ Администрирование и Лимиты
+            </h4>
+            <div class="row" style="gap: 10px;">
+              <div class="col" style="min-width: 140px;">
+                <div class="form-group">
+                  <label data-i18n="lbl_voice_min">Мин. дистанция голоса:</label>
+                  <input type="number" id="ini-VoiceMinDistance" class="form-control" value="10" min="1" max="500">
+                </div>
+              </div>
+              <div class="col" style="min-width: 140px;">
+                <div class="form-group">
+                  <label data-i18n="lbl_voice_max">Макс. дистанция голоса:</label>
+                  <input type="number" id="ini-VoiceMaxDistance" class="form-control" value="100" min="10" max="10000">
+                </div>
+              </div>
+            </div>
+            <div class="row" style="gap: 10px;">
+              <div class="col" style="min-width: 140px;">
+                <div class="form-group">
+                  <label data-i18n="lbl_backups_count">Количество резервных копий:</label>
+                  <input type="number" id="ini-BackupsCount" class="form-control" value="5" min="0" max="50">
+                </div>
+              </div>
+              <div class="col" style="min-width: 140px;">
+                <div class="form-group">
+                  <label data-i18n="lbl_backups_period">Период бэкапов (ч, 0=при старте):</label>
+                  <input type="number" id="ini-BackupsPeriod" class="form-control" value="0" min="0" max="720">
+                </div>
+              </div>
+            </div>
+            <div class="row" style="gap: 10px;">
+              <div class="col" style="min-width: 140px;">
+                <div class="form-group">
+                  <label data-i18n="lbl_fast_forward">Ускорение времени (x):</label>
+                  <input type="number" id="ini-FastForwardMultiplier" class="form-control" value="40" min="1" max="100">
+                </div>
+              </div>
+              <div class="col" style="min-width: 140px;">
+                <div class="form-group">
+                  <label data-i18n="lbl_corpse_removal">Часов до удаления трупов:</label>
+                  <input type="number" id="ini-HoursForCorpseRemoval" class="form-control" value="216" min="0" max="10000">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
       </div>
     </div>
@@ -510,12 +599,31 @@
                   <option value="3">Плохое</option>
                 </select>
               </div>
+                            <div class="form-group">
+                <label data-i18n="lbl_decomp">Разложение зомби (Decomposition):</label>
+                <select id="sb-ZombieLore-Decomposition" class="form-control">
+                  <option value="1" data-i18n-opt="slow">Медленное</option>
+                  <option value="2" data-i18n-opt="normal" selected>Обычное</option>
+                  <option value="3" data-i18n-opt="fast">Быстрое</option>
+                  <option value="4" data-i18n-opt="disabled">Отключено</option>
+                </select>
+              </div>
               <div class="form-group">
-                <label>Время активности (ActiveOnly):</label>
+                <label data-i18n="lbl_active_only">Время активности (ActiveOnly):</label>
                 <select id="sb-ZombieLore-ActiveOnly" class="form-control">
                   <option value="1" selected>И днем и ночью</option>
                   <option value="2">Только ночью</option>
                   <option value="3">Только днем</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_time_since_apo">Время с начала апокалипсиса (TimeSinceApo):</label>
+                <select id="sb-TimeSinceApo" class="form-control">
+                  <option value="1" data-i18n-opt="months_0_3" selected>0–3 месяца</option>
+                  <option value="2" data-i18n-opt="months_3_6">3–6 месяцев</option>
+                  <option value="3" data-i18n-opt="months_6_12">6–12 месяцев</option>
+                  <option value="4" data-i18n-opt="several_years">Несколько лет</option>
+                  <option value="5" data-i18n-opt="many_years">Много лет</option>
                 </select>
               </div>
             </div>
@@ -542,6 +650,19 @@
                 <label>Доля респауна от популяции (RespawnMultiplier):</label>
                 <input type="number" id="sb-ZombieConfig-RespawnMultiplier" class="form-control" value="0.1" step="0.05" min="0.0" max="1.0">
               </div>
+              <div class="form-group">
+                <label data-i18n="lbl_rally_group_size">Размер орды зомби (RallyGroupSize):</label>
+                <input type="number" id="sb-ZombieConfig-RallyGroupSize" class="form-control" value="20" min="0" max="1000">
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_rally_group_radius">Радиус орды (RallyGroupRadius):</label>
+                <input type="number" id="sb-ZombieConfig-RallyGroupRadius" class="form-control" value="3" min="1" max="50">
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_redistribute_hours">Период миграции зомби (часов):</label>
+                <input type="number" id="sb-ZombieConfig-RedistributeHours" class="form-control" value="12" min="0" max="8760">
+              </div>
+
               <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px;">
                 <label class="custom-checkbox-label">
                   <input type="checkbox" id="sb-ZombieLore-TriggerHouseAlarm">
@@ -673,6 +794,16 @@
                   <option value="5">Изобилие</option>
                 </select>
               </div>
+              <div class="form-group">
+                <label data-i18n="lbl_time_since_apo">Время с начала апокалипсиса (TimeSinceApo):</label>
+                <select id="sb-TimeSinceApo" class="form-control">
+                  <option value="1" data-i18n-opt="months_0_3" selected>0–3 месяца</option>
+                  <option value="2" data-i18n-opt="months_3_6">3–6 месяцев</option>
+                  <option value="3" data-i18n-opt="months_6_12">6–12 месяцев</option>
+                  <option value="4" data-i18n-opt="several_years">Несколько лет</option>
+                  <option value="5" data-i18n-opt="many_years">Много лет</option>
+                </select>
+              </div>
             </div>
 
             <div class="col">
@@ -785,6 +916,16 @@
                   <option value="9">5:00 (Рассвет)</option>
                 </select>
               </div>
+              <div class="form-group">
+                <label data-i18n="lbl_time_since_apo">Время с начала апокалипсиса (TimeSinceApo):</label>
+                <select id="sb-TimeSinceApo" class="form-control">
+                  <option value="1" data-i18n-opt="months_0_3" selected>0–3 месяца</option>
+                  <option value="2" data-i18n-opt="months_3_6">3–6 месяцев</option>
+                  <option value="3" data-i18n-opt="months_6_12">6–12 месяцев</option>
+                  <option value="4" data-i18n-opt="several_years">Несколько лет</option>
+                  <option value="5" data-i18n-opt="many_years">Много лет</option>
+                </select>
+              </div>
             </div>
 
             <div class="col">
@@ -839,6 +980,32 @@
                   <option value="3">Часто</option>
                 </select>
               </div>
+              <div class="form-group">
+                <label data-i18n="lbl_night_darkness">Тёмность ночи (NightDarkness):</label>
+                <select id="sb-NightDarkness" class="form-control">
+                  <option value="1" data-i18n-opt="pitch_black">Кромешная тьма</option>
+                  <option value="2" data-i18n-opt="dark">Тёмная</option>
+                  <option value="3" data-i18n-opt="normal" selected>Обычная</option>
+                  <option value="4" data-i18n-opt="bright">Светлая</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_nature_abundance">Природные ресурсы / Рыбалка (NatureAbundance):</label>
+                <select id="sb-NatureAbundance" class="form-control">
+                  <option value="1" data-i18n-opt="very_abundant">Очень богатые</option>
+                  <option value="2" data-i18n-opt="abundant">Богатые</option>
+                  <option value="3" data-i18n-opt="normal" selected>Обычные</option>
+                  <option value="4" data-i18n-opt="scarce">Скудные</option>
+                  <option value="5" data-i18n-opt="very_scarce">Очень скудные</option>
+                </select>
+              </div>
+              <div style="margin-top: 10px; margin-bottom: 12px;">
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-FireSpread" checked>
+                  <span data-i18n="chk_fire_spread">Распространение огня (FireSpread)</span>
+                </label>
+              </div>
+
             </div>
           </div>
         </div>

@@ -70,13 +70,13 @@ def create_app(
 ) -> FastAPI:
     """Create and configure the FastAPI web application."""
     limiter = Limiter(key_func=get_remote_address)
-    app = FastAPI(title="PZ Server Manager Web", version="1.2.1")
+    app = FastAPI(title="PZ Server Manager Web", version="1.5.0")
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:8080"], # Restrict to dashboard origin
+        allow_origins=["*"], # Restrict to dashboard origin
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -402,6 +402,12 @@ def create_app(
         except Exception as e:
             return {"success": False, "message": str(e)}
 
+
+
+    @app.get("/api/translations")
+    def api_get_translations():
+        from core.translations import TRANSLATIONS
+        return TRANSLATIONS
 
     @app.get("/api/preferences")
     def api_get_preferences(token: str = Depends(get_token)):

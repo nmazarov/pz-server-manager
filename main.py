@@ -14,6 +14,13 @@ import logging
 import platform
 from pathlib import Path
 
+# Headless web mode bypass - runs without requiring PyQt5
+if any(arg in sys.argv for arg in ["--web", "--web-only", "web_main.py"]):
+    import web_main
+    web_main.main()
+    sys.exit(0)
+
+
 from PyQt5.QtWidgets import QApplication, QMessageBox, QSplashScreen
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QFont, QFontDatabase
