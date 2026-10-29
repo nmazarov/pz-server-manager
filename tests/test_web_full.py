@@ -41,9 +41,11 @@ def test_web_index_html_has_all_ids():
         "sb-Loot-Weapon", "sb-ZombieLore-Speed", "sb-ZombieLore-Strength",
         "sb-ZombieLore-Toughness", "sb-ZombieLore-Transmission", "srv-name",
         "srv-ram", "status-sub", "status-title", "steam-branch-rows", "toast",
-        "sandbox-preset", "ini-PublicName", "ini-Password", "ini-MaxPlayers",
+        "sandbox-preset", "btn-del-preset", "ini-PublicName", "ini-Password", "ini-MaxPlayers",
         "ini-DefaultPort", "ini-PVP", "ini-AutoCreateUserInWhiteList",
-        "sb-ZombieLore-Decomposition", "sb-NightDarkness", "sb-TimeSinceApo"
+        "sb-ZombieLore-Decomposition", "sb-NightDarkness", "sb-TimeSinceApo",
+        "sb-SpeedLimit", "sb-ZombieAttractionMultiplier", "sb-RecentlySurvivorVehicles",
+        "sb-LockedCar", "sb-SirenShutoffHours"
     ]
 
     for elem_id in required_ids:
@@ -76,7 +78,8 @@ def test_web_settings_and_sandbox_api(temp_env):
         "PVP": "true",
         "AutoCreateUserInWhiteList": "true",
         "SafetySystem": "true",
-        "VoiceMinDistance": "15"
+        "VoiceMinDistance": "15",
+        "SpeedLimit": "90"
     }, headers=headers)
     assert save_res.status_code == 200
     assert save_res.json()["success"] is True
@@ -84,6 +87,7 @@ def test_web_settings_and_sandbox_api(temp_env):
     res2 = client.get("/api/settings", headers=headers)
     assert res2.json().get("PublicName") == "My Awesome Server"
     assert res2.json().get("VoiceMinDistance") == "15"
+    assert res2.json().get("SpeedLimit") == "90"
 
     # 2. Sandbox
     res = client.get("/api/sandbox", headers=headers)
@@ -96,7 +100,11 @@ def test_web_settings_and_sandbox_api(temp_env):
         "ZombieConfig": {"RallyGroupSize": 25, "RallyGroupRadius": 4},
         "Loot": {"Food": 2, "Weapon": 1, "Literature": 3, "Medical": 4},
         "NightDarkness": 2,
-        "TimeSinceApo": 3
+        "TimeSinceApo": 3,
+        "SpeedLimit": 90,
+        "ZombieAttractionMultiplier": 1.5,
+        "RecentlySurvivorVehicles": 2,
+        "LockedCar": 3
     }, headers=headers)
     assert save_sb.status_code == 200
     assert save_sb.json()["success"] is True

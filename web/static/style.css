@@ -518,10 +518,12 @@ main.content-area {
   font-size: 15px;
   font-weight: 700;
   color: #4ea8de;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .row {
@@ -712,13 +714,16 @@ main.content-area {
 
 /* ── Checkboxes With Clear White Checkmark on Green Background ────────────── */
 .custom-checkbox-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   cursor: pointer;
   font-size: 13px;
+  line-height: 1.45;
   color: var(--text-main);
   user-select: none;
+  word-break: break-word;
+  margin-bottom: 6px;
 }
 
 .custom-checkbox-label input[type="checkbox"],
@@ -995,6 +1000,8 @@ input[type="checkbox"]:checked::before {
   font-weight: 600;
   color: var(--text-muted);
   margin-bottom: 6px;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .form-control {
@@ -1181,4 +1188,28 @@ select.form-control {
 .subtab-nav::-webkit-scrollbar-thumb, nav.tab-nav::-webkit-scrollbar-thumb {
   background: #2e3848;
   border-radius: 4px;
+}
+
+/* ── Responsive Server Controls Grid ───────────────────────────────────────── */
+.server-control-grid {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.server-btns-wrap {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 2 1 300px;
+}
+
+/* ── Sandbox Presets Toolbar ──────────────────────────────────────────────── */
+.sandbox-presets-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
 }

@@ -87,14 +87,14 @@
         <div class="card-title">
           <span>⚡ Управление сервером</span>
         </div>
-        <div class="row" style="align-items: flex-end;">
-          <div class="col" style="max-width: 220px;">
-            <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Имя сервера:</label>
-            <input type="text" id="srv-name" class="form-control" value="servertest" style="margin-top: 4px;" onchange="savePrefsOnChange()">
+        <div class="server-control-grid">
+          <div class="form-group" style="margin-bottom: 0; min-width: 180px; flex: 1 1 200px;">
+            <label data-i18n="lbl_server_name" style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Имя сервера:</label>
+            <input type="text" id="srv-name" class="form-control" value="servertest" onchange="savePrefsOnChange()">
           </div>
-          <div class="col" style="max-width: 190px;">
-            <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Выделение ОЗУ (RAM):</label>
-            <select id="srv-ram" class="form-control" style="margin-top: 4px;" onchange="savePrefsOnChange()">
+          <div class="form-group" style="margin-bottom: 0; min-width: 160px; flex: 1 1 180px;">
+            <label data-i18n="lbl_srv_ram" style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Выделение ОЗУ (RAM):</label>
+            <select id="srv-ram" class="form-control" onchange="savePrefsOnChange()">
               <option value="4">4 GB</option>
               <option value="6">6 GB</option>
               <option value="8">8 GB</option>
@@ -106,10 +106,10 @@
               <option value="32">32 GB</option>
             </select>
           </div>
-          <div class="col" style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button id="btn-start" class="btn btn-start" onclick="startServer()">▶ Запустить сервер</button>
-            <button id="btn-stop" class="btn btn-stop" onclick="stopServer()" disabled>⏹ Остановить</button>
-            <button id="btn-restart" class="btn btn-restart" onclick="restartServer()" disabled>🔄 Перезапустить</button>
+          <div class="server-btns-wrap">
+            <button id="btn-start" class="btn btn-start" onclick="startServer()" data-i18n="btn_start">▶ Запустить сервер</button>
+            <button id="btn-stop" class="btn btn-stop" onclick="stopServer()" disabled data-i18n="btn_stop">⏹ Остановить</button>
+            <button id="btn-restart" class="btn btn-restart" onclick="restartServer()" disabled data-i18n="btn_restart">🔄 Перезапустить</button>
           </div>
         </div>
 
@@ -360,19 +360,13 @@
                 <span>Глобальный чат (GlobalChat)</span>
               </label>
             </div>
-            <div class="row" style="gap: 10px;">
-              <div class="col" style="min-width: 140px;">
-                <div class="form-group">
-                  <label>Автосохранение (мин):</label>
-                  <input type="number" id="ini-SaveWorldEveryMinutes" class="form-control" value="15" min="1" max="60">
-                </div>
-              </div>
-              <div class="col" style="min-width: 140px;">
-                <div class="form-group">
-                  <label>Лимит скорости авто (км/ч):</label>
-                  <input type="number" id="ini-SpeedLimit" class="form-control" value="70" min="0" max="250">
-                </div>
-              </div>
+            <div class="form-group">
+              <label data-i18n="lbl_auto_save">Автосохранение мира (мин):</label>
+              <input type="number" id="ini-SaveWorldEveryMinutes" class="form-control" value="15" min="1" max="60">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lbl_speed_limit">Лимит скорости авто (км/ч):</label>
+              <input type="number" id="ini-SpeedLimit" class="form-control" value="70" min="0" max="250">
             </div>
           </div>
         </div>
@@ -420,47 +414,29 @@
             <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;" data-i18n="group_admin">
               🎛️ Администрирование и Лимиты
             </h4>
-            <div class="row" style="gap: 10px;">
-              <div class="col" style="min-width: 140px;">
-                <div class="form-group">
-                  <label data-i18n="lbl_voice_min">Мин. дистанция голоса:</label>
-                  <input type="number" id="ini-VoiceMinDistance" class="form-control" value="10" min="1" max="500">
-                </div>
-              </div>
-              <div class="col" style="min-width: 140px;">
-                <div class="form-group">
-                  <label data-i18n="lbl_voice_max">Макс. дистанция голоса:</label>
-                  <input type="number" id="ini-VoiceMaxDistance" class="form-control" value="100" min="10" max="10000">
-                </div>
-              </div>
+            <div class="form-group">
+              <label data-i18n="lbl_voice_min">Мин. дистанция голоса (VoiceMinDistance):</label>
+              <input type="number" id="ini-VoiceMinDistance" class="form-control" value="10" min="1" max="500">
             </div>
-            <div class="row" style="gap: 10px;">
-              <div class="col" style="min-width: 140px;">
-                <div class="form-group">
-                  <label data-i18n="lbl_backups_count">Количество резервных копий:</label>
-                  <input type="number" id="ini-BackupsCount" class="form-control" value="5" min="0" max="50">
-                </div>
-              </div>
-              <div class="col" style="min-width: 140px;">
-                <div class="form-group">
-                  <label data-i18n="lbl_backups_period">Период бэкапов (ч, 0=при старте):</label>
-                  <input type="number" id="ini-BackupsPeriod" class="form-control" value="0" min="0" max="720">
-                </div>
-              </div>
+            <div class="form-group">
+              <label data-i18n="lbl_voice_max">Макс. дистанция голоса (VoiceMaxDistance):</label>
+              <input type="number" id="ini-VoiceMaxDistance" class="form-control" value="100" min="10" max="10000">
             </div>
-            <div class="row" style="gap: 10px;">
-              <div class="col" style="min-width: 140px;">
-                <div class="form-group">
-                  <label data-i18n="lbl_fast_forward">Ускорение времени (x):</label>
-                  <input type="number" id="ini-FastForwardMultiplier" class="form-control" value="40" min="1" max="100">
-                </div>
-              </div>
-              <div class="col" style="min-width: 140px;">
-                <div class="form-group">
-                  <label data-i18n="lbl_corpse_removal">Часов до удаления трупов:</label>
-                  <input type="number" id="ini-HoursForCorpseRemoval" class="form-control" value="216" min="0" max="10000">
-                </div>
-              </div>
+            <div class="form-group">
+              <label data-i18n="lbl_backups_count">Количество резервных копий (BackupsCount):</label>
+              <input type="number" id="ini-BackupsCount" class="form-control" value="5" min="0" max="50">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lbl_backups_period">Период бэкапов в часах (BackupsPeriod, 0=при старте):</label>
+              <input type="number" id="ini-BackupsPeriod" class="form-control" value="0" min="0" max="720">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lbl_fast_forward">Ускорение времени сна (FastForwardMultiplier):</label>
+              <input type="number" id="ini-FastForwardMultiplier" class="form-control" value="40" min="1" max="100">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lbl_corpse_removal">Часов до удаления трупов (HoursForCorpseRemoval):</label>
+              <input type="number" id="ini-HoursForCorpseRemoval" class="form-control" value="216" min="0" max="10000">
             </div>
           </div>
         </div>
@@ -473,15 +449,21 @@
       <div class="card">
         <!-- Top Toolbar with Presets & Save Button -->
         <div class="card-title">
-          <span>🧟 Параметры песочницы (SandboxVars.lua)</span>
-          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <select id="sandbox-preset" class="form-control" style="width: 180px;" onchange="applySandboxPreset(this.value)">
-              <option value="">-- Пресеты сложности --</option>
-              <option value="apocalypse">💀 Апокалипсис</option>
-              <option value="survivor">🏕️ Выживание</option>
-              <option value="builder">🏗️ Строитель</option>
+          <span data-i18n="sandbox_title">🧟 Параметры песочницы (SandboxVars.lua)</span>
+          <div class="sandbox-presets-toolbar">
+            <select id="sandbox-preset" class="form-control" style="width: auto; min-width: 190px;" onchange="applySandboxPreset(this.value)">
+              <option value="" data-i18n="preset_default">-- Пресеты сложности --</option>
+              <option value="apocalypse" data-i18n="preset_apocalypse">💀 Апокалипсис</option>
+              <option value="survivor" data-i18n="preset_survivor">🏕️ Выживание</option>
+              <option value="builder" data-i18n="preset_builder">🏗️ Строитель</option>
             </select>
-            <button class="btn btn-start" onclick="saveSandbox()">💾 Сохранить Sandbox</button>
+            <button class="btn btn-secondary" onclick="saveCustomPresetPrompt()" title="Сохранить текущие параметры как новый именованный пресет">
+              ➕ Сохранить пресет
+            </button>
+            <button id="btn-del-preset" class="btn btn-danger" onclick="deleteCustomPreset()" style="display: none; padding: 7px 11px;" title="Удалить выбранный пользовательский пресет">
+              🗑️
+            </button>
+            <button class="btn btn-start" onclick="saveSandbox()" data-i18n="btn_save_sandbox">💾 Сохранить Sandbox</button>
           </div>
         </div>
 
@@ -1010,82 +992,149 @@
           </div>
         </div>
 
-        <!-- Subtab 4: Транспорт -->
+        <!-- Subtab 4: Транспорт (Полный набор настроек Project Zomboid) -->
         <div id="sandbox-subtab-vehicles" class="subtab-panel">
           <div class="row">
+            <!-- Left Column: Spawn & Condition -->
             <div class="col">
-              <h4 class="subtab-section-header">🚗 Появление и Состояние транспорта</h4>
+              <h4 class="subtab-section-header" data-i18n="group_vehicle_spawn">🚗 Появление и Состояние транспорта</h4>
+              <div style="margin-bottom: 14px;">
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-EnableVehicles" checked>
+                  <span data-i18n="chk_enable_vehicles">Включить транспорт в игровом мире (EnableVehicles)</span>
+                </label>
+              </div>
               <div class="form-group">
-                <label>Частота появления автомобилей (CarSpawnRate):</label>
+                <label data-i18n="lbl_car_spawn">Частота появления автомобилей (CarSpawnRate):</label>
                 <select id="sb-CarSpawnRate" class="form-control">
-                  <option value="1">Нет автомобилей</option>
-                  <option value="2">Очень низкая</option>
-                  <option value="3" selected>Низкая</option>
-                  <option value="4">Нормальная</option>
-                  <option value="5">Высокая</option>
+                  <option value="1" data-i18n-opt="none">Нет автомобилей</option>
+                  <option value="2" data-i18n-opt="very_low">Очень низкая</option>
+                  <option value="3" data-i18n-opt="low" selected>Низкая</option>
+                  <option value="4" data-i18n-opt="normal">Нормальная</option>
+                  <option value="5" data-i18n-opt="high">Высокая</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Общее состояние найденных авто (CarCondition):</label>
+                <label data-i18n="lbl_car_condition">Общее состояние найденных авто (CarCondition):</label>
                 <select id="sb-CarCondition" class="form-control">
-                  <option value="1">Очень плохое</option>
-                  <option value="2">Плохое</option>
-                  <option value="3" selected>Нормальное</option>
-                  <option value="4">Хорошее</option>
-                  <option value="5">Отличное</option>
+                  <option value="1" data-i18n-opt="very_low">Очень плохое</option>
+                  <option value="2" data-i18n-opt="low">Плохое</option>
+                  <option value="3" data-i18n-opt="normal" selected>Нормальное</option>
+                  <option value="4" data-i18n-opt="high">Хорошее</option>
+                  <option value="5" data-i18n-opt="very_high">Отличное</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_survivor_vehicles">Машины недавних выживших с лутом (RecentlySurvivorVehicles):</label>
+                <select id="sb-RecentlySurvivorVehicles" class="form-control">
+                  <option value="1" data-i18n-opt="never">Никогда</option>
+                  <option value="2" data-i18n-opt="rare">Редко</option>
+                  <option value="3" data-i18n-opt="normal" selected>Нормально</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_locked_cars">Шанс запертых дверей авто (LockedCar):</label>
+                <select id="sb-LockedCar" class="form-control">
+                  <option value="1" data-i18n-opt="never">Никогда</option>
+                  <option value="2" data-i18n-opt="extremely_rare">Крайне редко</option>
+                  <option value="3" data-i18n-opt="rare">Редко</option>
+                  <option value="4" data-i18n-opt="sometimes" selected>Иногда</option>
+                  <option value="5" data-i18n-opt="often">Часто</option>
                 </select>
               </div>
               <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
                 <label class="custom-checkbox-label">
                   <input type="checkbox" id="sb-VehicleEasyUse">
-                  <span>Легкое управление (без ключа зажигания и навыка взлома)</span>
+                  <span data-i18n="chk_vehicle_easy_use">Легкое управление (без ключа зажигания и навыка взлома)</span>
                 </label>
                 <label class="custom-checkbox-label">
                   <input type="checkbox" id="sb-TrafficJam" checked>
-                  <span>Заторы и пробки из разбитых машин на дорогах</span>
-                </label>
-                <label class="custom-checkbox-label">
-                  <input type="checkbox" id="sb-PlayerDamageFromCarCrash" checked>
-                  <span>Урон игроку при столкновении на машине</span>
+                  <span data-i18n="chk_traffic_jam">Заторы и пробки из разбитых машин на дорогах</span>
                 </label>
               </div>
             </div>
 
+            <!-- Right Column: Speed, Fuel & Physics -->
             <div class="col">
-              <h4 class="subtab-section-header">⛽ Топливо и Механика</h4>
+              <h4 class="subtab-section-header" data-i18n="group_vehicle_physics">⛽ Скорость, Топливо и Физика</h4>
               <div class="form-group">
-                <label>Шанс наличия топлива в баке (ChanceHasGas):</label>
+                <label data-i18n="lbl_speed_limit">Ограничение максимальной скорости авто (SpeedLimit - км/ч):</label>
+                <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap;">
+                  <input type="number" id="sb-SpeedLimit" class="form-control" value="70" min="0" max="250" style="max-width: 100px;">
+                  <button type="button" class="pill-chip" onclick="setSpeedLimitPreset(60)">60</button>
+                  <button type="button" class="pill-chip" onclick="setSpeedLimitPreset(80)">80</button>
+                  <button type="button" class="pill-chip" onclick="setSpeedLimitPreset(100)">100</button>
+                  <button type="button" class="pill-chip" onclick="setSpeedLimitPreset(120)">120</button>
+                  <button type="button" class="pill-chip" onclick="setSpeedLimitPreset(0)">Без лимита</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_zombie_attraction">Привлечение зомби шумом двигателя (ZombieAttractionMultiplier):</label>
+                <input type="number" id="sb-ZombieAttractionMultiplier" class="form-control" value="1.0" step="0.1" min="0.0" max="10.0">
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_gas_chance">Шанс наличия топлива в баке (ChanceHasGas):</label>
                 <select id="sb-ChanceHasGas" class="form-control">
-                  <option value="1">Очень низкий</option>
-                  <option value="2">Низкий</option>
-                  <option value="3" selected>Нормальный</option>
-                  <option value="4">Высокий</option>
-                  <option value="5">Очень высокий</option>
+                  <option value="1" data-i18n-opt="very_low">Очень низкий</option>
+                  <option value="2" data-i18n-opt="low">Низкий</option>
+                  <option value="3" data-i18n-opt="normal" selected>Нормальный</option>
+                  <option value="4" data-i18n-opt="high">Высокий</option>
+                  <option value="5" data-i18n-opt="very_high">Очень высокий</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Количество топлива в баках (InitialGas):</label>
+                <label data-i18n="lbl_initial_gas">Количество топлива в баках (InitialGas):</label>
                 <select id="sb-InitialGas" class="form-control">
-                  <option value="1">Очень мало</option>
-                  <option value="2" selected>Мало</option>
-                  <option value="3">Нормально</option>
-                  <option value="4">Много</option>
-                  <option value="5">Полный бак</option>
+                  <option value="1" data-i18n-opt="very_low">Очень мало</option>
+                  <option value="2" data-i18n-opt="low" selected>Мало</option>
+                  <option value="3" data-i18n-opt="normal">Нормально</option>
+                  <option value="4" data-i18n-opt="high">Много</option>
+                  <option value="5" data-i18n-opt="full">Полный бак</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Множитель расхода бензина (CarGasConsumption):</label>
+                <label data-i18n="lbl_gas_consumption">Множитель расхода бензина (CarGasConsumption):</label>
                 <input type="number" id="sb-CarGasConsumption" class="form-control" value="1.0" step="0.1" min="0.0" max="10.0">
               </div>
               <div class="form-group">
-                <label>Автосигнализации (CarAlarm):</label>
+                <label data-i18n="lbl_car_alarm">Автосигнализации (CarAlarm):</label>
                 <select id="sb-CarAlarm" class="form-control">
-                  <option value="1">Никогда</option>
-                  <option value="2">Крайне редко</option>
-                  <option value="3" selected>Редко</option>
-                  <option value="4">Иногда</option>
-                  <option value="5">Часто</option>
+                  <option value="1" data-i18n-opt="never">Никогда</option>
+                  <option value="2" data-i18n-opt="extremely_rare">Крайне редко</option>
+                  <option value="3" data-i18n-opt="rare" selected>Редко</option>
+                  <option value="4" data-i18n-opt="sometimes">Иногда</option>
+                  <option value="5" data-i18n-opt="often">Часто</option>
                 </select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_siren_shutoff">Время звучания сирен в часах (SirenShutoffHours, 0=до разряда):</label>
+                <input type="number" id="sb-SirenShutoffHours" class="form-control" value="0.0" step="0.5" min="0.0" max="168.0">
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_car_damage_impact">Урон автомобилю при столкновении (CarDamageOnImpact):</label>
+                <select id="sb-CarDamageOnImpact" class="form-control">
+                  <option value="1" data-i18n-opt="very_low">Очень низкий</option>
+                  <option value="2" data-i18n-opt="low">Низкий</option>
+                  <option value="3" data-i18n-opt="normal" selected>Нормальный</option>
+                  <option value="4" data-i18n-opt="high">Высокий</option>
+                  <option value="5" data-i18n-opt="very_high">Очень высокий</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label data-i18n="lbl_player_hit_damage">Урон пешеходу при наезде автомобилем (DamageToPlayerFromHitByCar):</label>
+                <select id="sb-DamageToPlayerFromHitByCar" class="form-control">
+                  <option value="1" data-i18n-opt="none">Отсутствует</option>
+                  <option value="2" data-i18n-opt="low">Низкий</option>
+                  <option value="3" data-i18n-opt="normal" selected>Нормальный</option>
+                  <option value="4" data-i18n-opt="high">Высокий</option>
+                  <option value="5" data-i18n-opt="deadly">Смертельный</option>
+                </select>
+              </div>
+              <div style="margin-top: 10px;">
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-PlayerDamageFromCarCrash" checked>
+                  <span data-i18n="chk_crash_damage">Урон игроку при аварии на машине</span>
+                </label>
               </div>
             </div>
           </div>

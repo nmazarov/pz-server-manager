@@ -1,4 +1,270 @@
 
+// ── Custom Named Sandbox Presets Management ──────────────────────────────
+let customSandboxPresets = {};
+try {
+  customSandboxPresets = JSON.parse(localStorage.getItem('pz_custom_sandbox_presets') || '{}');
+} catch (e) {
+  customSandboxPresets = {};
+}
+
+function populatePresetDropdown() {
+  const sel = document.getElementById('sandbox-preset');
+  if (!sel) return;
+  const currentVal = sel.value;
+
+  sel.innerHTML = `
+    <option value="">${t('preset_default')}</option>
+    <optgroup label="${currentLang === 'ru' ? '📦 Стандартные пресеты' : '📦 Built-in Presets'}">
+      <option value="apocalypse">${t('preset_apocalypse')}</option>
+      <option value="survivor">${t('preset_survivor')}</option>
+      <option value="builder">${t('preset_builder')}</option>
+    </optgroup>
+  `;
+
+  const customNames = Object.keys(customSandboxPresets);
+  if (customNames.length > 0) {
+    const grp = document.createElement('optgroup');
+    grp.label = currentLang === 'ru' ? '⭐ Пользовательские пресеты' : '⭐ Custom Presets';
+    customNames.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = 'custom:' + name;
+      opt.textContent = '⭐ ' + name;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  }
+
+  if (currentVal && Array.from(sel.options).some(o => o.value === currentVal)) {
+    sel.value = currentVal;
+  }
+  updatePresetDeleteBtn();
+}
+
+function updatePresetDeleteBtn() {
+  const sel = document.getElementById('sandbox-preset');
+  const btn = document.getElementById('btn-del-preset');
+  if (!btn) return;
+  if (sel && sel.value.startsWith('custom:')) {
+    btn.style.display = 'inline-flex';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function saveCustomPresetPrompt() {
+  const promptMsg = (currentLang === 'ru')
+    ? 'Введите название для вашего пресета настроек (например: Мой Хардкор, PvP Мир, Лутер):'
+    : 'Enter a name for your custom sandbox preset (e.g. My Hardcore, PvP World, Easy Loot):';
+  const name = prompt(promptMsg);
+  if (!name || !name.trim()) return;
+  const trimmed = name.trim();
+
+  // Gather current sandbox UI state
+  const presetData = gatherSandboxState();
+  customSandboxPresets[trimmed] = presetData;
+  localStorage.setItem('pz_custom_sandbox_presets', JSON.stringify(customSandboxPresets));
+
+  // Save to server preferences
+  fetch('/api/preferences', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ custom_sandbox_presets: customSandboxPresets })
+  }).catch(() => {});
+
+  populatePresetDropdown();
+  const sel = document.getElementById('sandbox-preset');
+  if (sel) sel.value = 'custom:' + trimmed;
+  updatePresetDeleteBtn();
+
+  showToast((currentLang === 'ru')
+    ? `⭐ Пресет «${trimmed}» успешно сохранен!`
+    : `⭐ Preset "${trimmed}" successfully saved!`
+  );
+}
+
+function deleteCustomPreset() {
+  const sel = document.getElementById('sandbox-preset');
+  if (!sel || !sel.value.startsWith('custom:')) return;
+  const presetName = sel.value.replace('custom:', '');
+  const confirmMsg = (currentLang === 'ru')
+    ? `Вы действительно хотите удалить пресет «${presetName}»?`
+    : `Are you sure you want to delete preset "${presetName}"?`;
+
+  if (confirm(confirmMsg)) {
+    delete customSandboxPresets[presetName];
+    localStorage.setItem('pz_custom_sandbox_presets', JSON.stringify(customSandboxPresets));
+    fetch('/api/preferences', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ custom_sandbox_presets: customSandboxPresets })
+    }).catch(() => {});
+
+    populatePresetDropdown();
+    sel.value = '';
+    updatePresetDeleteBtn();
+    showToast((currentLang === 'ru')
+      ? `🗑️ Пресет «${presetName}» удален`
+      : `🗑️ Preset "${presetName}" deleted`
+    );
+  }
+}
+
+function setSpeedLimitPreset(val) {
+  const el = document.getElementById('sb-SpeedLimit');
+  if (el) el.value = val;
+  const iniEl = document.getElementById('ini-SpeedLimit');
+  if (iniEl) iniEl.value = val;
+  showToast((currentLang === 'ru')
+    ? `🚗 Лимит скорости: ${val === 0 ? 'Без ограничений' : val + ' км/ч'}`
+    : `🚗 Speed limit: ${val === 0 ? 'No limit' : val + ' km/h'}`
+  );
+}
+
+function gatherSandboxState() {
+  const getInt = (id, fallback) => {
+    const el = document.getElementById(id);
+    return el ? (parseInt(el.value) || fallback) : fallback;
+  };
+  const getFloat = (id, fallback) => {
+    const el = document.getElementById(id);
+    return el ? (parseFloat(el.value) || fallback) : fallback;
+  };
+  const getBool = (id, fallback) => {
+    const el = document.getElementById(id);
+    return el ? el.checked : fallback;
+  };
+
+  const data = {
+    ZombieLore: {
+      Speed: getInt('sb-ZombieLore-Speed', 2),
+      Strength: getInt('sb-ZombieLore-Strength', 2),
+      Toughness: getInt('sb-ZombieLore-Toughness', 2),
+      Transmission: getInt('sb-ZombieLore-Transmission', 1),
+      Mortality: getInt('sb-ZombieLore-Mortality', 5),
+      Reanimate: getInt('sb-ZombieLore-Reanimate', 3),
+      Cognition: getInt('sb-ZombieLore-Cognition', 3),
+      Memory: getInt('sb-ZombieLore-Memory', 2),
+      Sight: getInt('sb-ZombieLore-Sight', 2),
+      Hearing: getInt('sb-ZombieLore-Hearing', 2),
+      Smell: getInt('sb-ZombieLore-Smell', 2),
+      ActiveOnly: getInt('sb-ZombieLore-ActiveOnly', 1),
+      Decomposition: getInt('sb-ZombieLore-Decomposition', 2),
+      TriggerHouseAlarm: getBool('sb-ZombieLore-TriggerHouseAlarm', false),
+      ThumpOnConstruction: getBool('sb-ZombieLore-ThumpOnConstruction', true),
+      ThumpNoChasing: getBool('sb-ZombieLore-ThumpNoChasing', false),
+      ZombiesDragDown: getBool('sb-ZombieLore-ZombiesDragDown', true),
+      ZombiesFenceLunge: getBool('sb-ZombieLore-ZombiesFenceLunge', true)
+    },
+    ZombieConfig: {
+      PopulationMultiplier: getFloat('sb-ZombieConfig-PopulationMultiplier', 1.0),
+      PopulationPeakMultiplier: getFloat('sb-ZombieConfig-PopulationPeakMultiplier', 1.5),
+      PopulationPeakDay: getInt('sb-ZombieConfig-PopulationPeakDay', 28),
+      RespawnHours: getInt('sb-ZombieConfig-RespawnHours', 72),
+      RespawnMultiplier: getFloat('sb-ZombieConfig-RespawnMultiplier', 0.1),
+      RallyGroupSize: getInt('sb-ZombieConfig-RallyGroupSize', 20),
+      RallyGroupRadius: getInt('sb-ZombieConfig-RallyGroupRadius', 3),
+      RedistributeHours: getInt('sb-ZombieConfig-RedistributeHours', 12)
+    },
+    Loot: {
+      Weapon: getInt('sb-Loot-Weapon', 3),
+      RangedWeapon: getInt('sb-Loot-RangedWeapon', 3),
+      Ammo: getInt('sb-Loot-Ammo', 3),
+      Food: getInt('sb-Loot-Food', 3),
+      CannedFood: getInt('sb-Loot-CannedFood', 3),
+      Medical: getInt('sb-Loot-Medical', 3),
+      Literature: getInt('sb-Loot-Literature', 3),
+      SurvivalGears: getInt('sb-Loot-SurvivalGears', 3),
+      Mechanics: getInt('sb-Loot-Mechanics', 3),
+      Other: getInt('sb-Loot-Other', 3)
+    },
+    LootRespawn: getInt('sb-LootRespawn', 1),
+    MaxItemsForRespawn: getInt('sb-MaxItemsForRespawn', 4),
+    ConstructionPreventsLootRespawn: getBool('sb-ConstructionPreventsLootRespawn', true),
+    WaterShut: getInt('sb-WaterShut', 2),
+    ElecShut: getInt('sb-ElecShut', 2),
+
+    DayLength: getInt('sb-DayLength', 3),
+    StartYear: getInt('sb-StartYear', 1),
+    StartMonth: getInt('sb-StartMonth', 7),
+    StartDay: getInt('sb-StartDay', 9),
+    StartTime: getInt('sb-StartTime', 2),
+    Temperature: getInt('sb-Temperature', 3),
+    Rain: getInt('sb-Rain', 3),
+    ErosionSpeed: getInt('sb-ErosionSpeed', 3),
+    ErosionDays: getInt('sb-ErosionDays', 100),
+    Helicopter: getInt('sb-Helicopter', 2),
+    MetaEvent: getInt('sb-MetaEvent', 2),
+    NightDarkness: getInt('sb-NightDarkness', 3),
+    TimeSinceApo: getInt('sb-TimeSinceApo', 1),
+    NatureAbundance: getInt('sb-NatureAbundance', 3),
+    FireSpread: getBool('sb-FireSpread', true),
+
+    // Vehicles
+    EnableVehicles: getBool('sb-EnableVehicles', true),
+    CarSpawnRate: getInt('sb-CarSpawnRate', 3),
+    CarCondition: getInt('sb-CarCondition', 3),
+    RecentlySurvivorVehicles: getInt('sb-RecentlySurvivorVehicles', 3),
+    LockedCar: getInt('sb-LockedCar', 4),
+    VehicleEasyUse: getBool('sb-VehicleEasyUse', false),
+    TrafficJam: getBool('sb-TrafficJam', true),
+    SpeedLimit: getInt('sb-SpeedLimit', 70),
+    ZombieAttractionMultiplier: getFloat('sb-ZombieAttractionMultiplier', 1.0),
+    ChanceHasGas: getInt('sb-ChanceHasGas', 3),
+    InitialGas: getInt('sb-InitialGas', 2),
+    CarGasConsumption: getFloat('sb-CarGasConsumption', 1.0),
+    CarAlarm: getInt('sb-CarAlarm', 3),
+    SirenShutoffHours: getFloat('sb-SirenShutoffHours', 0.0),
+    CarDamageOnImpact: getInt('sb-CarDamageOnImpact', 3),
+    DamageToPlayerFromHitByCar: getInt('sb-DamageToPlayerFromHitByCar', 3),
+    PlayerDamageFromCarCrash: getBool('sb-PlayerDamageFromCarCrash', true),
+
+    // Character & Farming
+    XpMultiplier: getFloat('sb-XpMultiplier', 1.0),
+    CharacterFreePoints: getInt('sb-CharacterFreePoints', 0),
+    StatsDecrease: getInt('sb-StatsDecrease', 3),
+    Nutrition: getBool('sb-Nutrition', true),
+    FarmingSpeed: getInt('sb-FarmingSpeed', 3),
+    PlantResilience: getInt('sb-PlantResilience', 3),
+    PlantAbundance: getInt('sb-PlantAbundance', 3),
+    GeneratorSpawning: getInt('sb-GeneratorSpawning', 3),
+    GeneratorFuelConsumption: getFloat('sb-GeneratorFuelConsumption', 1.0)
+  };
+  return data;
+}
+
+function restoreSandboxState(data) {
+  const setVal = (id, v) => {
+    const el = document.getElementById(id);
+    if (el && v !== undefined && v !== null) {
+      if (el.type === 'checkbox') el.checked = Boolean(v);
+      else el.value = v;
+    }
+  };
+
+  if (data.ZombieLore) {
+    for (const [k, v] of Object.entries(data.ZombieLore)) {
+      setVal('sb-ZombieLore-' + k, v);
+    }
+  }
+  if (data.ZombieConfig) {
+    for (const [k, v] of Object.entries(data.ZombieConfig)) {
+      setVal('sb-ZombieConfig-' + k, v);
+    }
+  }
+  if (data.Loot) {
+    for (const [k, v] of Object.entries(data.Loot)) {
+      setVal('sb-Loot-' + k, v);
+    }
+  }
+
+  for (const [k, v] of Object.entries(data)) {
+    if (typeof v !== 'object') {
+      setVal('sb-' + k, v);
+    }
+  }
+}
+
+
 // ── Internationalization (Bilingual RU / EN System) ───────────────
 let currentLang = localStorage.getItem('pz_lang') || 'ru';
 
@@ -187,6 +453,21 @@ const TRANSLATIONS_WEB = {
     toast_settings_saved: "💾 Настройки сервера успешно сохранены!",
     toast_sandbox_saved: "💾 Параметры Sandbox успешно сохранены!",
     toast_mods_saved: "💾 Список модов сохранен!",
+    // Vehicles Extended
+    group_vehicle_spawn: "🚗 Появление и Состояние транспорта",
+    group_vehicle_physics: "⛽ Скорость, Топливо и Физика",
+    chk_enable_vehicles: "Включить транспорт в игровом мире (EnableVehicles)",
+    lbl_survivor_vehicles: "Машины недавних выживших с лутом (RecentlySurvivorVehicles):",
+    lbl_locked_cars: "Шанс запертых дверей авто (LockedCar):",
+    chk_vehicle_easy_use: "Легкое управление (без ключа зажигания и навыка взлома)",
+    chk_traffic_jam: "Заторы и пробки из разбитых машин на дорогах",
+    lbl_zombie_attraction: "Привлечение зомби шумом двигателя (ZombieAttractionMultiplier):",
+    lbl_siren_shutoff: "Время звучания сирен в часах (SirenShutoffHours, 0=до разряда):",
+    lbl_car_damage_impact: "Урон автомобилю при столкновении (CarDamageOnImpact):",
+    lbl_player_hit_damage: "Урон пешеходу при наезде автомобилем (DamageToPlayerFromHitByCar):",
+    chk_crash_damage: "Урон игроку при аварии на машине",
+    full: "Полный бак",
+    deadly: "Смертельный",
     toast_backup_created: "📦 Резервная копия успешно создана!"
   },
   en: {
@@ -373,6 +654,21 @@ const TRANSLATIONS_WEB = {
     toast_settings_saved: "💾 Server settings successfully saved!",
     toast_sandbox_saved: "💾 Sandbox parameters successfully saved!",
     toast_mods_saved: "💾 Mod list saved!",
+    // Vehicles Extended
+    group_vehicle_spawn: "🚗 Vehicle Spawn & Condition",
+    group_vehicle_physics: "⛽ Speed, Fuel & Physics",
+    chk_enable_vehicles: "Enable vehicles in world (EnableVehicles)",
+    lbl_survivor_vehicles: "Recently survivor vehicles with loot (RecentlySurvivorVehicles):",
+    lbl_locked_cars: "Locked car doors chance (LockedCar):",
+    chk_vehicle_easy_use: "Easy vehicle use (no key / hotwiring required)",
+    chk_traffic_jam: "Highway traffic jams and wrecks",
+    lbl_zombie_attraction: "Zombie engine noise attraction multiplier:",
+    lbl_siren_shutoff: "Emergency siren shutoff time in hours (0=until battery dead):",
+    lbl_car_damage_impact: "Vehicle damage multiplier on impact:",
+    lbl_player_hit_damage: "Pedestrian damage when hit by vehicle:",
+    chk_crash_damage: "Player damaged in vehicle crashes",
+    full: "Full Tank",
+    deadly: "Deadly",
     toast_backup_created: "📦 World backup created successfully!"
   }
 };
@@ -1038,16 +1334,24 @@ async function loadSandbox() {
     setVal('sb-NatureAbundance', sb.NatureAbundance);
     setVal('sb-FireSpread', sb.FireSpread);
 
-    // Subtab 4: Vehicles
-    setVal('sb-CarSpawnRate', sb.CarSpawnRate);
-    setVal('sb-CarCondition', sb.CarCondition);
-    setVal('sb-VehicleEasyUse', sb.VehicleEasyUse);
-    setVal('sb-TrafficJam', sb.TrafficJam);
-    setVal('sb-PlayerDamageFromCarCrash', sb.PlayerDamageFromCarCrash);
-    setVal('sb-ChanceHasGas', sb.ChanceHasGas);
-    setVal('sb-InitialGas', sb.InitialGas);
-    setVal('sb-CarGasConsumption', sb.CarGasConsumption);
-    setVal('sb-CarAlarm', sb.CarAlarm);
+    // Subtab 4: Vehicles (Complete Project Zomboid settings)
+    setVal('sb-EnableVehicles', sb.EnableVehicles !== false);
+    setVal('sb-CarSpawnRate', sb.CarSpawnRate || 3);
+    setVal('sb-CarCondition', sb.CarCondition || 3);
+    setVal('sb-RecentlySurvivorVehicles', sb.RecentlySurvivorVehicles || 3);
+    setVal('sb-LockedCar', sb.LockedCar || 4);
+    setVal('sb-VehicleEasyUse', Boolean(sb.VehicleEasyUse));
+    setVal('sb-TrafficJam', sb.TrafficJam !== false);
+    setVal('sb-SpeedLimit', sb.SpeedLimit || 70);
+    setVal('sb-ZombieAttractionMultiplier', sb.ZombieAttractionMultiplier !== undefined ? sb.ZombieAttractionMultiplier : 1.0);
+    setVal('sb-ChanceHasGas', sb.ChanceHasGas || 3);
+    setVal('sb-InitialGas', sb.InitialGas || 2);
+    setVal('sb-CarGasConsumption', sb.CarGasConsumption !== undefined ? sb.CarGasConsumption : 1.0);
+    setVal('sb-CarAlarm', sb.CarAlarm || 3);
+    setVal('sb-SirenShutoffHours', sb.SirenShutoffHours !== undefined ? sb.SirenShutoffHours : 0.0);
+    setVal('sb-CarDamageOnImpact', sb.CarDamageOnImpact || 3);
+    setVal('sb-DamageToPlayerFromHitByCar', sb.DamageToPlayerFromHitByCar || 3);
+    setVal('sb-PlayerDamageFromCarCrash', sb.PlayerDamageFromCarCrash !== false);
 
     // Subtab 5: Character & Skills
     setVal('sb-XpMultiplier', sb.XpMultiplier);
@@ -1268,16 +1572,28 @@ async function saveSandbox() {
   sb.NatureAbundance = getInt('sb-NatureAbundance', 3);
   sb.FireSpread = getBool('sb-FireSpread', true);
 
-  // Subtab 4: Vehicles
+  // Subtab 4: Vehicles (Complete settings)
+  sb.EnableVehicles = getBool('sb-EnableVehicles', true);
   sb.CarSpawnRate = getInt('sb-CarSpawnRate', 3);
   sb.CarCondition = getInt('sb-CarCondition', 3);
+  sb.RecentlySurvivorVehicles = getInt('sb-RecentlySurvivorVehicles', 3);
+  sb.LockedCar = getInt('sb-LockedCar', 4);
   sb.VehicleEasyUse = getBool('sb-VehicleEasyUse', false);
   sb.TrafficJam = getBool('sb-TrafficJam', true);
-  sb.PlayerDamageFromCarCrash = getBool('sb-PlayerDamageFromCarCrash', true);
+  sb.SpeedLimit = getInt('sb-SpeedLimit', 70);
+  sb.ZombieAttractionMultiplier = getFloat('sb-ZombieAttractionMultiplier', 1.0);
   sb.ChanceHasGas = getInt('sb-ChanceHasGas', 3);
   sb.InitialGas = getInt('sb-InitialGas', 2);
   sb.CarGasConsumption = getFloat('sb-CarGasConsumption', 1.0);
   sb.CarAlarm = getInt('sb-CarAlarm', 3);
+  sb.SirenShutoffHours = getFloat('sb-SirenShutoffHours', 0.0);
+  sb.CarDamageOnImpact = getInt('sb-CarDamageOnImpact', 3);
+  sb.DamageToPlayerFromHitByCar = getInt('sb-DamageToPlayerFromHitByCar', 3);
+  sb.PlayerDamageFromCarCrash = getBool('sb-PlayerDamageFromCarCrash', true);
+
+  // Synchronize SpeedLimit with Server INI
+  const iniSpeed = document.getElementById('ini-SpeedLimit');
+  if (iniSpeed) iniSpeed.value = sb.SpeedLimit;
 
   // Subtab 5: Character & Skills
   sb.XpMultiplier = getFloat('sb-XpMultiplier', 1.0);
