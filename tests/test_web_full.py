@@ -88,3 +88,15 @@ def test_web_settings_and_sandbox_api(temp_env):
     }, headers=headers)
     assert save_sb.status_code == 200
     assert save_sb.json()["success"] is True
+
+def test_web_sandbox_subtabs_exist():
+    index_path = Path("web/static/index.html")
+    content = index_path.read_text(encoding="utf-8")
+    subtabs = [
+        "subtab-btn-zombies", "subtab-btn-loot", "subtab-btn-world",
+        "subtab-btn-vehicles", "subtab-btn-character", "subtab-btn-mods",
+        "sandbox-subtab-zombies", "sandbox-subtab-loot", "sandbox-subtab-world",
+        "sandbox-subtab-vehicles", "sandbox-subtab-character", "sandbox-subtab-mods"
+    ]
+    for s in subtabs:
+        assert s in content, f"Missing {s} in index.html"

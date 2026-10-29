@@ -493,8 +493,27 @@ async function saveSettings() {
   }
 }
 
-// ── SandboxVars ───────────────────────────────────────────────────
+// ── SandboxVars Subtabs & Management ──────────────────────────────
 let cachedSandboxData = {};
+let currentSandboxSubtab = 'zombies';
+
+function switchSandboxSubtab(name) {
+  currentSandboxSubtab = name;
+  document.querySelectorAll('.subtab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.subtab-panel').forEach(panel => panel.classList.remove('active'));
+
+  const btn = document.getElementById(`subtab-btn-${name}`);
+  if (btn) btn.classList.add('active');
+
+  const panel = document.getElementById(`sandbox-subtab-${name}`);
+  if (panel) panel.classList.add('active');
+}
+
+function setXpPreset(val) {
+  const el = document.getElementById('sb-XpMultiplier');
+  if (el) el.value = val;
+  showToast(`⚡ Множитель опыта установлен: ${val}x`);
+}
 
 async function loadSandbox() {
   try {
@@ -504,9 +523,16 @@ async function loadSandbox() {
 
     const setVal = (id, v) => {
       const el = document.getElementById(id);
-      if (el && v !== undefined && v !== null) el.value = v;
+      if (el && v !== undefined && v !== null) {
+        if (el.type === 'checkbox') {
+          el.checked = Boolean(v);
+        } else {
+          el.value = v;
+        }
+      }
     };
 
+    // Subtab 1: ZombieLore
     if (sb.ZombieLore) {
       setVal('sb-ZombieLore-Speed', sb.ZombieLore.Speed);
       setVal('sb-ZombieLore-Strength', sb.ZombieLore.Strength);
@@ -515,24 +541,199 @@ async function loadSandbox() {
       setVal('sb-ZombieLore-Mortality', sb.ZombieLore.Mortality);
       setVal('sb-ZombieLore-Reanimate', sb.ZombieLore.Reanimate);
       setVal('sb-ZombieLore-Cognition', sb.ZombieLore.Cognition);
+      setVal('sb-ZombieLore-Memory', sb.ZombieLore.Memory);
+      setVal('sb-ZombieLore-Sight', sb.ZombieLore.Sight);
+      setVal('sb-ZombieLore-Hearing', sb.ZombieLore.Hearing);
+      setVal('sb-ZombieLore-Smell', sb.ZombieLore.Smell);
+      setVal('sb-ZombieLore-ActiveOnly', sb.ZombieLore.ActiveOnly);
+      setVal('sb-ZombieLore-TriggerHouseAlarm', sb.ZombieLore.TriggerHouseAlarm);
+      setVal('sb-ZombieLore-ThumpOnConstruction', sb.ZombieLore.ThumpOnConstruction);
+      setVal('sb-ZombieLore-ThumpNoChasing', sb.ZombieLore.ThumpNoChasing);
+      setVal('sb-ZombieLore-ZombiesDragDown', sb.ZombieLore.ZombiesDragDown);
+      setVal('sb-ZombieLore-ZombiesFenceLunge', sb.ZombieLore.ZombiesFenceLunge);
     }
+
+    // Subtab 1: ZombieConfig
+    if (sb.ZombieConfig) {
+      setVal('sb-ZombieConfig-PopulationMultiplier', sb.ZombieConfig.PopulationMultiplier);
+      setVal('sb-ZombieConfig-PopulationPeakMultiplier', sb.ZombieConfig.PopulationPeakMultiplier);
+      setVal('sb-ZombieConfig-PopulationPeakDay', sb.ZombieConfig.PopulationPeakDay);
+      setVal('sb-ZombieConfig-RespawnHours', sb.ZombieConfig.RespawnHours);
+      setVal('sb-ZombieConfig-RespawnMultiplier', sb.ZombieConfig.RespawnMultiplier);
+    }
+
+    // Subtab 2: Loot
     if (sb.Loot) {
-      setVal('sb-Loot-Food', sb.Loot.Food);
       setVal('sb-Loot-Weapon', sb.Loot.Weapon);
-      setVal('sb-Loot-Literature', sb.Loot.Literature);
+      setVal('sb-Loot-RangedWeapon', sb.Loot.RangedWeapon);
+      setVal('sb-Loot-Ammo', sb.Loot.Ammo);
+      setVal('sb-Loot-Food', sb.Loot.Food);
+      setVal('sb-Loot-CannedFood', sb.Loot.CannedFood);
       setVal('sb-Loot-Medical', sb.Loot.Medical);
+      setVal('sb-Loot-Literature', sb.Loot.Literature);
       setVal('sb-Loot-SurvivalGears', sb.Loot.SurvivalGears);
       setVal('sb-Loot-Mechanics', sb.Loot.Mechanics);
       setVal('sb-Loot-Other', sb.Loot.Other);
     }
+    setVal('sb-LootRespawn', sb.LootRespawn);
+    setVal('sb-MaxItemsForRespawn', sb.MaxItemsForRespawn);
+    setVal('sb-ConstructionPreventsLootRespawn', sb.ConstructionPreventsLootRespawn);
     setVal('sb-WaterShut', sb.WaterShut);
     setVal('sb-ElecShut', sb.ElecShut);
+
+    // Subtab 3: World & Time
+    setVal('sb-DayLength', sb.DayLength);
+    setVal('sb-StartYear', sb.StartYear);
+    setVal('sb-StartMonth', sb.StartMonth);
+    setVal('sb-StartDay', sb.StartDay);
+    setVal('sb-StartTime', sb.StartTime);
+    setVal('sb-Temperature', sb.Temperature);
+    setVal('sb-Rain', sb.Rain);
+    setVal('sb-ErosionSpeed', sb.ErosionSpeed);
+    setVal('sb-ErosionDays', sb.ErosionDays);
+    setVal('sb-Helicopter', sb.Helicopter);
+    setVal('sb-MetaEvent', sb.MetaEvent);
+
+    // Subtab 4: Vehicles
     setVal('sb-CarSpawnRate', sb.CarSpawnRate);
+    setVal('sb-CarCondition', sb.CarCondition);
+    setVal('sb-VehicleEasyUse', sb.VehicleEasyUse);
+    setVal('sb-TrafficJam', sb.TrafficJam);
+    setVal('sb-PlayerDamageFromCarCrash', sb.PlayerDamageFromCarCrash);
+    setVal('sb-ChanceHasGas', sb.ChanceHasGas);
     setVal('sb-InitialGas', sb.InitialGas);
+    setVal('sb-CarGasConsumption', sb.CarGasConsumption);
+    setVal('sb-CarAlarm', sb.CarAlarm);
+
+    // Subtab 5: Character & Skills
     setVal('sb-XpMultiplier', sb.XpMultiplier);
+    setVal('sb-CharacterFreePoints', sb.CharacterFreePoints);
+    setVal('sb-StatsDecrease', sb.StatsDecrease);
+    setVal('sb-Nutrition', sb.Nutrition);
+    setVal('sb-FarmingSpeed', sb.FarmingSpeed);
+    setVal('sb-PlantResilience', sb.PlantResilience);
+    setVal('sb-PlantAbundance', sb.PlantAbundance);
+    setVal('sb-GeneratorSpawning', sb.GeneratorSpawning);
+    setVal('sb-GeneratorFuelConsumption', sb.GeneratorFuelConsumption);
+
+    // Subtab 6: Mod Sandbox Options
+    renderModSandboxOptions(sb);
   } catch (e) {
     console.error('Load sandbox error:', e);
   }
+}
+
+function renderModSandboxOptions(sb) {
+  const container = document.getElementById('sandbox-mods-dynamic-container');
+  const countLbl = document.getElementById('sandbox-mod-count');
+  if (!container) return;
+
+  const vanillaTables = new Set(['ZombieLore', 'ZombieConfig', 'MultiplierConfig', 'Map', 'Basement', 'SandboxVars', 'Loot']);
+  const modTables = Object.entries(sb).filter(([k, v]) => typeof v === 'object' && v !== null && !Array.isArray(v) && !vanillaTables.has(k));
+
+  if (modTables.length === 0) {
+    container.innerHTML = `
+      <div style="color: var(--text-muted); padding: 24px 16px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;">
+        <div style="font-size: 24px; margin-bottom: 8px;">🧩</div>
+        <div style="font-weight: 600; color: #cbd5e1;">Таблицы модов не обнаружены в текущем SandboxVars.lua</div>
+        <div style="font-size: 12px; margin-top: 4px;">При установке модов с опциями песочницы (например Brita, KI5) их параметры автоматически появятся здесь.</div>
+      </div>
+    `;
+    if (countLbl) countLbl.textContent = 'Опций модов: 0';
+    return;
+  }
+
+  let totalOptions = 0;
+  container.innerHTML = '';
+
+  modTables.forEach(([tableName, options]) => {
+    const card = document.createElement('div');
+    card.className = 'mod-option-card';
+    card.dataset.modTable = tableName;
+
+    const title = document.createElement('div');
+    title.style.cssText = 'font-weight: 700; font-size: 13.5px; color: #4ea8de; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;';
+    title.innerHTML = `<span>⚙️</span> <span>Мод: ${tableName}</span>`;
+    card.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.className = 'row';
+    grid.style.rowGap = '10px';
+
+    Object.entries(options).forEach(([optKey, optVal]) => {
+      totalOptions++;
+      const col = document.createElement('div');
+      col.className = 'col';
+      col.style.minWidth = '220px';
+      col.dataset.optSearch = `${tableName} ${optKey}`.toLowerCase();
+
+      const fg = document.createElement('div');
+      fg.className = 'form-group';
+      fg.style.marginBottom = '6px';
+
+      const lbl = document.createElement('label');
+      lbl.textContent = optKey + ':';
+      fg.appendChild(lbl);
+
+      if (typeof optVal === 'boolean') {
+        const chkLbl = document.createElement('label');
+        chkLbl.className = 'custom-checkbox-label';
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = optVal;
+        chk.dataset.modTable = tableName;
+        chk.dataset.modKey = optKey;
+        chkLbl.appendChild(chk);
+        const span = document.createElement('span');
+        span.textContent = optVal ? 'Включено (True)' : 'Отключено (False)';
+        chk.onchange = () => { span.textContent = chk.checked ? 'Включено (True)' : 'Отключено (False)'; };
+        chkLbl.appendChild(span);
+        fg.appendChild(chkLbl);
+      } else if (typeof optVal === 'number') {
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.className = 'form-control';
+        inp.value = optVal;
+        inp.dataset.modTable = tableName;
+        inp.dataset.modKey = optKey;
+        if (Number.isInteger(optVal)) {
+          inp.step = '1';
+        } else {
+          inp.step = '0.1';
+        }
+        fg.appendChild(inp);
+      } else {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'form-control';
+        inp.value = String(optVal);
+        inp.dataset.modTable = tableName;
+        inp.dataset.modKey = optKey;
+        fg.appendChild(inp);
+      }
+
+      col.appendChild(fg);
+      grid.appendChild(col);
+    });
+
+    card.appendChild(grid);
+    container.appendChild(card);
+  });
+
+  if (countLbl) countLbl.textContent = `Таблиц модов: ${modTables.length} (${totalOptions} параметров)`;
+}
+
+function filterModSandboxOptions(query) {
+  const q = (query || '').toLowerCase().trim();
+  document.querySelectorAll('.mod-option-card').forEach(card => {
+    let hasVisibleCol = false;
+    card.querySelectorAll('[data-opt-search]').forEach(col => {
+      const match = !q || col.dataset.optSearch.includes(q);
+      col.style.display = match ? '' : 'none';
+      if (match) hasVisibleCol = true;
+    });
+    card.style.display = hasVisibleCol ? '' : 'none';
+  });
 }
 
 async function saveSandbox() {
@@ -544,9 +745,14 @@ async function saveSandbox() {
     const el = document.getElementById(id);
     return el ? (parseFloat(el.value) || fallback) : fallback;
   };
+  const getBool = (id, fallback) => {
+    const el = document.getElementById(id);
+    return el ? el.checked : fallback;
+  };
 
   const sb = { ...cachedSandboxData };
 
+  // Subtab 1: ZombieLore & ZombieConfig
   sb.ZombieLore = {
     ...(sb.ZombieLore || {}),
     Speed: getInt('sb-ZombieLore-Speed', 2),
@@ -556,24 +762,95 @@ async function saveSandbox() {
     Mortality: getInt('sb-ZombieLore-Mortality', 5),
     Reanimate: getInt('sb-ZombieLore-Reanimate', 3),
     Cognition: getInt('sb-ZombieLore-Cognition', 3),
+    Memory: getInt('sb-ZombieLore-Memory', 2),
+    Sight: getInt('sb-ZombieLore-Sight', 2),
+    Hearing: getInt('sb-ZombieLore-Hearing', 2),
+    Smell: getInt('sb-ZombieLore-Smell', 2),
+    ActiveOnly: getInt('sb-ZombieLore-ActiveOnly', 1),
+    TriggerHouseAlarm: getBool('sb-ZombieLore-TriggerHouseAlarm', false),
+    ThumpOnConstruction: getBool('sb-ZombieLore-ThumpOnConstruction', true),
+    ThumpNoChasing: getBool('sb-ZombieLore-ThumpNoChasing', false),
+    ZombiesDragDown: getBool('sb-ZombieLore-ZombiesDragDown', true),
+    ZombiesFenceLunge: getBool('sb-ZombieLore-ZombiesFenceLunge', true),
   };
 
+  sb.ZombieConfig = {
+    ...(sb.ZombieConfig || {}),
+    PopulationMultiplier: getFloat('sb-ZombieConfig-PopulationMultiplier', 1.0),
+    PopulationPeakMultiplier: getFloat('sb-ZombieConfig-PopulationPeakMultiplier', 1.5),
+    PopulationPeakDay: getInt('sb-ZombieConfig-PopulationPeakDay', 28),
+    RespawnHours: getInt('sb-ZombieConfig-RespawnHours', 72),
+    RespawnMultiplier: getFloat('sb-ZombieConfig-RespawnMultiplier', 0.1),
+  };
+
+  // Subtab 2: Loot
   sb.Loot = {
     ...(sb.Loot || {}),
-    Food: getInt('sb-Loot-Food', 3),
     Weapon: getInt('sb-Loot-Weapon', 3),
-    Literature: getInt('sb-Loot-Literature', 3),
+    RangedWeapon: getInt('sb-Loot-RangedWeapon', 3),
+    Ammo: getInt('sb-Loot-Ammo', 3),
+    Food: getInt('sb-Loot-Food', 3),
+    CannedFood: getInt('sb-Loot-CannedFood', 3),
     Medical: getInt('sb-Loot-Medical', 3),
+    Literature: getInt('sb-Loot-Literature', 3),
     SurvivalGears: getInt('sb-Loot-SurvivalGears', 3),
     Mechanics: getInt('sb-Loot-Mechanics', 3),
     Other: getInt('sb-Loot-Other', 3),
   };
+  sb.LootRespawn = getInt('sb-LootRespawn', 1);
+  sb.MaxItemsForRespawn = getInt('sb-MaxItemsForRespawn', 4);
+  sb.ConstructionPreventsLootRespawn = getBool('sb-ConstructionPreventsLootRespawn', true);
+  sb.WaterShut = getInt('sb-WaterShut', 2);
+  sb.ElecShut = getInt('sb-ElecShut', 2);
 
-  if (document.getElementById('sb-WaterShut')) sb.WaterShut = getInt('sb-WaterShut', 2);
-  if (document.getElementById('sb-ElecShut')) sb.ElecShut = getInt('sb-ElecShut', 2);
-  if (document.getElementById('sb-CarSpawnRate')) sb.CarSpawnRate = getInt('sb-CarSpawnRate', 3);
-  if (document.getElementById('sb-InitialGas')) sb.InitialGas = getInt('sb-InitialGas', 2);
-  if (document.getElementById('sb-XpMultiplier')) sb.XpMultiplier = getFloat('sb-XpMultiplier', 1.0);
+  // Subtab 3: World & Time
+  sb.DayLength = getInt('sb-DayLength', 3);
+  sb.StartYear = getInt('sb-StartYear', 1);
+  sb.StartMonth = getInt('sb-StartMonth', 7);
+  sb.StartDay = getInt('sb-StartDay', 9);
+  sb.StartTime = getInt('sb-StartTime', 2);
+  sb.Temperature = getInt('sb-Temperature', 3);
+  sb.Rain = getInt('sb-Rain', 3);
+  sb.ErosionSpeed = getInt('sb-ErosionSpeed', 3);
+  sb.ErosionDays = getInt('sb-ErosionDays', 100);
+  sb.Helicopter = getInt('sb-Helicopter', 2);
+  sb.MetaEvent = getInt('sb-MetaEvent', 2);
+
+  // Subtab 4: Vehicles
+  sb.CarSpawnRate = getInt('sb-CarSpawnRate', 3);
+  sb.CarCondition = getInt('sb-CarCondition', 3);
+  sb.VehicleEasyUse = getBool('sb-VehicleEasyUse', false);
+  sb.TrafficJam = getBool('sb-TrafficJam', true);
+  sb.PlayerDamageFromCarCrash = getBool('sb-PlayerDamageFromCarCrash', true);
+  sb.ChanceHasGas = getInt('sb-ChanceHasGas', 3);
+  sb.InitialGas = getInt('sb-InitialGas', 2);
+  sb.CarGasConsumption = getFloat('sb-CarGasConsumption', 1.0);
+  sb.CarAlarm = getInt('sb-CarAlarm', 3);
+
+  // Subtab 5: Character & Skills
+  sb.XpMultiplier = getFloat('sb-XpMultiplier', 1.0);
+  sb.CharacterFreePoints = getInt('sb-CharacterFreePoints', 0);
+  sb.StatsDecrease = getInt('sb-StatsDecrease', 3);
+  sb.Nutrition = getBool('sb-Nutrition', true);
+  sb.FarmingSpeed = getInt('sb-FarmingSpeed', 3);
+  sb.PlantResilience = getInt('sb-PlantResilience', 3);
+  sb.PlantAbundance = getInt('sb-PlantAbundance', 3);
+  sb.GeneratorSpawning = getInt('sb-GeneratorSpawning', 3);
+  sb.GeneratorFuelConsumption = getFloat('sb-GeneratorFuelConsumption', 1.0);
+
+  // Subtab 6: Mod Sandbox Options
+  document.querySelectorAll('[data-mod-table][data-mod-key]').forEach(el => {
+    const t = el.dataset.modTable;
+    const k = el.dataset.modKey;
+    if (!sb[t]) sb[t] = {};
+    if (el.type === 'checkbox') {
+      sb[t][k] = el.checked;
+    } else if (el.type === 'number') {
+      sb[t][k] = el.step === '1' ? parseInt(el.value) || 0 : parseFloat(el.value) || 0;
+    } else {
+      sb[t][k] = el.value;
+    }
+  });
 
   const res = await fetch('/api/sandbox', {
     method: 'POST',
@@ -607,6 +884,8 @@ function applySandboxPreset(preset) {
     setVal('sb-Loot-SurvivalGears', '2');
     setVal('sb-Loot-Mechanics', '2');
     setVal('sb-Loot-Other', '2');
+    setVal('sb-XpMultiplier', '1.0');
+    setVal('sb-CarSpawnRate', '2');
   } else if (preset === 'survivor') {
     setVal('sb-ZombieLore-Speed', '2');
     setVal('sb-ZombieLore-Strength', '2');
@@ -619,6 +898,8 @@ function applySandboxPreset(preset) {
     setVal('sb-Loot-SurvivalGears', '3');
     setVal('sb-Loot-Mechanics', '3');
     setVal('sb-Loot-Other', '3');
+    setVal('sb-XpMultiplier', '1.0');
+    setVal('sb-CarSpawnRate', '3');
   } else if (preset === 'builder') {
     setVal('sb-ZombieLore-Speed', '3');
     setVal('sb-ZombieLore-Strength', '3');
@@ -631,6 +912,8 @@ function applySandboxPreset(preset) {
     setVal('sb-Loot-SurvivalGears', '4');
     setVal('sb-Loot-Mechanics', '4');
     setVal('sb-Loot-Other', '4');
+    setVal('sb-XpMultiplier', '1.5');
+    setVal('sb-CarSpawnRate', '4');
   }
   if (preset) showToast(`Применен пресет: ${preset}`);
 }

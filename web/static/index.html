@@ -382,9 +382,10 @@
     <!-- ── TAB 3: SANDBOX ── -->
     <div id="tab-sandbox" class="tab-panel">
       <div class="card">
+        <!-- Top Toolbar with Presets & Save Button -->
         <div class="card-title">
-          <span>🧟 Параметры мира (SandboxVars.lua)</span>
-          <div style="display: flex; gap: 10px; align-items: center;">
+          <span>🧟 Параметры песочницы (SandboxVars.lua)</span>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
             <select id="sandbox-preset" class="form-control" style="width: 180px;" onchange="applySandboxPreset(this.value)">
               <option value="">-- Пресеты сложности --</option>
               <option value="apocalypse">💀 Апокалипсис</option>
@@ -395,220 +396,630 @@
           </div>
         </div>
 
-        <div class="row">
-          <!-- Col 1: ZombieLore -->
-          <div class="col">
-            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
-              🧟 Зомби (ZombieLore)
-            </h4>
-            <div class="form-group">
-              <label>Скорость зомби (Speed):</label>
-              <select id="sb-ZombieLore-Speed" class="form-control">
-                <option value="1">Спринтеры (Sprinters)</option>
-                <option value="2" selected>Быстрые ходячие (Fast Shamblers)</option>
-                <option value="3">Медленные ходячие (Shamblers)</option>
-                <option value="4">Случайно (Random)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Сила зомби (Strength):</label>
-              <select id="sb-ZombieLore-Strength" class="form-control">
-                <option value="1">Сверхчеловеческая</option>
-                <option value="2" selected>Обычная</option>
-                <option value="3">Слабая</option>
-                <option value="4">Случайно</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Живучесть зомби (Toughness):</label>
-              <select id="sb-ZombieLore-Toughness" class="form-control">
-                <option value="1">Высокая</option>
-                <option value="2" selected>Обычная</option>
-                <option value="3">Хрупкая</option>
-                <option value="4">Случайно</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Передача инфекции (Transmission):</label>
-              <select id="sb-ZombieLore-Transmission" class="form-control">
-                <option value="1" selected>Кровь и слюна (Blood + Saliva)</option>
-                <option value="2">Только слюна / укус (Saliva Only)</option>
-                <option value="3">Все заражены (Everyone's Infected)</option>
-                <option value="4">Отключена (None)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Смерть от заражения (Mortality):</label>
-              <select id="sb-ZombieLore-Mortality" class="form-control">
-                <option value="1">Мгновенно</option>
-                <option value="2">0-30 секунд</option>
-                <option value="3">0-1 минута</option>
-                <option value="4">0-12 часов</option>
-                <option value="5" selected>2-3 дня</option>
-                <option value="6">1-2 недели</option>
-                <option value="7">Никогда</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Время подъема мертвеца (Reanimate):</label>
-              <select id="sb-ZombieLore-Reanimate" class="form-control">
-                <option value="1">Мгновенно</option>
-                <option value="2">0-30 секунд</option>
-                <option value="3" selected>0-1 минута</option>
-                <option value="4">0-12 часов</option>
-                <option value="5">2-3 дня</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Интеллект зомби (Cognition):</label>
-              <select id="sb-ZombieLore-Cognition" class="form-control">
-                <option value="1">Открывают двери</option>
-                <option value="2">Обычный навигатор</option>
-                <option value="3" selected>Базовый</option>
-              </select>
-            </div>
-          </div>
+        <!-- Secondary Sub-tab Navigation (Matching Desktop App) -->
+        <div class="subtab-nav">
+          <button class="subtab-btn active" id="subtab-btn-zombies" onclick="switchSandboxSubtab('zombies')">🧟 Зомби и Популяция</button>
+          <button class="subtab-btn" id="subtab-btn-loot" onclick="switchSandboxSubtab('loot')">📦 Ресурсы и Лут</button>
+          <button class="subtab-btn" id="subtab-btn-world" onclick="switchSandboxSubtab('world')">🌍 Мир и Время</button>
+          <button class="subtab-btn" id="subtab-btn-vehicles" onclick="switchSandboxSubtab('vehicles')">🚗 Транспорт</button>
+          <button class="subtab-btn" id="subtab-btn-character" onclick="switchSandboxSubtab('character')">👤 Персонаж и Навыки</button>
+          <button class="subtab-btn" id="subtab-btn-mods" onclick="switchSandboxSubtab('mods')">🧩 Настройки модов</button>
+        </div>
 
-          <!-- Col 2: Loot Rarity -->
-          <div class="col">
-            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
-              📦 Спавн лута (Loot Rarity)
-            </h4>
-            <div class="form-group">
-              <label>Продукты питания (Food):</label>
-              <select id="sb-Loot-Food" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
+        <!-- Subtab 1: Зомби и Популяция -->
+        <div id="sandbox-subtab-zombies" class="subtab-panel active">
+          <div class="row">
+            <div class="col">
+              <h4 class="subtab-section-header">🧟 Базовые характеристики зомби (ZombieLore)</h4>
+              <div class="form-group">
+                <label>Скорость зомби (Speed):</label>
+                <select id="sb-ZombieLore-Speed" class="form-control">
+                  <option value="1">Спринтеры (Sprinters)</option>
+                  <option value="2" selected>Быстрые ходячие (Fast Shamblers)</option>
+                  <option value="3">Медленные ходячие (Shamblers)</option>
+                  <option value="4">Случайно (Random)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Сила зомби (Strength):</label>
+                <select id="sb-ZombieLore-Strength" class="form-control">
+                  <option value="1">Сверхчеловеческая</option>
+                  <option value="2" selected>Обычная</option>
+                  <option value="3">Слабая</option>
+                  <option value="4">Случайно</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Живучесть зомби (Toughness):</label>
+                <select id="sb-ZombieLore-Toughness" class="form-control">
+                  <option value="1">Высокая</option>
+                  <option value="2" selected>Обычная</option>
+                  <option value="3">Хрупкая</option>
+                  <option value="4">Случайно</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Передача инфекции (Transmission):</label>
+                <select id="sb-ZombieLore-Transmission" class="form-control">
+                  <option value="1" selected>Кровь и слюна (Blood + Saliva)</option>
+                  <option value="2">Только слюна / укус (Saliva Only)</option>
+                  <option value="3">Все заражены (Everyone's Infected)</option>
+                  <option value="4">Отключена (None)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Смерть от заражения (Mortality):</label>
+                <select id="sb-ZombieLore-Mortality" class="form-control">
+                  <option value="1">Мгновенно</option>
+                  <option value="2">0-30 секунд</option>
+                  <option value="3">0-1 минута</option>
+                  <option value="4">0-12 часов</option>
+                  <option value="5" selected>2-3 дня</option>
+                  <option value="6">1-2 недели</option>
+                  <option value="7">Никогда</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Время подъема мертвеца (Reanimate):</label>
+                <select id="sb-ZombieLore-Reanimate" class="form-control">
+                  <option value="1">Мгновенно</option>
+                  <option value="2">0-30 секунд</option>
+                  <option value="3" selected>0-1 минута</option>
+                  <option value="4">0-12 часов</option>
+                  <option value="5">2-3 дня</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Интеллект зомби (Cognition):</label>
+                <select id="sb-ZombieLore-Cognition" class="form-control">
+                  <option value="1">Открывают двери</option>
+                  <option value="2">Обычный навигатор</option>
+                  <option value="3" selected>Базовый</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Память зомби (Memory):</label>
+                <select id="sb-ZombieLore-Memory" class="form-control">
+                  <option value="1">Долгая</option>
+                  <option value="2" selected>Обычная</option>
+                  <option value="3">Короткая</option>
+                  <option value="4">Отсутствует</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Зрение зомби (Sight):</label>
+                <select id="sb-ZombieLore-Sight" class="form-control">
+                  <option value="1">Орлиное</option>
+                  <option value="2" selected>Обычное</option>
+                  <option value="3">Плохое</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Слух зомби (Hearing):</label>
+                <select id="sb-ZombieLore-Hearing" class="form-control">
+                  <option value="1">Чуткий</option>
+                  <option value="2" selected>Обычный</option>
+                  <option value="3">Плохой</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Обоняние зомби (Smell):</label>
+                <select id="sb-ZombieLore-Smell" class="form-control">
+                  <option value="1">Острое</option>
+                  <option value="2" selected>Обычное</option>
+                  <option value="3">Плохое</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Время активности (ActiveOnly):</label>
+                <select id="sb-ZombieLore-ActiveOnly" class="form-control">
+                  <option value="1" selected>И днем и ночью</option>
+                  <option value="2">Только ночью</option>
+                  <option value="3">Только днем</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group">
-              <label>Оружие и патроны (Weapon):</label>
-              <select id="sb-Loot-Weapon" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Книги и литература (Literature):</label>
-              <select id="sb-Loot-Literature" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Медикаменты (Medical):</label>
-              <select id="sb-Loot-Medical" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Снаряжение для выживания (SurvivalGears):</label>
-              <select id="sb-Loot-SurvivalGears" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Автозапчасти и механика (Mechanics):</label>
-              <select id="sb-Loot-Mechanics" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Прочие предметы (Other):</label>
-              <select id="sb-Loot-Other" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
+
+            <div class="col">
+              <h4 class="subtab-section-header">👥 Популяция и Поведение орды (ZombieConfig)</h4>
+              <div class="form-group">
+                <label>Множитель популяции (PopulationMultiplier):</label>
+                <input type="number" id="sb-ZombieConfig-PopulationMultiplier" class="form-control" value="1.0" step="0.1" min="0.0" max="4.0">
+              </div>
+              <div class="form-group">
+                <label>Пиковый множитель популяции (PopulationPeakMultiplier):</label>
+                <input type="number" id="sb-ZombieConfig-PopulationPeakMultiplier" class="form-control" value="1.5" step="0.1" min="0.0" max="4.0">
+              </div>
+              <div class="form-group">
+                <label>День пика популяции (PopulationPeakDay):</label>
+                <input type="number" id="sb-ZombieConfig-PopulationPeakDay" class="form-control" value="28" min="1" max="365">
+              </div>
+              <div class="form-group">
+                <label>Период респауна в часах (RespawnHours, 0=откл):</label>
+                <input type="number" id="sb-ZombieConfig-RespawnHours" class="form-control" value="72" min="0" max="8760">
+              </div>
+              <div class="form-group">
+                <label>Доля респауна от популяции (RespawnMultiplier):</label>
+                <input type="number" id="sb-ZombieConfig-RespawnMultiplier" class="form-control" value="0.1" step="0.05" min="0.0" max="1.0">
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 16px;">
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-ZombieLore-TriggerHouseAlarm">
+                  <span>Зомби вызывают сигнализацию в домах</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-ZombieLore-ThumpOnConstruction" checked>
+                  <span>Зомби атакуют постройки игроков</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-ZombieLore-ThumpNoChasing">
+                  <span>Атаковать двери/стены без преследования</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-ZombieLore-ZombiesDragDown" checked>
+                  <span>Заваливание игрока толпой (Drag Down)</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-ZombieLore-ZombiesFenceLunge" checked>
+                  <span>Выпад через забор в падении (Fence Lunge)</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Row 2: World & Vehicles -->
-        <div class="row" style="margin-top: 16px;">
-          <div class="col">
-            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
-              🌍 Окружающий мир
-            </h4>
-            <div class="form-group">
-              <label>Отключение водоснабжения (WaterShut):</label>
-              <select id="sb-WaterShut" class="form-control">
-                <option value="1">Мгновенно</option>
-                <option value="2" selected>0-30 дней</option>
-                <option value="3">0-2 месяца</option>
-                <option value="4">0-6 месяцев</option>
-                <option value="5">0-1 год</option>
-                <option value="6">0-5 лет</option>
-                <option value="7">2-6 месяцев</option>
-                <option value="8">Никогда</option>
-              </select>
+        <!-- Subtab 2: Ресурсы и Лут -->
+        <div id="sandbox-subtab-loot" class="subtab-panel">
+          <div class="row">
+            <div class="col">
+              <h4 class="subtab-section-header">📦 Редкость предметов (Loot Rarity)</h4>
+              <div class="form-group">
+                <label>Оружие ближнего боя (Weapon):</label>
+                <select id="sb-Loot-Weapon" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Изобилие</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Огнестрельное оружие (RangedWeapon):</label>
+                <select id="sb-Loot-RangedWeapon" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Изобилие</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Боеприпасы (Ammo):</label>
+                <select id="sb-Loot-Ammo" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Изобилие</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Свежая еда (Food):</label>
+                <select id="sb-Loot-Food" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Изобилие</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Консервы (CannedFood):</label>
+                <select id="sb-Loot-CannedFood" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Изобилие</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Медикаменты (Medical):</label>
+                <select id="sb-Loot-Medical" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Изобилие</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Книги и литература (Literature):</label>
+                <select id="sb-Loot-Literature" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Изобилие</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Снаряжение для выживания (SurvivalGears):</label>
+                <select id="sb-Loot-SurvivalGears" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Изобилие</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Автозапчасти и механика (Mechanics):</label>
+                <select id="sb-Loot-Mechanics" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Изобилие</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Прочий лут (Other):</label>
+                <select id="sb-Loot-Other" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Изобилие</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group">
-              <label>Отключение электричества (ElecShut):</label>
-              <select id="sb-ElecShut" class="form-control">
-                <option value="1">Мгновенно</option>
-                <option value="2" selected>0-30 дней</option>
-                <option value="3">0-2 месяца</option>
-                <option value="4">0-6 месяцев</option>
-                <option value="5">0-1 год</option>
-                <option value="6">0-5 лет</option>
-                <option value="7">2-6 месяцев</option>
-                <option value="8">Никогда</option>
-              </select>
+
+            <div class="col">
+              <h4 class="subtab-section-header">🔄 Респаун лута и Снабжение</h4>
+              <div class="form-group">
+                <label>Периодичность респауна лута:</label>
+                <select id="sb-LootRespawn" class="form-control">
+                  <option value="1" selected>Отключен (Не респаунится)</option>
+                  <option value="2">Каждый день</option>
+                  <option value="3">Каждую неделю</option>
+                  <option value="4">Каждый месяц</option>
+                  <option value="5">Каждые 2 месяца</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Максимум предметов в контейнере для респауна:</label>
+                <input type="number" id="sb-MaxItemsForRespawn" class="form-control" value="4" min="1" max="100">
+              </div>
+              <div style="margin-bottom: 16px;">
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-ConstructionPreventsLootRespawn" checked>
+                  <span>Постройки игроков блокируют респаун лута</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label>Отключение водоснабжения (WaterShut):</label>
+                <select id="sb-WaterShut" class="form-control">
+                  <option value="1">Мгновенно</option>
+                  <option value="2" selected>0-30 дней</option>
+                  <option value="3">0-2 месяца</option>
+                  <option value="4">0-6 месяцев</option>
+                  <option value="5">0-1 год</option>
+                  <option value="6">0-5 лет</option>
+                  <option value="7">2-6 месяцев</option>
+                  <option value="8">Никогда</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Отключение электричества (ElecShut):</label>
+                <select id="sb-ElecShut" class="form-control">
+                  <option value="1">Мгновенно</option>
+                  <option value="2" selected>0-30 дней</option>
+                  <option value="3">0-2 месяца</option>
+                  <option value="4">0-6 месяцев</option>
+                  <option value="5">0-1 год</option>
+                  <option value="6">0-5 лет</option>
+                  <option value="7">2-6 месяцев</option>
+                  <option value="8">Никогда</option>
+                </select>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div class="col">
-            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
-              🚗 Транспорт и Опыт
-            </h4>
-            <div class="form-group">
-              <label>Частота спавна автомобилей (CarSpawnRate):</label>
-              <select id="sb-CarSpawnRate" class="form-control">
-                <option value="1">Нет</option>
-                <option value="2">Очень низкий</option>
-                <option value="3" selected>Низкий</option>
-                <option value="4">Нормальный</option>
-                <option value="5">Высокий</option>
-              </select>
+        <!-- Subtab 3: Мир и Время -->
+        <div id="sandbox-subtab-world" class="subtab-panel">
+          <div class="row">
+            <div class="col">
+              <h4 class="subtab-section-header">⏱️ Время и Календарь</h4>
+              <div class="form-group">
+                <label>Длина игровых суток (DayLength):</label>
+                <select id="sb-DayLength" class="form-control">
+                  <option value="1">30 минут</option>
+                  <option value="2">45 минут</option>
+                  <option value="3" selected>1 час реального времени</option>
+                  <option value="4">2 часа</option>
+                  <option value="5">3 часа</option>
+                  <option value="6">4 часа</option>
+                  <option value="7">5 часов</option>
+                  <option value="8">12 часов</option>
+                  <option value="9">24 часа (Реальное время)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Начальный год (StartYear):</label>
+                <input type="number" id="sb-StartYear" class="form-control" value="1" min="1" max="100">
+              </div>
+              <div class="form-group">
+                <label>Начальный месяц (StartMonth):</label>
+                <select id="sb-StartMonth" class="form-control">
+                  <option value="1">Январь</option>
+                  <option value="2">Февраль</option>
+                  <option value="3">Март</option>
+                  <option value="4">Апрель</option>
+                  <option value="5">Май</option>
+                  <option value="6">Июнь</option>
+                  <option value="7" selected>Июль</option>
+                  <option value="8">Август</option>
+                  <option value="9">Сентябрь</option>
+                  <option value="10">Октябрь</option>
+                  <option value="11">Ноябрь</option>
+                  <option value="12">Декабрь</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Начальный день (StartDay):</label>
+                <input type="number" id="sb-StartDay" class="form-control" value="9" min="1" max="31">
+              </div>
+              <div class="form-group">
+                <label>Время старта (StartTime):</label>
+                <select id="sb-StartTime" class="form-control">
+                  <option value="1">7:00 (Утро)</option>
+                  <option value="2" selected>9:00 (День)</option>
+                  <option value="3">12:00 (Полдень)</option>
+                  <option value="4">14:00 (День)</option>
+                  <option value="5">17:00 (Вечер)</option>
+                  <option value="6">21:00 (Сумерки)</option>
+                  <option value="7">0:00 (Полночь)</option>
+                  <option value="8">2:00 (Ночь)</option>
+                  <option value="9">5:00 (Рассвет)</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group">
-              <label>Бензин в баках (InitialGas):</label>
-              <select id="sb-InitialGas" class="form-control">
-                <option value="1">Очень мало</option>
-                <option value="2" selected>Мало</option>
-                <option value="3">Нормально</option>
-                <option value="4">Много</option>
-                <option value="5">Полный</option>
-              </select>
+
+            <div class="col">
+              <h4 class="subtab-section-header">🌦️ Природа и Окружение</h4>
+              <div class="form-group">
+                <label>Температура мира (Temperature):</label>
+                <select id="sb-Temperature" class="form-control">
+                  <option value="1">Очень холодно</option>
+                  <option value="2">Холодно</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Жарко</option>
+                  <option value="5">Очень жарко</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Частота осадков и дождей (Rain):</label>
+                <select id="sb-Rain" class="form-control">
+                  <option value="1">Очень сухо</option>
+                  <option value="2">Сухо</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Дождливо</option>
+                  <option value="5">Очень дождливо</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Скорость эрозии природы (ErosionSpeed):</label>
+                <select id="sb-ErosionSpeed" class="form-control">
+                  <option value="1">Очень быстро</option>
+                  <option value="2">Быстро</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Медленно</option>
+                  <option value="5">Очень медленно</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Дней до 100% зарастания мира (ErosionDays):</label>
+                <input type="number" id="sb-ErosionDays" class="form-control" value="100" min="0" max="3650">
+              </div>
+              <div class="form-group">
+                <label>Событие вертолета (Helicopter):</label>
+                <select id="sb-Helicopter" class="form-control">
+                  <option value="1">Никогда</option>
+                  <option value="2" selected>Один раз за игру</option>
+                  <option value="3">Иногда повторяется</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Мета-события (выстрелы, крики вдали):</label>
+                <select id="sb-MetaEvent" class="form-control">
+                  <option value="1">Никогда</option>
+                  <option value="2" selected>Иногда</option>
+                  <option value="3">Часто</option>
+                </select>
+              </div>
             </div>
-            <div class="form-group">
-              <label>Множитель опыта (XpMultiplier):</label>
-              <input type="number" id="sb-XpMultiplier" class="form-control" value="1.0" step="0.1" min="0.1" max="100.0">
+          </div>
+        </div>
+
+        <!-- Subtab 4: Транспорт -->
+        <div id="sandbox-subtab-vehicles" class="subtab-panel">
+          <div class="row">
+            <div class="col">
+              <h4 class="subtab-section-header">🚗 Появление и Состояние транспорта</h4>
+              <div class="form-group">
+                <label>Частота появления автомобилей (CarSpawnRate):</label>
+                <select id="sb-CarSpawnRate" class="form-control">
+                  <option value="1">Нет автомобилей</option>
+                  <option value="2">Очень низкая</option>
+                  <option value="3" selected>Низкая</option>
+                  <option value="4">Нормальная</option>
+                  <option value="5">Высокая</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Общее состояние найденных авто (CarCondition):</label>
+                <select id="sb-CarCondition" class="form-control">
+                  <option value="1">Очень плохое</option>
+                  <option value="2">Плохое</option>
+                  <option value="3" selected>Нормальное</option>
+                  <option value="4">Хорошее</option>
+                  <option value="5">Отличное</option>
+                </select>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-VehicleEasyUse">
+                  <span>Легкое управление (без ключа зажигания и навыка взлома)</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-TrafficJam" checked>
+                  <span>Заторы и пробки из разбитых машин на дорогах</span>
+                </label>
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-PlayerDamageFromCarCrash" checked>
+                  <span>Урон игроку при столкновении на машине</span>
+                </label>
+              </div>
             </div>
+
+            <div class="col">
+              <h4 class="subtab-section-header">⛽ Топливо и Механика</h4>
+              <div class="form-group">
+                <label>Шанс наличия топлива в баке (ChanceHasGas):</label>
+                <select id="sb-ChanceHasGas" class="form-control">
+                  <option value="1">Очень низкий</option>
+                  <option value="2">Низкий</option>
+                  <option value="3" selected>Нормальный</option>
+                  <option value="4">Высокий</option>
+                  <option value="5">Очень высокий</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Количество топлива в баках (InitialGas):</label>
+                <select id="sb-InitialGas" class="form-control">
+                  <option value="1">Очень мало</option>
+                  <option value="2" selected>Мало</option>
+                  <option value="3">Нормально</option>
+                  <option value="4">Много</option>
+                  <option value="5">Полный бак</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Множитель расхода бензина (CarGasConsumption):</label>
+                <input type="number" id="sb-CarGasConsumption" class="form-control" value="1.0" step="0.1" min="0.0" max="10.0">
+              </div>
+              <div class="form-group">
+                <label>Автосигнализации (CarAlarm):</label>
+                <select id="sb-CarAlarm" class="form-control">
+                  <option value="1">Никогда</option>
+                  <option value="2">Крайне редко</option>
+                  <option value="3" selected>Редко</option>
+                  <option value="4">Иногда</option>
+                  <option value="5">Часто</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtab 5: Персонаж и Навыки -->
+        <div id="sandbox-subtab-character" class="subtab-panel">
+          <div class="row">
+            <div class="col">
+              <h4 class="subtab-section-header">👤 Опыт и Характеристики персонажа</h4>
+              <div class="form-group">
+                <label>Множитель опыта (XpMultiplier):</label>
+                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap;">
+                  <input type="number" id="sb-XpMultiplier" class="form-control" value="1.0" step="0.1" min="0.1" max="100.0" style="max-width: 110px;">
+                  <button type="button" class="pill-chip" onclick="setXpPreset(1.0)">1x</button>
+                  <button type="button" class="pill-chip" onclick="setXpPreset(1.5)">1.5x</button>
+                  <button type="button" class="pill-chip" onclick="setXpPreset(2.0)">2x</button>
+                  <button type="button" class="pill-chip" onclick="setXpPreset(3.0)">3x</button>
+                  <button type="button" class="pill-chip" onclick="setXpPreset(5.0)">5x</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Дополнительные очки навыков при создании (FreePoints):</label>
+                <input type="number" id="sb-CharacterFreePoints" class="form-control" value="0" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label>Скорость падения потребностей (StatsDecrease):</label>
+                <select id="sb-StatsDecrease" class="form-control">
+                  <option value="1">Очень медленно</option>
+                  <option value="2">Медленно</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Быстро</option>
+                  <option value="5">Очень быстро</option>
+                </select>
+              </div>
+              <div style="margin-top: 14px;">
+                <label class="custom-checkbox-label">
+                  <input type="checkbox" id="sb-Nutrition" checked>
+                  <span>Система питательности пищи (калории, белки, жиры)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="col">
+              <h4 class="subtab-section-header">🌱 Фермерство и Генераторы</h4>
+              <div class="form-group">
+                <label>Скорость роста урожая (FarmingSpeed):</label>
+                <select id="sb-FarmingSpeed" class="form-control">
+                  <option value="1">Очень быстро</option>
+                  <option value="2">Быстро</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Медленно</option>
+                  <option value="5">Очень медленно</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Выносливость растений к болезням (PlantResilience):</label>
+                <select id="sb-PlantResilience" class="form-control">
+                  <option value="1">Очень низкая</option>
+                  <option value="2">Низкая</option>
+                  <option value="3" selected>Нормальная</option>
+                  <option value="4">Высокая</option>
+                  <option value="5">Очень высокая</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Обилие собранного урожая (PlantAbundance):</label>
+                <select id="sb-PlantAbundance" class="form-control">
+                  <option value="1">Очень мало</option>
+                  <option value="2">Мало</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Много</option>
+                  <option value="5">Очень много</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Спавн электрогенераторов (GeneratorSpawning):</label>
+                <select id="sb-GeneratorSpawning" class="form-control">
+                  <option value="1">Крайне редко</option>
+                  <option value="2">Редко</option>
+                  <option value="3" selected>Нормально</option>
+                  <option value="4">Часто</option>
+                  <option value="5">Очень часто</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Расход топлива генератором (GeneratorFuelConsumption):</label>
+                <input type="number" id="sb-GeneratorFuelConsumption" class="form-control" value="1.0" step="0.1" min="0.0" max="10.0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subtab 6: Настройки модов -->
+        <div id="sandbox-subtab-mods" class="subtab-panel">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 10px; flex-wrap: wrap;">
+            <input type="text" id="sandbox-mod-search" class="form-control" placeholder="🔍 Поиск опций модов по названию или параметру..." style="max-width: 420px;" oninput="filterModSandboxOptions(this.value)">
+            <span id="sandbox-mod-count" style="font-size: 12px; color: var(--text-muted); font-weight: bold;"></span>
+          </div>
+          <div id="sandbox-mods-dynamic-container">
+            <div style="color: var(--text-muted); padding: 16px; text-align: center;">Загрузка опций модов из SandboxVars.lua...</div>
           </div>
         </div>
 
