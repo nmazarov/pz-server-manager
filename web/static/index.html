@@ -19,10 +19,10 @@
       <img src="/static/icon.png" alt="Icon" class="login-logo">
       <h2>Project Zomboid Server Manager</h2>
       <p class="login-subtitle">
-        Вход в веб-панель управления сервером
+        Вход в панель управления сервером
       </p>
       <input type="password" id="login-password" placeholder="Пароль администратора" autofocus onkeydown="if(event.key==='Enter') handleLogin()">
-      <button class="btn btn-start" style="width: 100%;" onclick="handleLogin()">Войти в панель</button>
+      <button class="btn btn-start" style="width: 100%; justify-content: center; margin-top: 10px;" onclick="handleLogin()">Войти в панель</button>
       <div id="login-error" class="login-err-msg"></div>
     </div>
   </div>
@@ -185,63 +185,197 @@
           <span>⚙️ Настройки сервера (servertest.ini)</span>
           <button class="btn btn-start" onclick="saveSettings()">💾 Сохранить настройки</button>
         </div>
+
+        <!-- Row 1: Basic & Network -->
         <div class="row">
+          <!-- Col 1: Basic Settings -->
           <div class="col">
+            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+              📌 Основные параметры
+            </h4>
             <div class="form-group">
               <label>Название сервера (PublicName):</label>
-              <input type="text" id="ini-PublicName" class="form-control">
+              <input type="text" id="ini-PublicName" class="form-control" placeholder="My Zomboid Server">
             </div>
             <div class="form-group">
               <label>Описание сервера (PublicDescription):</label>
-              <textarea id="ini-PublicDescription" class="form-control" rows="3"></textarea>
+              <textarea id="ini-PublicDescription" class="form-control" rows="2" placeholder="Описание сервера"></textarea>
             </div>
             <div class="form-group">
               <label>Пароль сервера (Password):</label>
               <input type="password" id="ini-Password" class="form-control" placeholder="Оставьте пустым для свободного входа">
             </div>
             <div class="form-group">
-              <label>Пароль RCON / Администратора:</label>
-              <input type="password" id="ini-RCONPassword" class="form-control">
+              <label>Максимум игроков (MaxPlayers):</label>
+              <input type="number" id="ini-MaxPlayers" class="form-control" value="16" min="1" max="100">
+            </div>
+            <div class="form-group">
+              <label>Карта мира (Map):</label>
+              <input type="text" id="ini-Map" class="form-control" value="Muldraugh, KY">
+            </div>
+            <div class="form-group">
+              <label>Приветствие сервера (ServerWelcomeMessage):</label>
+              <input type="text" id="ini-ServerWelcomeMessage" class="form-control" placeholder="Добро пожаловать на сервер!">
             </div>
           </div>
 
+          <!-- Col 2: Network & RCON -->
           <div class="col">
-            <div class="form-group">
-              <label>Максимум игроков (MaxPlayers):</label>
-              <input type="number" id="ini-MaxPlayers" class="form-control" value="32">
-            </div>
+            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+              🌐 Сеть и RCON
+            </h4>
             <div class="form-group">
               <label>Игровой порт (DefaultPort - UDP):</label>
               <input type="number" id="ini-DefaultPort" class="form-control" value="16261">
             </div>
             <div class="form-group">
-              <label>Steam порт (UDP):</label>
-              <input type="number" id="ini-UDPPort" class="form-control" value="8766">
+              <label>Прямой порт (UDPPort):</label>
+              <input type="number" id="ini-UDPPort" class="form-control" value="16262">
             </div>
             <div class="form-group">
-              <label>RCON порт (TCP):</label>
+              <label>Steam порт 1 (SteamPort1):</label>
+              <input type="number" id="ini-SteamPort1" class="form-control" value="8766">
+            </div>
+            <div class="form-group">
+              <label>Steam порт 2 (SteamPort2):</label>
+              <input type="number" id="ini-SteamPort2" class="form-control" value="8767">
+            </div>
+            <div class="form-group">
+              <label>RCON порт (RCONPort - TCP):</label>
               <input type="number" id="ini-RCONPort" class="form-control" value="27015">
             </div>
             <div class="form-group">
-              <label class="custom-checkbox-label">
-                <input type="checkbox" id="ini-PVP">
-                <span>Разрешить PvP (PVP)</span>
-              </label>
+              <label>Пароль RCON / Администратора:</label>
+              <input type="password" id="ini-RCONPassword" class="form-control" placeholder="Пароль RCON">
             </div>
-            <div class="form-group">
+            <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
               <label class="custom-checkbox-label">
-                <input type="checkbox" id="ini-Open">
+                <input type="checkbox" id="ini-Open" checked>
                 <span>Публичный сервер (Open)</span>
               </label>
-            </div>
-            <div class="form-group">
               <label class="custom-checkbox-label">
-                <input type="checkbox" id="ini-Public">
+                <input type="checkbox" id="ini-Public" checked>
                 <span>Отображать в публичном списке Steam (Public)</span>
               </label>
             </div>
           </div>
         </div>
+
+        <!-- Row 2: Gameplay & Safehouses -->
+        <div class="row" style="margin-top: 20px;">
+          <!-- Col 3: Gameplay -->
+          <div class="col">
+            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+              ⚔️ Игровой процесс
+            </h4>
+            <div style="display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px;">
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-PVP" checked>
+                <span>Разрешить PvP (PVP)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-PauseEmpty" checked>
+                <span>Пауза когда сервер пуст (PauseEmpty)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-AllowCoop" checked>
+                <span>Разрешить кооператив (AllowCoop)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-SleepAllowed">
+                <span>Сон разрешен (SleepAllowed)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-SleepNeeded">
+                <span>Сон необходим (SleepNeeded)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-AnnounceDeath">
+                <span>Оповещать в чате о смерти (AnnounceDeath)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-NoFire">
+                <span>Отключить распространение огня (NoFire)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-AllowDestructionBySledgehammer" checked>
+                <span>Разрушение стен кувалдой</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label>Потеря вещей при смерти (DropOnDeath):</label>
+              <select id="ini-DropOnDeath" class="form-control">
+                <option value="1">Выпадают все предметы</option>
+                <option value="2">Только экипированные</option>
+                <option value="3">Ничего не выпадает (сохранять инвентарь)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Координаты спавна (SpawnPoint):</label>
+              <input type="text" id="ini-SpawnPoint" class="form-control" placeholder="0,0,0">
+            </div>
+          </div>
+
+          <!-- Col 4: Safehouses & Voice/Security -->
+          <div class="col">
+            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+              🏠 Убежища и Безопасность
+            </h4>
+            <div style="display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px;">
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-PlayerSafehouse">
+                <span>Разрешить игрокам создавать убежища (PlayerSafehouse)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-AdminSafehouse">
+                <span>Только админские убежища (AdminSafehouse)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-SafehouseAllowTreassing">
+                <span>Разрешить вход посторонним в убежище</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-SafehouseAllowFire">
+                <span>Разрешить огонь в убежищах</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-SafehouseAllowLoot">
+                <span>Разрешить лутать чужие убежища</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-SafehouseAllowRespawn">
+                <span>Разрешить респавн в убежище</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-VoiceEnable" checked>
+                <span>Включить голосовой VOIP чат (VoiceEnable)</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-Voice3D" checked>
+                <span>Позиционный 3D звук голоса</span>
+              </label>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-GlobalChat" checked>
+                <span>Глобальный чат (GlobalChat)</span>
+              </label>
+            </div>
+            <div class="row" style="gap: 10px;">
+              <div class="col" style="min-width: 140px;">
+                <div class="form-group">
+                  <label>Автосохранение (мин):</label>
+                  <input type="number" id="ini-SaveWorldEveryMinutes" class="form-control" value="15" min="1" max="60">
+                </div>
+              </div>
+              <div class="col" style="min-width: 140px;">
+                <div class="form-group">
+                  <label>Лимит скорости авто (км/ч):</label>
+                  <input type="number" id="ini-SpeedLimit" class="form-control" value="70" min="0" max="250">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -250,9 +384,234 @@
       <div class="card">
         <div class="card-title">
           <span>🧟 Параметры мира (SandboxVars.lua)</span>
-          <button class="btn btn-start" onclick="saveSandbox()">💾 Сохранить Sandbox</button>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <select id="sandbox-preset" class="form-control" style="width: 180px;" onchange="applySandboxPreset(this.value)">
+              <option value="">-- Пресеты сложности --</option>
+              <option value="apocalypse">💀 Апокалипсис</option>
+              <option value="survivor">🏕️ Выживание</option>
+              <option value="builder">🏗️ Строитель</option>
+            </select>
+            <button class="btn btn-start" onclick="saveSandbox()">💾 Сохранить Sandbox</button>
+          </div>
         </div>
-        <div id="sandbox-container">Загрузка параметров Sandbox...</div>
+
+        <div class="row">
+          <!-- Col 1: ZombieLore -->
+          <div class="col">
+            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+              🧟 Зомби (ZombieLore)
+            </h4>
+            <div class="form-group">
+              <label>Скорость зомби (Speed):</label>
+              <select id="sb-ZombieLore-Speed" class="form-control">
+                <option value="1">Спринтеры (Sprinters)</option>
+                <option value="2" selected>Быстрые ходячие (Fast Shamblers)</option>
+                <option value="3">Медленные ходячие (Shamblers)</option>
+                <option value="4">Случайно (Random)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Сила зомби (Strength):</label>
+              <select id="sb-ZombieLore-Strength" class="form-control">
+                <option value="1">Сверхчеловеческая</option>
+                <option value="2" selected>Обычная</option>
+                <option value="3">Слабая</option>
+                <option value="4">Случайно</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Живучесть зомби (Toughness):</label>
+              <select id="sb-ZombieLore-Toughness" class="form-control">
+                <option value="1">Высокая</option>
+                <option value="2" selected>Обычная</option>
+                <option value="3">Хрупкая</option>
+                <option value="4">Случайно</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Передача инфекции (Transmission):</label>
+              <select id="sb-ZombieLore-Transmission" class="form-control">
+                <option value="1" selected>Кровь и слюна (Blood + Saliva)</option>
+                <option value="2">Только слюна / укус (Saliva Only)</option>
+                <option value="3">Все заражены (Everyone's Infected)</option>
+                <option value="4">Отключена (None)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Смерть от заражения (Mortality):</label>
+              <select id="sb-ZombieLore-Mortality" class="form-control">
+                <option value="1">Мгновенно</option>
+                <option value="2">0-30 секунд</option>
+                <option value="3">0-1 минута</option>
+                <option value="4">0-12 часов</option>
+                <option value="5" selected>2-3 дня</option>
+                <option value="6">1-2 недели</option>
+                <option value="7">Никогда</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Время подъема мертвеца (Reanimate):</label>
+              <select id="sb-ZombieLore-Reanimate" class="form-control">
+                <option value="1">Мгновенно</option>
+                <option value="2">0-30 секунд</option>
+                <option value="3" selected>0-1 минута</option>
+                <option value="4">0-12 часов</option>
+                <option value="5">2-3 дня</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Интеллект зомби (Cognition):</label>
+              <select id="sb-ZombieLore-Cognition" class="form-control">
+                <option value="1">Открывают двери</option>
+                <option value="2">Обычный навигатор</option>
+                <option value="3" selected>Базовый</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Col 2: Loot Rarity -->
+          <div class="col">
+            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+              📦 Спавн лута (Loot Rarity)
+            </h4>
+            <div class="form-group">
+              <label>Продукты питания (Food):</label>
+              <select id="sb-Loot-Food" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Оружие и патроны (Weapon):</label>
+              <select id="sb-Loot-Weapon" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Книги и литература (Literature):</label>
+              <select id="sb-Loot-Literature" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Медикаменты (Medical):</label>
+              <select id="sb-Loot-Medical" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Снаряжение для выживания (SurvivalGears):</label>
+              <select id="sb-Loot-SurvivalGears" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Автозапчасти и механика (Mechanics):</label>
+              <select id="sb-Loot-Mechanics" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Прочие предметы (Other):</label>
+              <select id="sb-Loot-Other" class="form-control">
+                <option value="1">Крайне редко</option>
+                <option value="2">Редко</option>
+                <option value="3" selected>Нормально</option>
+                <option value="4">Часто</option>
+                <option value="5">Изобилие</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: World & Vehicles -->
+        <div class="row" style="margin-top: 16px;">
+          <div class="col">
+            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+              🌍 Окружающий мир
+            </h4>
+            <div class="form-group">
+              <label>Отключение водоснабжения (WaterShut):</label>
+              <select id="sb-WaterShut" class="form-control">
+                <option value="1">Мгновенно</option>
+                <option value="2" selected>0-30 дней</option>
+                <option value="3">0-2 месяца</option>
+                <option value="4">0-6 месяцев</option>
+                <option value="5">0-1 год</option>
+                <option value="6">0-5 лет</option>
+                <option value="7">2-6 месяцев</option>
+                <option value="8">Никогда</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Отключение электричества (ElecShut):</label>
+              <select id="sb-ElecShut" class="form-control">
+                <option value="1">Мгновенно</option>
+                <option value="2" selected>0-30 дней</option>
+                <option value="3">0-2 месяца</option>
+                <option value="4">0-6 месяцев</option>
+                <option value="5">0-1 год</option>
+                <option value="6">0-5 лет</option>
+                <option value="7">2-6 месяцев</option>
+                <option value="8">Никогда</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="col">
+            <h4 style="color: #4ea8de; margin-bottom: 12px; font-size: 13.5px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+              🚗 Транспорт и Опыт
+            </h4>
+            <div class="form-group">
+              <label>Частота спавна автомобилей (CarSpawnRate):</label>
+              <select id="sb-CarSpawnRate" class="form-control">
+                <option value="1">Нет</option>
+                <option value="2">Очень низкий</option>
+                <option value="3" selected>Низкий</option>
+                <option value="4">Нормальный</option>
+                <option value="5">Высокий</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Бензин в баках (InitialGas):</label>
+              <select id="sb-InitialGas" class="form-control">
+                <option value="1">Очень мало</option>
+                <option value="2" selected>Мало</option>
+                <option value="3">Нормально</option>
+                <option value="4">Много</option>
+                <option value="5">Полный</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Множитель опыта (XpMultiplier):</label>
+              <input type="number" id="sb-XpMultiplier" class="form-control" value="1.0" step="0.1" min="0.1" max="100.0">
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -261,16 +620,37 @@
       <div class="card">
         <div class="card-title">
           <span>🧩 Мастер модификаций Workshop</span>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary" onclick="checkAllModsCompatibility()">🔍 Проверить актуальность</button>
+            <button class="btn btn-secondary" onclick="analyzeMods()">⚡ Анализ зависимостей</button>
+            <button class="btn btn-start" onclick="saveMods()">💾 Сохранить список</button>
+          </div>
         </div>
-        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
-          <input type="text" id="mod-input" class="form-control" placeholder="Вставьте Workshop ID или ссылку на мод из Steam...">
+
+        <div style="margin-bottom: 14px; display: flex; gap: 10px;">
+          <input type="text" id="mod-input-id" class="form-control" placeholder="Введите Workshop ID или ссылку на мод/коллекцию Steam...">
           <button class="btn btn-start" onclick="addMod()" style="white-space: nowrap;">➕ Добавить мод</button>
         </div>
 
-        <div style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: var(--text-muted);">
-          Активные моды на сервере:
+        <!-- Curated Packs -->
+        <div style="margin-bottom: 16px; background: #141923; padding: 10px 14px; border: 1px solid #232d3d; border-radius: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span style="font-weight: bold; font-size: 12px; color: #ffb74d;">🎁 Готовые наборы:</span>
+          <button class="pill-chip" onclick="applyModPack('vehicles')">🚗 Автопарк KI5</button>
+          <button class="pill-chip" onclick="applyModPack('weapons')">⚔️ Оружие Brita</button>
+          <button class="pill-chip" onclick="applyModPack('qol')">🖥️ Удобный QoL</button>
+          <button class="pill-chip" onclick="applyModPack('hardcore')">🧟 Хардкор</button>
+          <button class="btn btn-danger" onclick="clearMods()" style="font-size: 11px; padding: 4px 10px; margin-left: auto;">🧹 Очистить все</button>
         </div>
-        <div id="mods-list">Загрузка списка модов...</div>
+
+        <!-- Legend -->
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px; padding: 6px 12px; background: #0f131a; border-radius: 6px;">
+          🟢 <b style="color: #34d399;">Зеленый</b>: Совместим с текущей версией сервера &nbsp;|&nbsp; 🔴 <b style="color: #f87171;">Красный</b>: Несовместим или устарел &nbsp;|&nbsp; 🟡 <b style="color: #fbbf24;">Желтый</b>: Универсальный / требует проверки
+        </div>
+
+        <!-- Mod Items List Container -->
+        <div id="mods-container">
+          <div style="color: var(--text-muted); padding: 10px;">Загрузка списка модов...</div>
+        </div>
       </div>
     </div>
 
@@ -278,22 +658,32 @@
     <div id="tab-install" class="tab-panel">
       <div class="card">
         <div class="card-title">
-          <span>📦 Установка и обновление игрового сервера</span>
+          <span>📦 Установка и обновление игрового сервера (SteamCMD)</span>
+          <button class="btn btn-secondary" onclick="checkSteamUpdate()">🔍 Проверить обновления в Steam</button>
         </div>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
           Выберите желаемую ветку обновления Project Zomboid Dedicated Server (Steam AppID 380870).
         </p>
 
-        <!-- Steam Branches List -->
-        <div id="branches-list" style="margin-bottom: 14px;">
-          Загрузка веток Steam...
+        <!-- Steam-styled Betas Container -->
+        <div class="steam-betas-container">
+          <!-- Table Header -->
+          <div style="display: flex; justify-content: space-between; padding: 9px 16px; background: #19202c; border-bottom: 1px solid #232d3d; font-size: 11px; font-weight: bold; color: #8f98a0; letter-spacing: 0.5px;">
+            <span>НАЗВАНИЕ И ОПИСАНИЕ</span>
+            <span>ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ</span>
+          </div>
+
+          <!-- Branch Rows -->
+          <div id="steam-branch-rows" style="display: flex; flex-direction: column;">
+            <div style="padding: 16px; color: #8f98a0; font-size: 13px;">Загрузка версий из Steam...</div>
+          </div>
         </div>
 
         <!-- Hidden input for active branch -->
         <input type="hidden" id="install-branch" value="">
 
         <!-- Скрытые версии -->
-        <div style="background: #141923; border: 1px solid #232d3d; border-radius: 6px; padding: 12px 16px; margin-top: 10px;">
+        <div style="background: #141923; border: 1px solid #232d3d; border-radius: 6px; padding: 12px 16px; margin-top: 12px;">
           <div class="row" style="gap: 10px; align-items: center; flex-wrap: wrap;">
             <span style="font-size: 12px; font-weight: bold; color: #fff;">🔑 Скрытая версия:</span>
             <input type="text" id="beta-hidden-branch" class="form-control" placeholder="Название ветки (необязательно)" style="max-width: 200px;">
@@ -306,7 +696,7 @@
         </div>
 
         <div style="margin-top: 18px; display: flex; justify-content: flex-end;">
-          <button id="btn-do-install" class="btn btn-start" onclick="startInstallation()" style="padding: 11px 24px; font-size: 14px;">
+          <button id="btn-do-install" class="btn btn-start" onclick="startInstallation()" style="padding: 11px 26px; font-size: 14px;">
             🚀 Установить / Обновить сервер
           </button>
         </div>
@@ -334,7 +724,9 @@
           <span>💾 Резервные копии мира и конфигураций</span>
           <button class="btn btn-start" onclick="createBackup()">📦 Создать бэкап сейчас</button>
         </div>
-        <div id="backups-container">Загрузка бэкапов...</div>
+        <div id="backups-container">
+          <div style="color: var(--text-muted); padding: 10px;">Загрузка бэкапов...</div>
+        </div>
       </div>
     </div>
 

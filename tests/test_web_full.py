@@ -1,0 +1,90 @@
+import pytest
+from pathlib import Path
+from fastapi.testclient import TestClient
+from web.server import create_app
+from web.auth import AuthManager
+from core.config_manager import ConfigManager
+import tempfile
+import shutil
+
+@pytest.fixture
+def temp_env():
+    td = Path(tempfile.mkdtemp())
+    server_dir = td / "server"
+    server_dir.mkdir(parents=True)
+    config_dir = td / "Zomboid" / "Server"
+    config_dir.mkdir(parents=True)
+    paths = {
+        'zomboid_dir': td / "Zomboid",
+        'server_config_dir': config_dir,
+        'server_dir': server_dir,
+        'steamcmd_dir': server_dir / 'steamcmd',
+        'app_data': td
+    }
+    yield {"temp_dir": td, "paths": paths}
+    shutil.rmtree(td, ignore_errors=True)
+
+def test_web_index_html_has_all_ids():
+    index_path = Path("web/static/index.html")
+    assert index_path.exists()
+    content = index_path.read_text(encoding="utf-8")
+
+    required_ids = [
+        "autoscroll-chk", "backups-container", "badge-srv-ram", "badge-version",
+        "badge-vps-ram", "beta-access-code", "beta-code-msg", "beta-hidden-branch",
+        "btn-do-install", "btn-restart", "btn-start", "btn-stop", "chk-auto-backup",
+        "chk-watchdog", "conn-text", "console-cmd", "console-output", "install-branch",
+        "install-log-output", "install-progress-fill", "install-status-msg",
+        "install-status-pct", "login-error", "login-modal", "login-password",
+        "mod-input-id", "mods-container", "players-count-lbl", "players-list-box",
+        "pulse-led", "sb-Loot-Food", "sb-Loot-Literature", "sb-Loot-Medical",
+        "sb-Loot-Weapon", "sb-ZombieLore-Speed", "sb-ZombieLore-Strength",
+        "sb-ZombieLore-Toughness", "sb-ZombieLore-Transmission", "srv-name",
+        "srv-ram", "status-sub", "status-title", "steam-branch-rows", "toast",
+        "sandbox-preset", "ini-PublicName", "ini-Password", "ini-MaxPlayers",
+        "ini-DefaultPort", "ini-PVP"
+    ]
+
+    for elem_id in required_ids:
+        assert f'id="{elem_id}"' in content, f"Missing id={elem_id} in index.html"
+
+def test_web_settings_and_sandbox_api(temp_env):
+    paths = temp_env["paths"]
+    cfg_mgr = ConfigManager(paths)
+    am = AuthManager()
+    token = am.create_session()
+    headers = {"Authorization": f"Bearer {token}"}
+
+    app = create_app(
+        paths=paths,
+        auth_manager=am,
+        config_manager=cfg_mgr
+    )
+
+    client = TestClient(app)
+
+    # 1. Settings INI
+    res = client.get("/api/settings", headers=headers)
+    assert res.status_code == 200
+    ini_data = res.json()
+    assert isinstance(ini_data, dict)
+
+    save_res = client.post("/api/settings", json={"PublicName": "My Awesome Server", "MaxPlayers": "24", "PVP": "true"}, headers=headers)
+    assert save_res.status_code == 200
+    assert save_res.json()["success"] is True
+
+    res2 = client.get("/api/settings", headers=headers)
+    assert res2.json().get("PublicName") == "My Awesome Server"
+
+    # 2. Sandbox
+    res = client.get("/api/sandbox", headers=headers)
+    assert res.status_code == 200
+    sb_data = res.json()
+    assert isinstance(sb_data, dict)
+
+    save_sb = client.post("/api/sandbox", json={
+        "ZombieLore": {"Speed": 1, "Strength": 2, "Toughness": 3, "Transmission": 1},
+        "Loot": {"Food": 2, "Weapon": 1, "Literature": 3, "Medical": 4}
+    }, headers=headers)
+    assert save_sb.status_code == 200
+    assert save_sb.json()["success"] is True

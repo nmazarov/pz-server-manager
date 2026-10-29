@@ -609,6 +609,42 @@ main.content-area {
   color: #fff;
 }
 
+.btn-primary {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  border: 1px solid #34d399;
+  border-radius: 7px;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 18px;
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
+  border-color: #6ee7b7;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+}
+.btn-primary:active:not(:disabled) {
+  background: linear-gradient(180deg, #047857 0%, #065f46 100%);
+}
+
+.btn-info {
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+  border: 1px solid #38bdf8;
+  border-radius: 7px;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 18px;
+}
+.btn-info:hover:not(:disabled) {
+  background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+  border-color: #7dd3fc;
+  box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+}
+.btn-info:active:not(:disabled) {
+  background: linear-gradient(180deg, #075985 0%, #0c4a6e 100%);
+}
+
 /* ── Tactical Pill Chips (Matching QPushButton#quick_btn) ─────────────────── */
 .pill-chip {
   background-color: #19202b;
@@ -910,6 +946,38 @@ select.form-control {
   background: rgba(245, 158, 11, 0.15);
   color: #fbbf24;
   border: 1px solid #d97706;
+}
+
+/* ── Steam Betas Container & Rows ────────────────────────────────────────── */
+.steam-betas-container {
+  background: #141923;
+  border: 1px solid #232d3d;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.steam-branch-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid #1f2735;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.steam-branch-row:last-child {
+  border-bottom: none;
+}
+
+.steam-branch-row:hover {
+  background: #1c2433;
+}
+
+.steam-branch-row.selected {
+  background: #1d2d42;
+  border-left: 3px solid #38bdf8;
 }
 
 /* ── Progress Bar ─────────────────────────────────────────────────────────── */

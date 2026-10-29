@@ -456,7 +456,13 @@ async function loadSettings() {
     const c = await res.json();
     for (const [key, val] of Object.entries(c)) {
       const el = document.getElementById('ini-' + key);
-      if (el) el.value = val;
+      if (el) {
+        if (el.type === 'checkbox') {
+          el.checked = (String(val).toLowerCase() === 'true');
+        } else {
+          el.value = val;
+        }
+      }
     }
   } catch (e) {
     console.error('Load settings error:', e);
@@ -467,7 +473,11 @@ async function saveSettings() {
   const data = {};
   document.querySelectorAll('[id^="ini-"]').forEach(el => {
     const key = el.id.replace('ini-', '');
-    data[key] = el.value;
+    if (el.type === 'checkbox') {
+      data[key] = el.checked ? 'true' : 'false';
+    } else {
+      data[key] = el.value;
+    }
   });
 
   const res = await fetch('/api/settings', {
@@ -477,50 +487,93 @@ async function saveSettings() {
   });
   const resData = await res.json();
   if (resData.success) {
-    alert('Настройки сервера успешно сохранены!');
+    showToast('💾 Настройки сервера успешно сохранены!');
   } else {
     alert('Ошибка сохранения: ' + resData.message);
   }
 }
 
 // ── SandboxVars ───────────────────────────────────────────────────
+let cachedSandboxData = {};
+
 async function loadSandbox() {
   try {
     const res = await fetch('/api/sandbox', { headers: getHeaders() });
     const sb = await res.json();
+    cachedSandboxData = sb || {};
+
+    const setVal = (id, v) => {
+      const el = document.getElementById(id);
+      if (el && v !== undefined && v !== null) el.value = v;
+    };
 
     if (sb.ZombieLore) {
-      if (sb.ZombieLore.Speed) document.getElementById('sb-ZombieLore-Speed').value = sb.ZombieLore.Speed;
-      if (sb.ZombieLore.Strength) document.getElementById('sb-ZombieLore-Strength').value = sb.ZombieLore.Strength;
-      if (sb.ZombieLore.Toughness) document.getElementById('sb-ZombieLore-Toughness').value = sb.ZombieLore.Toughness;
-      if (sb.ZombieLore.Transmission) document.getElementById('sb-ZombieLore-Transmission').value = sb.ZombieLore.Transmission;
+      setVal('sb-ZombieLore-Speed', sb.ZombieLore.Speed);
+      setVal('sb-ZombieLore-Strength', sb.ZombieLore.Strength);
+      setVal('sb-ZombieLore-Toughness', sb.ZombieLore.Toughness);
+      setVal('sb-ZombieLore-Transmission', sb.ZombieLore.Transmission);
+      setVal('sb-ZombieLore-Mortality', sb.ZombieLore.Mortality);
+      setVal('sb-ZombieLore-Reanimate', sb.ZombieLore.Reanimate);
+      setVal('sb-ZombieLore-Cognition', sb.ZombieLore.Cognition);
     }
     if (sb.Loot) {
-      if (sb.Loot.Food) document.getElementById('sb-Loot-Food').value = sb.Loot.Food;
-      if (sb.Loot.Weapon) document.getElementById('sb-Loot-Weapon').value = sb.Loot.Weapon;
-      if (sb.Loot.Literature) document.getElementById('sb-Loot-Literature').value = sb.Loot.Literature;
-      if (sb.Loot.Medical) document.getElementById('sb-Loot-Medical').value = sb.Loot.Medical;
+      setVal('sb-Loot-Food', sb.Loot.Food);
+      setVal('sb-Loot-Weapon', sb.Loot.Weapon);
+      setVal('sb-Loot-Literature', sb.Loot.Literature);
+      setVal('sb-Loot-Medical', sb.Loot.Medical);
+      setVal('sb-Loot-SurvivalGears', sb.Loot.SurvivalGears);
+      setVal('sb-Loot-Mechanics', sb.Loot.Mechanics);
+      setVal('sb-Loot-Other', sb.Loot.Other);
     }
+    setVal('sb-WaterShut', sb.WaterShut);
+    setVal('sb-ElecShut', sb.ElecShut);
+    setVal('sb-CarSpawnRate', sb.CarSpawnRate);
+    setVal('sb-InitialGas', sb.InitialGas);
+    setVal('sb-XpMultiplier', sb.XpMultiplier);
   } catch (e) {
     console.error('Load sandbox error:', e);
   }
 }
 
 async function saveSandbox() {
-  const sb = {
-    ZombieLore: {
-      Speed: parseInt(document.getElementById('sb-ZombieLore-Speed').value),
-      Strength: parseInt(document.getElementById('sb-ZombieLore-Strength').value),
-      Toughness: parseInt(document.getElementById('sb-ZombieLore-Toughness').value),
-      Transmission: parseInt(document.getElementById('sb-ZombieLore-Transmission').value),
-    },
-    Loot: {
-      Food: parseInt(document.getElementById('sb-Loot-Food').value),
-      Weapon: parseInt(document.getElementById('sb-Loot-Weapon').value),
-      Literature: parseInt(document.getElementById('sb-Loot-Literature').value),
-      Medical: parseInt(document.getElementById('sb-Loot-Medical').value),
-    }
+  const getInt = (id, fallback) => {
+    const el = document.getElementById(id);
+    return el ? (parseInt(el.value) || fallback) : fallback;
   };
+  const getFloat = (id, fallback) => {
+    const el = document.getElementById(id);
+    return el ? (parseFloat(el.value) || fallback) : fallback;
+  };
+
+  const sb = { ...cachedSandboxData };
+
+  sb.ZombieLore = {
+    ...(sb.ZombieLore || {}),
+    Speed: getInt('sb-ZombieLore-Speed', 2),
+    Strength: getInt('sb-ZombieLore-Strength', 2),
+    Toughness: getInt('sb-ZombieLore-Toughness', 2),
+    Transmission: getInt('sb-ZombieLore-Transmission', 1),
+    Mortality: getInt('sb-ZombieLore-Mortality', 5),
+    Reanimate: getInt('sb-ZombieLore-Reanimate', 3),
+    Cognition: getInt('sb-ZombieLore-Cognition', 3),
+  };
+
+  sb.Loot = {
+    ...(sb.Loot || {}),
+    Food: getInt('sb-Loot-Food', 3),
+    Weapon: getInt('sb-Loot-Weapon', 3),
+    Literature: getInt('sb-Loot-Literature', 3),
+    Medical: getInt('sb-Loot-Medical', 3),
+    SurvivalGears: getInt('sb-Loot-SurvivalGears', 3),
+    Mechanics: getInt('sb-Loot-Mechanics', 3),
+    Other: getInt('sb-Loot-Other', 3),
+  };
+
+  if (document.getElementById('sb-WaterShut')) sb.WaterShut = getInt('sb-WaterShut', 2);
+  if (document.getElementById('sb-ElecShut')) sb.ElecShut = getInt('sb-ElecShut', 2);
+  if (document.getElementById('sb-CarSpawnRate')) sb.CarSpawnRate = getInt('sb-CarSpawnRate', 3);
+  if (document.getElementById('sb-InitialGas')) sb.InitialGas = getInt('sb-InitialGas', 2);
+  if (document.getElementById('sb-XpMultiplier')) sb.XpMultiplier = getFloat('sb-XpMultiplier', 1.0);
 
   const res = await fetch('/api/sandbox', {
     method: 'POST',
@@ -529,30 +582,57 @@ async function saveSandbox() {
   });
   const resData = await res.json();
   if (resData.success) {
-    alert('Параметры Sandbox успешно сохранены!');
+    cachedSandboxData = sb;
+    showToast('💾 Параметры Sandbox успешно сохранены!');
   } else {
     alert('Ошибка сохранения Sandbox: ' + resData.message);
   }
 }
 
 function applySandboxPreset(preset) {
+  const setVal = (id, v) => {
+    const el = document.getElementById(id);
+    if (el) el.value = v;
+  };
+
   if (preset === 'apocalypse') {
-    document.getElementById('sb-ZombieLore-Speed').value = '2';
-    document.getElementById('sb-ZombieLore-Strength').value = '2';
-    document.getElementById('sb-ZombieLore-Toughness').value = '2';
-    document.getElementById('sb-Loot-Food').value = '2';
-    document.getElementById('sb-Loot-Weapon').value = '2';
+    setVal('sb-ZombieLore-Speed', '2');
+    setVal('sb-ZombieLore-Strength', '2');
+    setVal('sb-ZombieLore-Toughness', '2');
+    setVal('sb-ZombieLore-Transmission', '1');
+    setVal('sb-Loot-Food', '2');
+    setVal('sb-Loot-Weapon', '2');
+    setVal('sb-Loot-Literature', '2');
+    setVal('sb-Loot-Medical', '2');
+    setVal('sb-Loot-SurvivalGears', '2');
+    setVal('sb-Loot-Mechanics', '2');
+    setVal('sb-Loot-Other', '2');
   } else if (preset === 'survivor') {
-    document.getElementById('sb-ZombieLore-Speed').value = '2';
-    document.getElementById('sb-ZombieLore-Strength').value = '2';
-    document.getElementById('sb-Loot-Food').value = '3';
-    document.getElementById('sb-Loot-Weapon').value = '3';
+    setVal('sb-ZombieLore-Speed', '2');
+    setVal('sb-ZombieLore-Strength', '2');
+    setVal('sb-ZombieLore-Toughness', '2');
+    setVal('sb-ZombieLore-Transmission', '1');
+    setVal('sb-Loot-Food', '3');
+    setVal('sb-Loot-Weapon', '3');
+    setVal('sb-Loot-Literature', '3');
+    setVal('sb-Loot-Medical', '3');
+    setVal('sb-Loot-SurvivalGears', '3');
+    setVal('sb-Loot-Mechanics', '3');
+    setVal('sb-Loot-Other', '3');
   } else if (preset === 'builder') {
-    document.getElementById('sb-ZombieLore-Speed').value = '3';
-    document.getElementById('sb-ZombieLore-Strength').value = '3';
-    document.getElementById('sb-Loot-Food').value = '4';
-    document.getElementById('sb-Loot-Weapon').value = '4';
+    setVal('sb-ZombieLore-Speed', '3');
+    setVal('sb-ZombieLore-Strength', '3');
+    setVal('sb-ZombieLore-Toughness', '3');
+    setVal('sb-ZombieLore-Transmission', '4');
+    setVal('sb-Loot-Food', '4');
+    setVal('sb-Loot-Weapon', '4');
+    setVal('sb-Loot-Literature', '4');
+    setVal('sb-Loot-Medical', '4');
+    setVal('sb-Loot-SurvivalGears', '4');
+    setVal('sb-Loot-Mechanics', '4');
+    setVal('sb-Loot-Other', '4');
   }
+  if (preset) showToast(`Применен пресет: ${preset}`);
 }
 
 // ── Mod Manager ───────────────────────────────────────────────────
