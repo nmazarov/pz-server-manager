@@ -39,11 +39,24 @@ from web.auth import AuthManager
 
 logger = logging.getLogger("pz_web")
 
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    _base_dir = Path(sys._MEIPASS)
-    STATIC_DIR = _base_dir / "web" / "static" if (_base_dir / "web" / "static").exists() else _base_dir / "static"
-else:
-    STATIC_DIR = Path(__file__).resolve().parent / "static"
+def _resolve_static_dir() -> Path:
+    candidates = []
+    if getattr(sys, 'frozen', False):
+        exe_dir = Path(sys.executable).resolve().parent
+        candidates.append(exe_dir / "web" / "static")
+        candidates.append(exe_dir / "static")
+        if hasattr(sys, '_MEIPASS'):
+            meipass_dir = Path(sys._MEIPASS)
+            candidates.append(meipass_dir / "web" / "static")
+            candidates.append(meipass_dir / "static")
+    candidates.append(Path(__file__).resolve().parent / "static")
+    candidates.append(Path.cwd() / "web" / "static")
+    for c in candidates:
+        if c.exists() and (c / "index.html").exists():
+            return c
+    return candidates[0]
+
+STATIC_DIR = _resolve_static_dir()
 
 
 def create_app(
