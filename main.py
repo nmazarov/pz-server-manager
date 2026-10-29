@@ -252,7 +252,10 @@ def load_theme_stylesheet(mono_font: str = "JetBrains Mono") -> str:
             try:
                 with open(p, 'r', encoding='utf-8') as f:
                     qss = f.read()
-                    return qss.replace('{mono_font}', mono_font)
+                    qss = qss.replace('{mono_font}', mono_font)
+                    chk_p = (p.parent / 'checkmark.png').resolve().as_posix()
+                    qss = qss.replace('{checkmark_url}', f"url('{chk_p}')")
+                    return qss
             except Exception as e:
                 logger.warning(f"Failed to read stylesheet from {p}: {e}")
     return ""

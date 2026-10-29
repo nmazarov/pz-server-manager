@@ -4,6 +4,10 @@ let authToken = localStorage.getItem('pz_token') || '';
 let ws = null;
 let currentTab = 'server';
 let isServerRunning = false;
+let currentPublicIp = '';
+let currentLocalIp = '';
+let currentGamePort = 16261;
+let selectedPlayerName = null;
 
 // ── Auth & Headers ────────────────────────────────────────────────
 function getHeaders() {
@@ -157,6 +161,55 @@ function sendConsoleCommand() {
   input.value = '';
 }
 
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3500);
+}
+
+function copyConnectAddress() {
+  const port = currentGamePort || 16261;
+  const ip = currentPublicIp || currentLocalIp || '127.0.0.1';
+  const text = `${ip}:${port}`;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(`📋 Адрес скопирован: ${text}`);
+    }).catch(() => {
+      showToast(`Адрес сервера: ${text}`);
+    });
+  } else {
+    showToast(`Адрес сервера: ${text}`);
+  }
+}
+
+async function savePrefsOnChange() {
+  const name = document.getElementById('srv-name')?.value.trim() || 'servertest';
+  const ram = parseInt(document.getElementById('srv-ram')?.value) || 6;
+  const autoBkp = document.getElementById('chk-auto-backup')?.checked ?? true;
+  const watchdog = document.getElementById('chk-watchdog')?.checked ?? true;
+
+  localStorage.setItem('pz_srv_name', name);
+  localStorage.setItem('pz_srv_ram', ram);
+
+  try {
+    await fetch('/api/preferences', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        last_server_name: name,
+        last_ram_gb: ram,
+        auto_backup: autoBkp,
+        watchdog_enabled: watchdog
+      })
+    });
+  } catch (e) {
+    console.error('Failed to save preferences:', e);
+  }
+}
+
 // ── Server Lifecycle & Controls ───────────────────────────────────
 async function fetchStatus() {
   try {
@@ -169,7 +222,28 @@ async function fetchStatus() {
     }
     const data = await res.json();
     isServerRunning = data.running;
-    updateServerButtons(data.running);
+
+    if (data.public_ip) currentPublicIp = data.public_ip;
+    if (data.local_ip) currentLocalIp = data.local_ip;
+    if (data.game_port) currentGamePort = data.game_port;
+
+    // Apply persistent RAM from server if user has not modified it in session
+    if (data.ram_gb) {
+      const srvRam = document.getElementById('srv-ram');
+      if (srvRam && !srvRam.dataset.userChanged) {
+        srvRam.value = data.ram_gb;
+        localStorage.setItem('pz_srv_ram', data.ram_gb);
+      }
+    }
+    if (data.server_name) {
+      const srvName = document.getElementById('srv-name');
+      if (srvName && !srvName.dataset.userChanged) {
+        srvName.value = data.server_name;
+        localStorage.setItem('pz_srv_name', data.server_name);
+      }
+    }
+
+    updateStatusCard(data.running);
     if (data.metrics) updateMetricsUI(data.metrics);
     if (data.target_version) {
       document.getElementById('badge-version').textContent = `🎯 Build ${data.target_version}`;
@@ -179,25 +253,49 @@ async function fetchStatus() {
   }
 }
 
-function updateServerButtons(running) {
+function updateStatusCard(running) {
+  const pulseLed = document.getElementById('pulse-led');
+  const title = document.getElementById('status-title');
+  const sub = document.getElementById('status-sub');
+  const connText = document.getElementById('conn-text');
   const btnStart = document.getElementById('btn-start');
   const btnStop = document.getElementById('btn-stop');
   const btnRestart = document.getElementById('btn-restart');
-  const badgeStatus = document.getElementById('badge-status');
+
+  const port = currentGamePort || 16261;
+  const ip = currentPublicIp || currentLocalIp || '127.0.0.1';
 
   if (running) {
-    btnStart.disabled = true;
-    btnStop.disabled = false;
-    btnRestart.disabled = false;
-    badgeStatus.className = 'badge online';
-    badgeStatus.textContent = 'Онлайн';
+    if (pulseLed) pulseLed.className = 'pulse-led online';
+    if (title) {
+      title.className = 'status-title ready';
+      title.textContent = '🟢 СЕРВЕР ОНЛАЙН';
+    }
+    if (sub) sub.textContent = 'Сервер запущен и готов к подключению игроков';
+    if (connText) connText.textContent = `IP: ${ip}:${port}`;
+    if (btnStart) btnStart.disabled = true;
+    if (btnStop) btnStop.disabled = false;
+    if (btnRestart) btnRestart.disabled = false;
   } else {
-    btnStart.disabled = false;
-    btnStop.disabled = true;
-    btnRestart.disabled = true;
-    badgeStatus.className = 'badge offline';
-    badgeStatus.textContent = 'Остановлен';
+    if (pulseLed && pulseLed.className !== 'pulse-led launching') {
+      pulseLed.className = 'pulse-led offline';
+    }
+    if (title && title.className !== 'status-title launching') {
+      title.className = 'status-title stopped';
+      title.textContent = '🔴 СЕРВЕР ОСТАНОВЛЕН';
+    }
+    if (sub && pulseLed && pulseLed.className !== 'pulse-led launching') {
+      sub.textContent = 'Нажмите «Запустить сервер» для старта';
+    }
+    if (connText) connText.textContent = `Порт: ${port} (Готов к запуску)`;
+    if (btnStart) btnStart.disabled = false;
+    if (btnStop) btnStop.disabled = true;
+    if (btnRestart) btnRestart.disabled = true;
   }
+}
+
+function updateServerButtons(running) {
+  updateStatusCard(running);
 }
 
 function updateMetricsUI(m) {
@@ -211,28 +309,39 @@ function updateMetricsUI(m) {
       : m.server_ram_mb + ' MB';
     document.getElementById('badge-srv-ram').textContent = `🎮 Server RAM: ${srvStr}`;
   }
-  if (m.server_running !== undefined) {
-    updateServerButtons(m.server_running);
-  }
 }
 
 async function startServer() {
-  const badgeStatus = document.getElementById('badge-status');
-  if (badgeStatus) {
-    badgeStatus.className = 'badge launching';
-    badgeStatus.textContent = 'Запуск...';
+  const pulseLed = document.getElementById('pulse-led');
+  const title = document.getElementById('status-title');
+  const sub = document.getElementById('status-sub');
+  if (pulseLed) pulseLed.className = 'pulse-led launching';
+  if (title) {
+    title.className = 'status-title launching';
+    title.textContent = '🟡 ЗАПУСК СЕРВЕРА...';
   }
+  if (sub) sub.textContent = 'Загрузка модов и генерация мира...';
+
   const btnStart = document.getElementById('btn-start');
   if (btnStart) btnStart.disabled = true;
   const name = document.getElementById('srv-name').value.trim() || 'servertest';
   const ram = parseInt(document.getElementById('srv-ram').value) || 6;
+
+  // Persist immediately
+  localStorage.setItem('pz_srv_name', name);
+  localStorage.setItem('pz_srv_ram', ram);
+
   const res = await fetch('/api/server/start', {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify({ server_name: name, ram_gb: ram })
   });
   const data = await res.json();
-  if (!data.success) alert('Ошибка запуска сервера: ' + data.message);
+  if (!data.success) {
+    alert('Ошибка запуска сервера: ' + data.message);
+  } else {
+    showToast('🚀 Сервер запускается...');
+  }
   fetchStatus();
 }
 
@@ -265,6 +374,79 @@ function promptBroadcast() {
   if (msg && msg.trim()) {
     sendQuickAction('broadcast', msg.trim());
   }
+}
+
+
+// ── Live Players Management ───────────────────────────────────────
+async function fetchPlayers() {
+  try {
+    const res = await fetch('/api/players', { headers: getHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const countLbl = document.getElementById('players-count-lbl');
+    if (countLbl) countLbl.textContent = `👥 Игроки онлайн (${data.count || 0})`;
+
+    const box = document.getElementById('players-list-box');
+    if (!box) return;
+
+    if (!data.players || data.players.length === 0) {
+      box.innerHTML = '<div class="empty-players-msg">Нет игроков на сервере</div>';
+      selectedPlayerName = null;
+      return;
+    }
+
+    box.innerHTML = '';
+    data.players.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'player-item' + (p.name === selectedPlayerName ? ' selected' : '');
+      const name = document.createElement('span');
+      name.textContent = `👤 ${p.name}`;
+      const ping = document.createElement('span');
+      ping.style.color = '#79c0ff';
+      ping.style.fontSize = '11px';
+      ping.textContent = p.ping ? `${p.ping}ms` : '';
+      item.appendChild(name);
+      item.appendChild(ping);
+      item.onclick = () => {
+        document.querySelectorAll('.player-item').forEach(el => el.classList.remove('selected'));
+        item.classList.add('selected');
+        selectedPlayerName = p.name;
+      };
+      box.appendChild(item);
+    });
+  } catch (e) {
+    console.error('Fetch players error:', e);
+  }
+}
+
+async function kickSelectedPlayer() {
+  if (!selectedPlayerName) {
+    alert('Сначала выберите игрока из списка!');
+    return;
+  }
+  if (!confirm(`Выгнать игрока ${selectedPlayerName} с сервера?`)) return;
+  await fetch('/api/server/command', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ command: `kickuser "${selectedPlayerName}"` })
+  });
+  showToast(`Игрок ${selectedPlayerName} выгнан.`);
+  setTimeout(fetchPlayers, 1000);
+}
+
+async function banSelectedPlayer() {
+  if (!selectedPlayerName) {
+    alert('Сначала выберите игрока из списка!');
+    return;
+  }
+  if (!confirm(`Заблокировать (забанить) игрока ${selectedPlayerName} на сервере?`)) return;
+  await fetch('/api/server/command', {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ command: `banuser "${selectedPlayerName}"` })
+  });
+  showToast(`Игрок ${selectedPlayerName} заблокирован.`);
+  setTimeout(fetchPlayers, 1000);
 }
 
 // ── Settings (INI) ────────────────────────────────────────────────
@@ -741,9 +923,38 @@ async function restoreBackup(filename) {
 function initDashboard() {
   fetchStatus();
   initWebSocket();
-  setInterval(fetchStatus, 5000);
+  fetchPlayers();
+  setInterval(fetchStatus, 4000);
+  setInterval(fetchPlayers, 6000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Restore persistent preferences from localStorage immediately
+  const savedRam = localStorage.getItem('pz_srv_ram');
+  if (savedRam) {
+    const el = document.getElementById('srv-ram');
+    if (el) el.value = savedRam;
+  }
+  const savedName = localStorage.getItem('pz_srv_name');
+  if (savedName) {
+    const el = document.getElementById('srv-name');
+    if (el) el.value = savedName;
+  }
+
+  const srvRamEl = document.getElementById('srv-ram');
+  if (srvRamEl) {
+    srvRamEl.addEventListener('change', () => {
+      srvRamEl.dataset.userChanged = 'true';
+      savePrefsOnChange();
+    });
+  }
+  const srvNameEl = document.getElementById('srv-name');
+  if (srvNameEl) {
+    srvNameEl.addEventListener('input', () => {
+      srvNameEl.dataset.userChanged = 'true';
+      savePrefsOnChange();
+    });
+  }
+
   checkAuth();
 });

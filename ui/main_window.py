@@ -443,7 +443,8 @@ class MainWindow(
                 server_process=self.server_process,
                 config_manager=self.config_manager,
                 mod_manager=self.mod_manager,
-                installer=self.installer
+                installer=self.installer,
+                player_manager=getattr(self, 'player_manager', None)
             )
 
             class _WebDashboardThread(threading.Thread):

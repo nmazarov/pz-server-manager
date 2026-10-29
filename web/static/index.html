@@ -10,36 +10,40 @@
 </head>
 <body>
 
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
   <!-- Login Modal -->
   <div id="login-modal">
     <div class="login-box">
-      <img src="/static/icon.png" alt="Icon" style="width: 72px; height: 72px; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 0 20px rgba(46, 125, 50, 0.5); object-fit: cover; display: inline-block;">
-      <h2>PZ Server Manager</h2>
-      <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">
-        Вход в панель управления сервером
+      <img src="/static/icon.png" alt="Icon" class="login-logo">
+      <h2>Project Zomboid Server Manager</h2>
+      <p class="login-subtitle">
+        Вход в веб-панель управления сервером
       </p>
-      <input type="password" id="login-password" placeholder="Пароль администратора" autofocus>
-      <button onclick="handleLogin()">Войти</button>
-      <div id="login-error" style="color: #ff6b6b; margin-top: 12px; font-size: 13px; display: none;"></div>
+      <input type="password" id="login-password" placeholder="Пароль администратора" autofocus onkeydown="if(event.key==='Enter') handleLogin()">
+      <button class="btn btn-start" style="width: 100%;" onclick="handleLogin()">Войти в панель</button>
+      <div id="login-error" class="login-err-msg"></div>
     </div>
   </div>
 
-  <!-- Header -->
+  <!-- Top Header Banner -->
   <header>
     <div class="header-left">
-      <img src="/static/icon.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover; box-shadow: 0 0 10px rgba(46, 125, 50, 0.4); margin-right: 4px;">
+      <img src="/static/icon.png" alt="Logo" class="header-logo">
       <div>
         <div class="header-title">Project Zomboid Server Manager</div>
-        <div style="font-size: 11px; color: var(--text-muted);">Web Dashboard • Build 41 & 42 Ready</div>
+        <div class="header-subtitle">Tactical Web Dashboard • Build 41 & 42 Ready</div>
       </div>
     </div>
 
     <div class="header-badges">
-      <span id="badge-status" class="badge offline">Остановлен</span>
       <span id="badge-version" class="badge metric">🎯 Build 42</span>
       <span id="badge-vps-ram" class="badge metric">🖥️ VPS RAM: -- / --</span>
       <span id="badge-srv-ram" class="badge metric">🎮 Server RAM: 0 MB</span>
-      <button class="btn btn-secondary" onclick="logout()" style="padding: 4px 10px; font-size: 12px;">Выйти</button>
+      <button class="btn header-btn-share" onclick="copyConnectAddress()" title="Скопировать IP и порт сервера">📋 Поделиться</button>
+      <button class="btn header-btn-backups" onclick="switchTab('backups')" title="Перейти к резервным копиям">📦 Бэкапы</button>
+      <button class="btn header-btn-logout" onclick="logout()" title="Завершить сессию">🚪 Выйти</button>
     </div>
   </header>
 
@@ -53,65 +57,122 @@
     <button class="tab-btn" onclick="switchTab('backups')">💾 Бэкапы</button>
   </nav>
 
-  <!-- Main Content -->
+  <!-- Main Content Area -->
   <main class="content-area">
 
     <!-- ── TAB 1: SERVER ── -->
     <div id="tab-server" class="tab-panel active">
+
+      <!-- Status Banner Card -->
+      <div class="status-banner-card" id="status-card">
+        <div class="status-left">
+          <div class="pulse-led offline" id="pulse-led"></div>
+          <div class="status-text-wrap">
+            <div class="status-title" id="status-title">СЕРВЕР ОСТАНОВЛЕН</div>
+            <div class="status-sub" id="status-sub">Нажмите «Запустить сервер» для старта</div>
+          </div>
+        </div>
+        <div class="status-right">
+          <div class="connection-pill" id="conn-pill" onclick="copyConnectAddress()" title="Нажмите, чтобы скопировать адрес подключения">
+            <span class="conn-icon">🌐</span>
+            <span id="conn-text">IP: 127.0.0.1:16261 (LAN)</span>
+            <span class="copy-badge">📋 Скопировать</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Server Controls Card -->
       <div class="card">
         <div class="card-title">
-          <span>Управление сервером</span>
+          <span>⚡ Управление сервером</span>
         </div>
         <div class="row" style="align-items: flex-end;">
-          <div class="col" style="max-width: 200px;">
+          <div class="col" style="max-width: 220px;">
             <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Имя сервера:</label>
-            <input type="text" id="srv-name" class="form-control" value="servertest" style="margin-top: 4px;">
+            <input type="text" id="srv-name" class="form-control" value="servertest" style="margin-top: 4px;" onchange="savePrefsOnChange()">
           </div>
-          <div class="col" style="max-width: 180px;">
-            <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">ОЗУ (RAM):</label>
-            <select id="srv-ram" class="form-control" style="margin-top: 4px;">
+          <div class="col" style="max-width: 190px;">
+            <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Выделение ОЗУ (RAM):</label>
+            <select id="srv-ram" class="form-control" style="margin-top: 4px;" onchange="savePrefsOnChange()">
               <option value="4">4 GB</option>
-              <option value="6" selected>6 GB</option>
+              <option value="6">6 GB</option>
               <option value="8">8 GB</option>
+              <option value="10">10 GB</option>
               <option value="12">12 GB</option>
               <option value="16">16 GB</option>
+              <option value="20">20 GB</option>
               <option value="24">24 GB</option>
               <option value="32">32 GB</option>
             </select>
           </div>
-          <div class="col" style="display: flex; gap: 8px;">
-            <button id="btn-start" class="btn btn-primary" onclick="startServer()">▶ Запустить сервер</button>
-            <button id="btn-stop" class="btn btn-danger" onclick="stopServer()" disabled>⏹ Остановить</button>
-            <button id="btn-restart" class="btn btn-secondary" onclick="restartServer()" disabled>🔄 Перезапустить</button>
+          <div class="col" style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button id="btn-start" class="btn btn-start" onclick="startServer()">▶ Запустить сервер</button>
+            <button id="btn-stop" class="btn btn-stop" onclick="stopServer()" disabled>⏹ Остановить</button>
+            <button id="btn-restart" class="btn btn-restart" onclick="restartServer()" disabled>🔄 Перезапустить</button>
           </div>
+        </div>
+
+        <!-- Options row -->
+        <div class="options-row" style="margin-top: 14px; display: flex; gap: 20px; flex-wrap: wrap;">
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="chk-auto-backup" checked onchange="savePrefsOnChange()">
+            <span>📦 Авто-бэкап мира перед запуском</span>
+          </label>
+          <label class="custom-checkbox-label">
+            <input type="checkbox" id="chk-watchdog" checked onchange="savePrefsOnChange()">
+            <span>🛡️ Watchdog: авто-перезапуск при падении</span>
+          </label>
         </div>
 
         <!-- Quick actions -->
-        <div class="quick-actions">
-          <span style="font-weight: bold; font-size: 13px; color: #64b5f6;">⚡ Быстрые команды:</span>
-          <button class="btn btn-secondary" onclick="sendQuickAction('save')">💾 Сохранить мир</button>
-          <button class="btn btn-secondary" onclick="sendQuickAction('rain')">🌧️ Дождь Вкл/Выкл</button>
-          <button class="btn btn-secondary" onclick="sendQuickAction('chopper')">🚁 Вызвать вертолет</button>
-          <button class="btn btn-secondary" onclick="promptBroadcast()">📢 Объявление в чат</button>
+        <div class="quick-actions" style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);">
+          <span style="font-weight: bold; font-size: 12px; color: #4ea8de;">⚡ Быстрые команды:</span>
+          <button class="pill-chip" onclick="sendQuickAction('save')">💾 Сохранить</button>
+          <button class="pill-chip" onclick="sendQuickAction('rain')">🌧️ Дождь</button>
+          <button class="pill-chip" onclick="sendQuickAction('chopper')">🚁 Вертолет</button>
+          <button class="pill-chip" onclick="promptBroadcast()">📢 Объявление</button>
         </div>
       </div>
 
-      <!-- Live Terminal -->
-      <div class="card" style="padding: 14px;">
-        <div class="card-title">
-          <span>Интерактивная консоль сервера</span>
-          <div style="display: flex; gap: 10px; align-items: center; font-size: 12px; font-weight: normal;">
-            <label style="cursor: pointer; display: flex; align-items: center; gap: 4px;">
-              <input type="checkbox" id="autoscroll-chk" checked> Автопрокрутка
-            </label>
-            <button class="btn btn-secondary" onclick="clearConsole()" style="padding: 2px 8px; font-size: 11px;">Очистить</button>
+      <!-- Split Layout: Console + Live Players Dashboard -->
+      <div class="console-player-split">
+        <!-- Live Terminal -->
+        <div class="console-pane">
+          <div class="card" style="margin-bottom: 0; height: 100%; display: flex; flex-direction: column;">
+            <div class="card-title">
+              <span>📟 Интерактивная консоль сервера</span>
+              <div style="display: flex; gap: 10px; align-items: center; font-size: 12px; font-weight: normal;">
+                <label class="custom-checkbox-label" style="font-size: 12px;">
+                  <input type="checkbox" id="autoscroll-chk" checked>
+                  <span>Автопрокрутка</span>
+                </label>
+                <button class="btn btn-secondary" onclick="clearConsole()" style="padding: 2px 8px; font-size: 11px;">Очистить</button>
+              </div>
+            </div>
+            <div class="terminal-window">
+              <div class="terminal-output" id="console-output"></div>
+              <div class="terminal-input-row">
+                <input type="text" id="console-cmd" placeholder="Введите команду (например: save, chopper, players, servermsg 'текст')..." onkeydown="if(event.key==='Enter') sendConsoleCommand()">
+                <button onclick="sendConsoleCommand()">Отправить</button>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="terminal-window">
-          <div class="terminal-output" id="console-output"></div>
-          <div class="terminal-input-row">
-            <input type="text" id="console-cmd" placeholder="Введите команду (например: players, servermsg 'Hello', save)..." onkeydown="if(event.key==='Enter') sendConsoleCommand()">
-            <button onclick="sendConsoleCommand()">Отправить</button>
+
+        <!-- Live Players Dashboard Panel -->
+        <div class="players-pane">
+          <div class="card" style="margin-bottom: 0; height: 100%; display: flex; flex-direction: column;">
+            <div class="card-title">
+              <span id="players-count-lbl">👥 Игроки онлайн (0)</span>
+              <button class="btn btn-secondary" onclick="fetchPlayers()" style="padding: 2px 7px; font-size: 11px;" title="Обновить список игроков">🔄</button>
+            </div>
+            <div class="players-list-box" id="players-list-box">
+              <div class="empty-players-msg">Нет игроков на сервере</div>
+            </div>
+            <div class="players-btn-row">
+              <button class="btn btn-danger" style="flex: 1; padding: 6px; font-size: 11px;" onclick="kickSelectedPlayer()">Кикнуть</button>
+              <button class="btn btn-danger" style="flex: 1; padding: 6px; font-size: 11px; background: linear-gradient(180deg, #991b1b 0%, #7f1d1d 100%); border-color: #ef4444;" onclick="banSelectedPlayer()">Забанить</button>
+            </div>
           </div>
         </div>
       </div>
@@ -121,8 +182,8 @@
     <div id="tab-settings" class="tab-panel">
       <div class="card">
         <div class="card-title">
-          <span>Настройки сервера (servertest.ini)</span>
-          <button class="btn btn-primary" onclick="saveSettings()">💾 Сохранить настройки</button>
+          <span>⚙️ Настройки сервера (servertest.ini)</span>
+          <button class="btn btn-start" onclick="saveSettings()">💾 Сохранить настройки</button>
         </div>
         <div class="row">
           <div class="col">
@@ -158,18 +219,26 @@
               <input type="number" id="ini-UDPPort" class="form-control" value="8766">
             </div>
             <div class="form-group">
-              <label>Пауза когда сервер пуст (PauseEmpty):</label>
-              <select id="ini-PauseEmpty" class="form-control">
-                <option value="true">Да (Пауза)</option>
-                <option value="false">Нет (Время идет)</option>
-              </select>
+              <label>RCON порт (TCP):</label>
+              <input type="number" id="ini-RCONPort" class="form-control" value="27015">
             </div>
             <div class="form-group">
-              <label>Голосовой чат (VoiceEnable):</label>
-              <select id="ini-VoiceEnable" class="form-control">
-                <option value="true">Включен</option>
-                <option value="false">Отключен</option>
-              </select>
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-PVP">
+                <span>Разрешить PvP (PVP)</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-Open">
+                <span>Публичный сервер (Open)</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="custom-checkbox-label">
+                <input type="checkbox" id="ini-Public">
+                <span>Отображать в публичном списке Steam (Public)</span>
+              </label>
             </div>
           </div>
         </div>
@@ -180,103 +249,10 @@
     <div id="tab-sandbox" class="tab-panel">
       <div class="card">
         <div class="card-title">
-          <span>Настройки песочницы (servertest_SandboxVars.lua)</span>
-          <div style="display: flex; gap: 8px;">
-            <select id="sandbox-preset" class="form-control" style="width: 170px;" onchange="applySandboxPreset(this.value)">
-              <option value="">-- Пресеты сложности --</option>
-              <option value="apocalypse">💀 Апокалипсис</option>
-              <option value="survivor">🏕️ Выживание</option>
-              <option value="builder">🏗️ Строитель</option>
-            </select>
-            <button class="btn btn-primary" onclick="saveSandbox()">💾 Сохранить Sandbox</button>
-          </div>
+          <span>🧟 Параметры мира (SandboxVars.lua)</span>
+          <button class="btn btn-start" onclick="saveSandbox()">💾 Сохранить Sandbox</button>
         </div>
-
-        <div class="row">
-          <div class="col">
-            <h4 style="color: var(--accent); margin-bottom: 10px;">🧟 Зомби (ZombieLore)</h4>
-            <div class="form-group">
-              <label>Скорость зомби (Speed):</label>
-              <select id="sb-ZombieLore-Speed" class="form-control">
-                <option value="1">Спринтеры (Sprinters)</option>
-                <option value="2" selected>Быстрые ходячие (Fast Shamblers)</option>
-                <option value="3">Медленные (Shamblers)</option>
-                <option value="4">Случайно (Random)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Сила зомби (Strength):</label>
-              <select id="sb-ZombieLore-Strength" class="form-control">
-                <option value="1">Сверхчеловеческая</option>
-                <option value="2" selected>Обычная</option>
-                <option value="3">Слабая</option>
-                <option value="4">Случайно</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Живучесть зомби (Toughness):</label>
-              <select id="sb-ZombieLore-Toughness" class="form-control">
-                <option value="1">Высокая</option>
-                <option value="2" selected>Обычная</option>
-                <option value="3">Хрупкая</option>
-                <option value="4">Случайно</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Передача инфекции (Transmission):</label>
-              <select id="sb-ZombieLore-Transmission" class="form-control">
-                <option value="1" selected>Кровь и слюна (Blood + Saliva)</option>
-                <option value="2">Только слюна / укус (Saliva Only)</option>
-                <option value="3">Все заражены (Everyone's Infected)</option>
-                <option value="4">Отключена (None)</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="col">
-            <h4 style="color: var(--accent); margin-bottom: 10px;">📦 Спавн лута (Loot Rarity)</h4>
-            <div class="form-group">
-              <label>Еда (Food):</label>
-              <select id="sb-Loot-Food" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Оружие (Weapon):</label>
-              <select id="sb-Loot-Weapon" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Книги / Литература (Literature):</label>
-              <select id="sb-Loot-Literature" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Медикаменты (Medical):</label>
-              <select id="sb-Loot-Medical" class="form-control">
-                <option value="1">Крайне редко</option>
-                <option value="2">Редко</option>
-                <option value="3" selected>Нормально</option>
-                <option value="4">Часто</option>
-                <option value="5">Изобилие</option>
-              </select>
-            </div>
-          </div>
-        </div>
+        <div id="sandbox-container">Загрузка параметров Sandbox...</div>
       </div>
     </div>
 
@@ -284,36 +260,17 @@
     <div id="tab-mods" class="tab-panel">
       <div class="card">
         <div class="card-title">
-          <span>Управление модами Steam Workshop</span>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn btn-primary" onclick="checkAllModsCompatibility()">🔍 Проверить актуальность</button>
-            <button class="btn btn-info" onclick="analyzeMods()">⚡ Анализ зависимостей</button>
-            <button class="btn btn-primary" onclick="saveMods()">💾 Сохранить список</button>
-          </div>
+          <span>🧩 Мастер модификаций Workshop</span>
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+          <input type="text" id="mod-input" class="form-control" placeholder="Вставьте Workshop ID или ссылку на мод из Steam...">
+          <button class="btn btn-start" onclick="addMod()" style="white-space: nowrap;">➕ Добавить мод</button>
         </div>
 
-        <div style="margin-bottom: 14px; display: flex; gap: 10px;">
-          <input type="text" id="mod-input-id" class="form-control" placeholder="Введите Workshop ID или ссылку на мод/коллекцию Steam...">
-          <button class="btn btn-primary" onclick="addMod()" style="white-space: nowrap;">➕ Добавить мод</button>
+        <div style="font-size: 13px; font-weight: bold; margin-bottom: 8px; color: var(--text-muted);">
+          Активные моды на сервере:
         </div>
-
-        <!-- Curated Packs -->
-        <div style="margin-bottom: 16px; background: #222; padding: 10px 14px; border-radius: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-          <span style="font-weight: bold; font-size: 12px; color: #ffb74d;">🎁 Готовые наборы:</span>
-          <button class="btn btn-secondary" onclick="applyModPack('vehicles')" style="font-size: 12px;">🚗 Автопарк KI5</button>
-          <button class="btn btn-secondary" onclick="applyModPack('weapons')" style="font-size: 12px;">⚔️ Оружие Brita</button>
-          <button class="btn btn-secondary" onclick="applyModPack('qol')" style="font-size: 12px;">🖥️ Удобный QoL</button>
-          <button class="btn btn-secondary" onclick="applyModPack('hardcore')" style="font-size: 12px;">🧟 Хардкор</button>
-          <button class="btn btn-danger" onclick="clearMods()" style="font-size: 12px; margin-left: auto;">🧹 Очистить все</button>
-        </div>
-
-        <!-- Legend -->
-        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
-          🟢 <b>Зеленый</b>: Совместим с текущей версией сервера | 🔴 <b>Красный</b>: Несовместим или устарел | 🟡 <b>Желтый</b>: Универсальный / требует проверки
-        </div>
-
-        <!-- Mod Items List -->
-        <div id="mods-container"></div>
+        <div id="mods-list">Загрузка списка модов...</div>
       </div>
     </div>
 
@@ -321,42 +278,35 @@
     <div id="tab-install" class="tab-panel">
       <div class="card">
         <div class="card-title">
-          <span>Установка и обновление сервера (SteamCMD)</span>
-          <button class="btn btn-info" onclick="checkSteamUpdate()">🔍 Проверить обновления в Steam</button>
+          <span>📦 Установка и обновление игрового сервера</span>
         </div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Выберите желаемую ветку обновления Project Zomboid Dedicated Server (Steam AppID 380870).
+        </p>
 
-        <!-- Steam-styled Betas Container -->
-        <div class="steam-betas-container" style="background: #171d25; border: 1px solid #2a475e; border-radius: 6px; overflow: hidden; margin-top: 10px;">
-          <!-- Table Header -->
-          <div style="display: flex; justify-content: space-between; padding: 8px 16px; background: #1f2b3b; border-bottom: 1px solid #2a475e; font-size: 11px; font-weight: bold; color: #8f98a0; letter-spacing: 0.5px;">
-            <span>НАЗВАНИЕ И ОПИСАНИЕ</span>
-            <span>ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ</span>
-          </div>
-
-          <!-- Branch Rows -->
-          <div id="steam-branch-rows" style="display: flex; flex-direction: column;">
-            <div style="padding: 16px; color: #8f98a0; font-size: 13px;">Загрузка версий из Steam...</div>
-          </div>
+        <!-- Steam Branches List -->
+        <div id="branches-list" style="margin-bottom: 14px;">
+          Загрузка веток Steam...
         </div>
 
         <!-- Hidden input for active branch -->
         <input type="hidden" id="install-branch" value="">
 
-        <!-- Скрытые версии (Compact bar) -->
-        <div style="background: #1b2838; border: 1px solid #2a475e; border-radius: 6px; padding: 10px 14px; margin-top: 8px;">
-          <div class="row" style="gap: 8px; align-items: center; flex-wrap: wrap;">
+        <!-- Скрытые версии -->
+        <div style="background: #141923; border: 1px solid #232d3d; border-radius: 6px; padding: 12px 16px; margin-top: 10px;">
+          <div class="row" style="gap: 10px; align-items: center; flex-wrap: wrap;">
             <span style="font-size: 12px; font-weight: bold; color: #fff;">🔑 Скрытая версия:</span>
             <input type="text" id="beta-hidden-branch" class="form-control" placeholder="Название ветки (необязательно)" style="max-width: 200px;">
             <input type="password" id="beta-access-code" class="form-control" placeholder="Код доступа или пароль" style="max-width: 220px;">
-            <button class="btn btn-secondary" onclick="checkBetaCode()" style="padding: 6px 14px; background: #214b6b; color: #fff; font-weight: bold; font-size: 12px;">
+            <button class="btn btn-secondary" onclick="checkBetaCode()" style="padding: 6px 14px; background: #1e3a5f; color: #fff; font-weight: bold; font-size: 12px;">
               Проверить код
             </button>
-            <span id="beta-code-msg" style="font-size: 12px; color: #8bc34a; font-weight: bold; display: none;"></span>
+            <span id="beta-code-msg" style="font-size: 12px; color: #34d399; font-weight: bold; display: none;"></span>
           </div>
         </div>
 
-        <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
-          <button id="btn-do-install" class="btn btn-primary" onclick="startInstallation()" style="padding: 12px 26px; font-size: 14px;">
+        <div style="margin-top: 18px; display: flex; justify-content: flex-end;">
+          <button id="btn-do-install" class="btn btn-start" onclick="startInstallation()" style="padding: 11px 24px; font-size: 14px;">
             🚀 Установить / Обновить сервер
           </button>
         </div>
@@ -381,8 +331,8 @@
     <div id="tab-backups" class="tab-panel">
       <div class="card">
         <div class="card-title">
-          <span>Резервные копии мира и конфигураций</span>
-          <button class="btn btn-primary" onclick="createBackup()">📦 Создать бэкап сейчас</button>
+          <span>💾 Резервные копии мира и конфигураций</span>
+          <button class="btn btn-start" onclick="createBackup()">📦 Создать бэкап сейчас</button>
         </div>
         <div id="backups-container">Загрузка бэкапов...</div>
       </div>

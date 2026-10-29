@@ -263,7 +263,10 @@ class ServerTabMixin:
         # Load persistent user preferences
         prefs = AppPreferences.load(self.paths)
         saved_server_name = prefs.get('last_server_name', 'servertest')
-        saved_ram = prefs.get('last_ram_gb', 6)
+        try:
+            saved_ram = int(prefs.get('last_ram_gb', 6))
+        except Exception:
+            saved_ram = 6
         saved_auto_backup = prefs.get('auto_backup', True)
 
         row_top = QHBoxLayout()
@@ -281,8 +284,12 @@ class ServerTabMixin:
         row_top.addWidget(ram_lbl)
 
         self.server_ram_combo = QComboBox()
+        ram_options = [4, 6, 8, 10, 12, 16, 20, 24, 32]
+        if saved_ram not in ram_options:
+            ram_options.append(saved_ram)
+            ram_options.sort()
         default_ram_idx = 1
-        for idx, gb in enumerate([4, 6, 8, 10, 12, 16, 20, 24, 32]):
+        for idx, gb in enumerate(ram_options):
             self.server_ram_combo.addItem(f"{gb} GB", gb)
             if gb == saved_ram:
                 default_ram_idx = idx
@@ -513,7 +520,7 @@ class ServerTabMixin:
         layout.addWidget(console_group)
         self.tabs.addTab(tab, tr('tab_server'))
 
-    def _on_ram_changed(self):
+    def _on_ram_changed(self, *args):
         if hasattr(self, 'server_ram_combo'):
             ram = self.server_ram_combo.currentData()
             if ram:

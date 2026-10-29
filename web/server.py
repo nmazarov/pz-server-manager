@@ -53,6 +53,7 @@ def create_app(
     config_manager: Optional[ConfigManager] = None,
     mod_manager: Optional[ModManager] = None,
     installer: Optional[ServerInstaller] = None,
+    player_manager: Optional[Any] = None,
 ) -> FastAPI:
     """Create and configure the FastAPI web application."""
     limiter = Limiter(key_func=get_remote_address)
@@ -79,6 +80,16 @@ def create_app(
         mod_manager = ModManager(paths)
     if installer is None:
         installer = ServerInstaller(paths)
+
+    if player_manager is None:
+        try:
+            from core.player_manager import PlayerManager
+            player_manager = PlayerManager(paths, "servertest")
+        except Exception:
+            player_manager = None
+
+    if player_manager:
+        server_process.output_received.connect(player_manager.parse_console_line)
 
     # ── Console Log Buffer ──────────────────────────────────────────
     console_history: List[str] = []
@@ -321,11 +332,32 @@ def create_app(
         except Exception:
             pass
 
+        from core.config_manager import AppPreferences
+        prefs = AppPreferences.load(paths)
+        saved_server_name = prefs.get('last_server_name', 'servertest')
+        try:
+            saved_ram_gb = int(prefs.get('last_ram_gb', 6))
+        except Exception:
+            saved_ram_gb = 6
+
+        pub_ip = NetworkHelper.get_public_ip(timeout=1.0) or NetworkHelper.get_local_ip()
+        loc_ip = NetworkHelper.get_local_ip()
+        game_port = 16261
+        try:
+            ini_data = config_manager.load_server_ini()
+            game_port = int(ini_data.get('DefaultPort', 16261))
+        except Exception:
+            pass
+
         return {
             "installed": is_installed,
             "running": server_process.is_running(),
             "target_version": target_version,
-            "public_ip": NetworkHelper.get_local_ip(),
+            "public_ip": pub_ip,
+            "local_ip": loc_ip,
+            "game_port": game_port,
+            "server_name": saved_server_name,
+            "ram_gb": saved_ram_gb,
             "metrics": get_system_metrics()
         }
 
@@ -335,6 +367,13 @@ def create_app(
             return {"success": False, "message": "Server is already running."}
 
         name = req.server_name.strip() or "servertest"
+        ram_gb = int(req.ram_gb or 6)
+
+        from core.config_manager import AppPreferences
+        AppPreferences.save(paths, {
+            'last_server_name': name,
+            'last_ram_gb': ram_gb
+        })
         # Pre-launch auto backup
         try:
             bm = BackupManager(paths, server_name=name)
@@ -349,6 +388,27 @@ def create_app(
             return {"success": True}
         except Exception as e:
             return {"success": False, "message": str(e)}
+
+
+    @app.get("/api/preferences")
+    def api_get_preferences(token: str = Depends(get_token)):
+        from core.config_manager import AppPreferences
+        return AppPreferences.load(paths)
+
+    @app.post("/api/preferences")
+    def api_save_preferences(data: Dict[str, Any], token: str = Depends(get_token)):
+        from core.config_manager import AppPreferences
+        AppPreferences.save(paths, data)
+        return {"success": True}
+
+    @app.get("/api/players")
+    def api_get_players(token: str = Depends(get_token)):
+        if player_manager:
+            return {
+                "players": player_manager.get_players_list(),
+                "count": player_manager.get_online_count()
+            }
+        return {"players": [], "count": 0}
 
     @app.post("/api/server/stop")
     def api_server_stop(token: str = Depends(get_token)):
