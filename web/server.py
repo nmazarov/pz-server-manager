@@ -96,7 +96,10 @@ def create_app(
     if installer is None:
         installer = ServerInstaller(paths)
     if player_manager is None:
-        player_manager = PlayerManager(paths)
+        try:
+            player_manager = PlayerManager(paths, "servertest")
+        except Exception:
+            player_manager = None
 
     watchdog_enabled = [True]
     current_srv_name = ["servertest"]
@@ -117,18 +120,12 @@ def create_app(
         except Exception:
             pass
 
-    server_process.output_received.connect(lambda text: player_manager.parse_console_line(text))
-    server_process.server_stopped.connect(lambda: player_manager.clear_online_players())
-
-    if player_manager is None:
-        try:
-            from core.player_manager import PlayerManager
-            player_manager = PlayerManager(paths, "servertest")
-        except Exception:
-            player_manager = None
-
     if player_manager:
-        server_process.output_received.connect(player_manager.parse_console_line)
+        try:
+            server_process.output_received.connect(player_manager.parse_console_line)
+            server_process.server_stopped.connect(player_manager.clear_online_players)
+        except Exception:
+            pass
 
     # ── Console Log Buffer ──────────────────────────────────────────
     console_history: List[str] = []
@@ -404,6 +401,7 @@ def create_app(
         except Exception:
             pass
 
+        is_run = server_process.is_running()
         return {
             "installed": is_installed,
             "running": is_run,
