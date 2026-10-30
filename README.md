@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/nmazarov/pz-server-manager/releases"><img src="https://img.shields.io/badge/Release-v1.5.0-success.svg?style=flat-square" alt="Version v1.5.0"/></a>
+  <a href="https://github.com/nmazarov/pz-server-manager/releases"><img src="https://img.shields.io/badge/Release-v1.3.1-success.svg?style=flat-square" alt="Version v1.3.1"/></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.8+-3776AB.svg?logo=python&logoColor=white&style=flat-square" alt="Python 3.8+"/></a>
   <a href="https://pypi.org/project/PyQt5/"><img src="https://img.shields.io/badge/GUI-PyQt5-41CD52.svg?logo=qt&logoColor=white&style=flat-square" alt="PyQt5"/></a>
   <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/Web-FastAPI-009688.svg?logo=fastapi&logoColor=white&style=flat-square" alt="FastAPI"/></a>

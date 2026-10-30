@@ -70,7 +70,7 @@ def create_app(
 ) -> FastAPI:
     """Create and configure the FastAPI web application."""
     limiter = Limiter(key_func=get_remote_address)
-    app = FastAPI(title="PZ Server Manager Web", version="1.5.0")
+    app = FastAPI(title="PZ Server Manager Web", version="1.3.1")
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     
