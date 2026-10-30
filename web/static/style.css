@@ -44,6 +44,9 @@
   --border: #262c36;
   --border-focus: #4ea8de;
   --font-mono: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --input-height: 38px;
 }
 
 * {
@@ -66,10 +69,22 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  -webkit-font-smoothing: antialiased;
 }
 
 button, input, select, textarea {
   font-family: inherit;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 /* ── Login Overlay ────────────────────────────────────────────────────────── */
@@ -155,7 +170,8 @@ header {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
+  height: 62px;
 }
 
 .header-left {
@@ -434,7 +450,7 @@ nav.tab-nav {
   white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   border-bottom: 2px solid transparent;
   transition: all 0.2s ease;
 }
@@ -640,6 +656,100 @@ main.content-area {
   background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
   border: 1px solid #f87171;
   color: #fff;
+  white-space: nowrap;
+  user-select: none;
+}
+.btn-primary {
+  background: var(--primary);
+  border-color: #388e3c;
+}
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+.btn-danger {
+  background: var(--danger);
+  border-color: #d32f2f;
+}
+.btn-danger:hover {
+  background: var(--danger-hover);
+}
+.btn-info {
+  background: #1976d2;
+  border-color: #2196f3;
+}
+.btn-info:hover {
+  background: #1e88e5;
+}
+.btn-secondary {
+  background: #2a2c30;
+  border-color: #3c4043;
+  color: #e0e0e0;
+}
+.btn-secondary:hover {
+  background: #36393f;
+  color: #fff;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ── Server Control Toolbar ── */
+.server-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #141517;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.toolbar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.toolbar-item label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.toolbar-item .form-control {
+  height: var(--input-height);
+}
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.toolbar-watchdog {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+.watchdog-badge-btn {
+  height: var(--input-height);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #81c784;
+  background: #162418;
+  padding: 0 14px;
+  border-radius: var(--radius);
+  border: 1px solid #2e7d32;
+  user-select: none;
+  transition: all 0.15s;
+}
+.watchdog-badge-btn:hover {
+  background: #1e3321;
 }
 
 .btn-primary {
@@ -991,11 +1101,13 @@ input[type="checkbox"]:checked::before {
 
 /* ── Form Controls ────────────────────────────────────────────────────────── */
 .form-group {
-  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .form-group label {
-  display: block;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
@@ -1006,7 +1118,8 @@ input[type="checkbox"]:checked::before {
 
 .form-control {
   width: 100%;
-  padding: 9px 12px;
+  height: var(--input-height);
+  padding: 0 12px;
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1022,6 +1135,12 @@ input[type="checkbox"]:checked::before {
 
 select.form-control {
   cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa0a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  padding-right: 32px;
 }
 
 /* ── Mod List & Badges ────────────────────────────────────────────────────── */

@@ -741,73 +741,102 @@ let currentLocalIp = '';
 let currentGamePort = 16261;
 let selectedPlayerName = null;
 
-// ── Auth & Headers ────────────────────────────────────────────────
 function getHeaders() {
   return {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + authToken
+    'Authorization': 'Bearer ' + currentToken
   };
 }
 
-function checkAuth() {
-  const modal = document.getElementById('login-modal');
-  if (!authToken) {
-    modal.style.display = 'flex';
+// ── Initialization ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (currentToken) {
+    checkAuth();
   } else {
-    modal.style.display = 'none';
-    initDashboard();
+    showLogin();
+  }
+});
+
+async function checkAuth() {
+  try {
+    const res = await fetch('/api/status', { headers: getHeaders() });
+    if (res.status === 401 || res.status === 403) {
+      showLogin();
+    } else {
+      hideLogin();
+      initDashboard();
+    }
+  } catch (e) {
+    showLogin();
   }
 }
 
+function showLogin() {
+  document.getElementById('login-modal').style.display = 'flex';
+  const inp = document.getElementById('login-password');
+  if (inp) {
+    inp.value = '';
+    inp.focus();
+  }
+}
+
+function hideLogin() {
+  document.getElementById('login-modal').style.display = 'none';
+}
+
 async function handleLogin() {
-  const pw = document.getElementById('login-password').value;
-  const errDiv = document.getElementById('login-error');
-  errDiv.style.display = 'none';
+  const pwd = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
 
   try {
     const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pw })
+      body: JSON.stringify({ password: pwd })
     });
     const data = await res.json();
-    if (res.ok && data.token) {
-      authToken = data.token;
-      localStorage.setItem('pz_token', authToken);
-      document.getElementById('login-modal').style.display = 'none';
+    if (res.ok && data.success) {
+      currentToken = data.token;
+      localStorage.setItem('pz_token', currentToken);
+      hideLogin();
       initDashboard();
     } else {
-      errDiv.textContent = data.detail || 'Неверный пароль администратора!';
-      errDiv.style.display = 'block';
+      errEl.textContent = data.detail || 'Неверный пароль администратора';
+      errEl.style.display = 'block';
     }
-  } catch (err) {
-    errDiv.textContent = 'Ошибка подключения к серверу: ' + err;
-    errDiv.style.display = 'block';
+  } catch (e) {
+    errEl.textContent = 'Ошибка подключения к серверу';
+    errEl.style.display = 'block';
   }
 }
 
 function logout() {
-  if (confirm('Вы действительно хотите выйти из панели?')) {
-    fetch('/api/logout', { method: 'POST', headers: getHeaders() });
-    localStorage.removeItem('pz_token');
-    authToken = '';
-    if (ws) ws.close();
-    location.reload();
+  fetch('/api/logout', { method: 'POST', headers: getHeaders() }).catch(() => {});
+  localStorage.removeItem('pz_token');
+  currentToken = '';
+  if (ws) {
+    ws.close();
+    ws = null;
   }
+  showLogin();
 }
 
 // ── Tab Navigation ────────────────────────────────────────────────
 function switchTab(name) {
-  currentTab = name;
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
 
   const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick')?.includes(name));
-  if (activeBtn) activeBtn.classList.add('active');
-
   const activePanel = document.getElementById('tab-' + name);
+
+  if (activeBtn) activeBtn.classList.add('active');
   if (activePanel) activePanel.classList.add('active');
 
+  if (name === 'server') {
+    refreshPlayers();
+    loadWatchdog();
+  }
   if (name === 'settings') loadSettings();
   if (name === 'sandbox') loadSandbox();
   if (name === 'mods') loadMods();
@@ -815,11 +844,65 @@ function switchTab(name) {
   if (name === 'backups') loadBackups();
 }
 
+function switchSandboxSubtab(subtab) {
+  document.querySelectorAll('.subtab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#tab-sandbox .subtab-panel').forEach(p => p.classList.remove('active'));
+
+  const activeBtn = Array.from(document.querySelectorAll('.subtab-btn')).find(b => b.getAttribute('onclick')?.includes(subtab));
+  const activePanel = document.getElementById('sb-subtab-' + subtab);
+
+  if (activeBtn) activeBtn.classList.add('active');
+  if (activePanel) activePanel.classList.add('active');
+}
+
+// ── Dashboard Core ────────────────────────────────────────────────
+function initDashboard() {
+  connectWebSocket();
+  loadConsoleHistory();
+  pollStatus();
+  setInterval(pollStatus, 3000);
+  setInterval(pollMetrics, 3000);
+  setInterval(() => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      loadConsoleHistory();
+    }
+  }, 3000);
+  setInterval(() => {
+    const srvPanel = document.getElementById('tab-server');
+    if (srvPanel && srvPanel.classList.contains('active')) {
+      refreshPlayers(true);
+    }
+  }, 5000);
+  loadWatchdog();
+}
+
+async function loadConsoleHistory() {
+  try {
+    const res = await fetch('/api/console/history', { headers: getHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    const out = document.getElementById('console-output');
+    if (out && data.lines && data.lines.length > 0) {
+      out.innerHTML = '';
+      data.lines.forEach(l => {
+        const div = document.createElement('div');
+        div.className = 'terminal-line';
+        div.textContent = l;
+        out.appendChild(div);
+      });
+      const chk = document.getElementById('autoscroll-chk');
+      if (chk && chk.checked) {
+        out.scrollTop = out.scrollHeight;
+      }
+    }
+  } catch (e) {}
+}
+
 // ── WebSocket Live Console ────────────────────────────────────────
-function initWebSocket() {
-  if (ws) ws.close();
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${protocol}//${location.host}/ws/console?token=${authToken}`;
+function connectWebSocket() {
+  if (ws) return;
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = `${proto}//${window.location.host}/ws/console?token=${encodeURIComponent(currentToken)}`;
 
   ws = new WebSocket(url);
 
@@ -829,44 +912,31 @@ function initWebSocket() {
       if (msg.type === 'console') {
         appendConsoleLine(msg.line);
       } else if (msg.type === 'metrics') {
-        updateMetricsUI(msg.data);
+        updateMetrics(msg.data);
       }
     } catch (e) {
-      console.error('WS parse error:', e);
+      appendConsoleLine(event.data);
     }
   };
 
   ws.onclose = () => {
-    setTimeout(() => {
-      if (authToken) initWebSocket();
-    }, 3000);
+    ws = null;
+    if (currentToken) {
+      setTimeout(connectWebSocket, 3000);
+    }
   };
 }
 
-function appendConsoleLine(text) {
+function appendConsoleLine(line) {
   const out = document.getElementById('console-output');
   if (!out) return;
-
   const div = document.createElement('div');
-  const lower = text.toLowerCase();
-
-  if (lower.includes('error') || lower.includes('failed') || lower.includes('exception')) {
-    div.className = 'log-red';
-  } else if (lower.includes('server started') || lower.includes('ready') || lower.includes('listening')) {
-    div.className = 'log-green';
-  } else if (lower.includes('connected') || lower.includes('join')) {
-    div.className = 'log-cyan';
-  } else if (lower.includes('warning') || lower.includes('warn')) {
-    div.className = 'log-orange';
-  } else if (text.startsWith('>')) {
-    div.className = 'log-cyan';
-  }
-
-  div.textContent = text;
+  div.className = 'terminal-line';
+  div.textContent = line;
   out.appendChild(div);
 
-  const autoscroll = document.getElementById('autoscroll-chk')?.checked;
-  if (autoscroll) {
+  const chk = document.getElementById('autoscroll-chk');
+  if (chk && chk.checked) {
     out.scrollTop = out.scrollHeight;
   }
 }
@@ -877,8 +947,9 @@ function clearConsole() {
 }
 
 function sendConsoleCommand() {
-  const input = document.getElementById('console-cmd');
-  const cmd = input.value.trim();
+  const inp = document.getElementById('console-cmd');
+  if (!inp) return;
+  const cmd = inp.value.trim();
   if (!cmd) return;
 
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -890,7 +961,7 @@ function sendConsoleCommand() {
       body: JSON.stringify({ command: cmd })
     });
   }
-  input.value = '';
+  inp.value = '';
 }
 
 
@@ -946,12 +1017,7 @@ async function savePrefsOnChange() {
 async function fetchStatus() {
   try {
     const res = await fetch('/api/status', { headers: getHeaders() });
-    if (res.status === 401) {
-      localStorage.removeItem('pz_token');
-      authToken = '';
-      checkAuth();
-      return;
-    }
+    if (!res.ok) return;
     const data = await res.json();
     isServerRunning = data.running;
 
@@ -980,8 +1046,13 @@ async function fetchStatus() {
     if (data.target_version) {
       document.getElementById('badge-version').textContent = `🎯 Build ${data.target_version}`;
     }
-  } catch (err) {
-    console.error('Fetch status error:', err);
+
+    const badgeVer = document.getElementById('badge-version');
+    if (badgeVer) {
+      badgeVer.textContent = '🎯 Build ' + (data.target_version || '42');
+    }
+  } catch (e) {
+    console.error('pollStatus error:', e);
   }
 }
 
@@ -1024,7 +1095,6 @@ function updateStatusCard(running) {
     if (btnStop) btnStop.disabled = true;
     if (btnRestart) btnRestart.disabled = true;
   }
-}
 
 function updateServerButtons(running) {
   updateStatusCard(running);
@@ -1078,33 +1148,45 @@ async function startServer() {
 }
 
 async function stopServer() {
-  if (!confirm('Остановить сервер Project Zomboid?')) return;
-  await fetch('/api/server/stop', { method: 'POST', headers: getHeaders() });
-  fetchStatus();
-}
-
-async function restartServer() {
-  if (!confirm('Перезапустить сервер?')) return;
-  await fetch('/api/server/restart', { method: 'POST', headers: getHeaders() });
-  fetchStatus();
-}
-
-async function sendQuickAction(action, extra = '') {
-  const res = await fetch('/api/server/quick-action', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ action: action, extra: extra })
-  });
-  const data = await res.json();
-  if (data.message) {
-    appendConsoleLine(`[Admin]: ${data.message}`);
+  if (!confirm('Вы уверены, что хотите корректно остановить сервер?')) return;
+  try {
+    await fetch('/api/server/stop', { method: 'POST', headers: getHeaders() });
+    setTimeout(pollStatus, 1000);
+  } catch (e) {
+    alert('Ошибка остановки');
   }
 }
 
+async function restartServer() {
+  if (!confirm('Перезапустить сервер Project Zomboid?')) return;
+  try {
+    await fetch('/api/server/restart', { method: 'POST', headers: getHeaders() });
+    setTimeout(pollStatus, 1500);
+  } catch (e) {
+    alert('Ошибка перезапуска');
+  }
+}
+
+async function sendQuickAction(action) {
+  try {
+    const res = await fetch('/api/server/quick-action', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ action: action })
+    });
+    const d = await res.json();
+    if (d.message) appendConsoleLine('> ' + d.message);
+  } catch (e) {}
+}
+
 function promptBroadcast() {
-  const msg = prompt('Введите объявление для отправки в игровой чат всем игрокам:');
+  const msg = prompt('Введите текст объявления всем игрокам:');
   if (msg && msg.trim()) {
-    sendQuickAction('broadcast', msg.trim());
+    fetch('/api/server/quick-action', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ action: 'broadcast', extra: msg.trim() })
+    });
   }
 }
 
@@ -1185,7 +1267,9 @@ async function banSelectedPlayer() {
 async function loadSettings() {
   try {
     const res = await fetch('/api/settings', { headers: getHeaders() });
+    if (!res.ok) return;
     const c = await res.json();
+
     for (const [key, val] of Object.entries(c)) {
       const el = document.getElementById('ini-' + key);
       if (el) {
@@ -1367,7 +1451,7 @@ async function loadSandbox() {
     // Subtab 6: Mod Sandbox Options
     renderModSandboxOptions(sb);
   } catch (e) {
-    console.error('Load sandbox error:', e);
+    console.error('loadSandbox error:', e);
   }
 }
 
@@ -1620,10 +1704,21 @@ async function saveSandbox() {
     }
   });
 
-  const res = await fetch('/api/sandbox', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(sb)
+  // Collect mod options
+  document.querySelectorAll('.modopt-input').forEach(inp => {
+    const tbl = inp.getAttribute('data-table');
+    const k = inp.getAttribute('data-key');
+    if (!tbl || !k) return;
+
+    if (!sb[tbl]) sb[tbl] = {};
+
+    if (inp.type === 'checkbox') {
+      sb[tbl][k] = inp.checked;
+    } else if (inp.type === 'number') {
+      sb[tbl][k] = inp.step === '0.1' ? parseFloat(inp.value) : parseInt(inp.value);
+    } else {
+      sb[tbl][k] = inp.value;
+    }
   });
   const resData = await res.json();
   if (resData.success) {
@@ -1686,367 +1781,158 @@ function applySandboxPreset(preset) {
   if (preset) showToast(`Применен пресет: ${preset}`);
 }
 
-// ── Mod Manager ───────────────────────────────────────────────────
-async function loadMods() {
-  const container = document.getElementById('mods-container');
-  container.innerHTML = '<div style="color: var(--text-muted); padding: 10px;">Загрузка списка модов...</div>';
+// ── Search & Filter in Sandbox ────────────────────────────────────
+function filterSandbox(query) {
+  const q = (query || '').trim().toLowerCase();
+  const subtabs = ['zombies', 'loot', 'world', 'vehicles', 'character', 'mods'];
+  let firstMatchSubtab = null;
+  let totalMatches = 0;
 
-  try {
-    const res = await fetch('/api/mods', { headers: getHeaders() });
-    const data = await res.json();
-    const mods = data.mods || [];
-    const targetVer = data.target_version || 42;
+  subtabs.forEach(sub => {
+    const panel = document.getElementById('sb-subtab-' + sub);
+    const badge = document.getElementById('match-' + sub);
+    if (!panel) return;
 
-    if (mods.length === 0) {
-      container.innerHTML = '<div style="color: var(--text-muted); padding: 10px;">Моды еще не добавлены.</div>';
-      return;
-    }
+    let subMatches = 0;
+    const groups = panel.querySelectorAll('.sb-group');
 
-    container.innerHTML = '';
-    mods.forEach(m => {
-      const item = document.createElement('div');
-      item.className = 'mod-item';
+    groups.forEach(group => {
+      const gTitle = (group.getAttribute('data-title') || '').toLowerCase();
+      const fields = group.querySelectorAll('.sb-field');
+      let groupHasMatch = false;
 
-      let badgeClass = 'compat-yellow';
-      let badgeText = '🟡 ' + m.reason;
+      fields.forEach(field => {
+        const text = field.textContent.toLowerCase();
+        const isMatch = !q || text.includes(q) || gTitle.includes(q);
+        field.style.display = isMatch ? '' : 'none';
+        if (isMatch) {
+          subMatches++;
+          groupHasMatch = true;
+        }
+      });
 
-      if (m.status === 'compatible') {
-        badgeClass = 'compat-green';
-        badgeText = `🟢 [✓ B${targetVer} Совместим]`;
-      } else if (m.status === 'incompatible') {
-        badgeClass = 'compat-red';
-        badgeText = `🔴 [✗ ${m.reason}]`;
-      }
-
-      // Safe DOM creation
-      const div1 = document.createElement('div');
-      const titleDiv = document.createElement('div');
-      titleDiv.className = 'mod-title';
-      titleDiv.textContent = m.name;
-      const idSpan = document.createElement('span');
-      idSpan.style.cssText = "color: var(--text-muted); font-size: 11px;";
-      idSpan.textContent = ` (ID: ${m.workshop_id})`;
-      titleDiv.appendChild(idSpan);
-      const idsDiv = document.createElement('div');
-      idsDiv.style.cssText = "font-size: 11px; color: var(--text-muted); margin-top: 3px;";
-      idsDiv.textContent = `Mod IDs: ${m.mod_ids.join(', ') || 'none'}`;
-      div1.appendChild(titleDiv);
-      div1.appendChild(idsDiv);
-      const div2 = document.createElement('div');
-      div2.style.cssText = "display: flex; align-items: center; gap: 10px;";
-      const badgeSpan = document.createElement('span');
-      badgeSpan.className = `mod-badge ${badgeClass}`;
-      badgeSpan.textContent = badgeText;
-      const btn = document.createElement('button');
-      btn.className = 'btn btn-danger';
-      btn.style.cssText = "padding: 4px 8px; font-size: 11px;";
-      btn.textContent = '✕';
-      btn.onclick = () => removeMod(m.workshop_id);
-      div2.appendChild(badgeSpan);
-      div2.appendChild(btn);
-      item.appendChild(div1);
-      item.appendChild(div2);
-      container.appendChild(item);
+      group.style.display = (!q || groupHasMatch) ? '' : 'none';
     });
-  } catch (e) {
-    container.innerHTML = '<div style="color: #ff6b6b; padding: 10px;">Ошибка загрузки модов: ' + e + '</div>';
-  }
-}
 
-async function addMod() {
-  const input = document.getElementById('mod-input-id');
-  const val = input.value.trim();
-  if (!val) return;
-
-  const res = await fetch('/api/mods/add', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ id_or_url: val })
-  });
-  const data = await res.json();
-  if (data.success) {
-    input.value = '';
-    loadMods();
-    if (data.status === 'incompatible') {
-      alert(`⚠️ Внимание! Мод '${data.mod?.name}' определен как НЕСОВМЕСТИМЫЙ:\n${data.reason}`);
-    }
-  } else {
-    alert('Ошибка добавления мода: ' + data.message);
-  }
-}
-
-async function removeMod(wid) {
-  await fetch('/api/mods/remove', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ id_or_url: wid })
-  });
-  loadMods();
-}
-
-async function clearMods() {
-  if (confirm('Очистить весь список модов?')) {
-    await fetch('/api/mods/clear', { method: 'POST', headers: getHeaders() });
-    loadMods();
-  }
-}
-
-async function checkAllModsCompatibility() {
-  const res = await fetch('/api/mods/check', { method: 'POST', headers: getHeaders() });
-  const data = await res.json();
-  loadMods();
-  alert(
-    `Результаты проверки совместимости для Build ${data.target_version}:\n\n` +
-    `• Всего модов: ${data.total}\n` +
-    `• 🟢 Совместимы: ${data.compatible}\n` +
-    `• 🔴 Несовместимы: ${data.incompatible}\n` +
-    `• 🟡 Универсальные: ${data.warning}`
-  );
-}
-
-async function applyModPack(packName) {
-  const res = await fetch('/api/mods/preset', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ action: packName })
-  });
-  const data = await res.json();
-  loadMods();
-  alert(`Набор модов добавлен! Обработано модов: ${data.added}`);
-}
-
-async function analyzeMods() {
-  const res = await fetch('/api/mods/analyze', { method: 'POST', headers: getHeaders() });
-  const data = await res.json();
-  if (data.success) {
-    const rep = data.report;
-    let msg = 'Анализ зависимостей завершен!\n\n';
-    if (rep.missing_workshop_ids && rep.missing_workshop_ids.length > 0) {
-      msg += `⚠️ Недостающие моды: ${rep.missing_workshop_ids.map(i => i.workshop_id).join(', ')}\n`;
-    }
-    if (rep.map_folders && rep.map_folders.length > 0) {
-      msg += `🗺️ Обнаружены карты: ${rep.map_folders.join(', ')}\n`;
-    }
-    alert(msg || 'Все зависимости в порядке!');
-    loadMods();
-  }
-}
-
-async function saveMods() {
-  const res = await fetch('/api/mods/save', { method: 'POST', headers: getHeaders() });
-  const data = await res.json();
-  if (data.success) {
-    alert('Список модов успешно сохранен в конфигурацию сервера!');
-  } else {
-    alert('Ошибка сохранения: ' + data.message);
-  }
-}
-
-// ── Install & Updates ─────────────────────────────────────────────
-let currentBetaPassword = "";
-
-async function loadInstallInfo() {
-  try {
-    const res = await fetch('/api/install/branches', { headers: getHeaders() });
-    const branches = await res.json();
-    const container = document.getElementById('steam-branch-rows');
-    if (!container) return;
-
-    container.innerHTML = '';
-    branches.forEach((b, idx) => {
-      const row = document.createElement('div');
-      row.className = 'steam-branch-row' + (idx === 0 ? ' selected' : '');
-      row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 9px 16px; border-bottom: 1px solid #212b38; cursor: pointer; transition: background 0.15s;';
-      if (idx === 0) {
-        row.style.background = '#1c2e42';
-        document.getElementById('install-branch').value = b.branch;
+    if (badge) {
+      if (q) {
+        badge.textContent = subMatches;
+        badge.style.display = 'inline-block';
+      } else {
+        badge.textContent = '';
+        badge.style.display = 'none';
       }
+    }
 
-      // Safe DOM creation
-      const divWrapper = document.createElement('div');
-      divWrapper.style.cssText = 'display: flex; align-items: center; gap: 10px;';
-      const radio = document.createElement('input');
-      radio.type = 'radio';
-      radio.name = 'steam-branch-radio';
-      radio.value = b.branch;
-      radio.checked = (idx === 0);
-      radio.style.cssText = 'cursor: pointer; width: 16px; height: 16px; accent-color: #67c1f5;';
-      const nameDiv = document.createElement('div');
-      nameDiv.style.cssText = 'font-weight: bold; font-size: 13px; color: #fff;';
-      nameDiv.textContent = b.name_ru || b.name;
-      const descDiv = document.createElement('div');
-      descDiv.style.cssText = 'font-size: 12px; color: #8f98a0;';
-      descDiv.textContent = '— ' + (b.desc_ru || b.description);
-      divWrapper.appendChild(radio);
-      divWrapper.appendChild(nameDiv);
-      divWrapper.appendChild(descDiv);
-      const dateDiv = document.createElement('div');
-      dateDiv.style.cssText = 'font-size: 12px; color: #8f98a0; font-weight: normal; text-align: right;';
-      dateDiv.textContent = b.date_ru || b.date_str || '';
-      row.appendChild(divWrapper);
-      row.appendChild(dateDiv);
-
-      row.addEventListener('click', () => {
-        const radio = row.querySelector('input[type="radio"]');
-        radio.checked = true;
-        document.querySelectorAll('.steam-branch-row').forEach(r => {
-          r.classList.remove('selected');
-          r.style.background = '#171d25';
-        });
-        row.classList.add('selected');
-        row.style.background = '#1c2e42';
-        document.getElementById('install-branch').value = b.branch;
-      });
-
-      row.addEventListener('mouseenter', () => {
-        if (!row.classList.contains('selected')) row.style.background = '#202b3a';
-      });
-      row.addEventListener('mouseleave', () => {
-        if (!row.classList.contains('selected')) row.style.background = '#171d25';
-      });
-
-      container.appendChild(row);
-    });
-  } catch (e) {
-    console.error('Branches load error:', e);
-  }
-}
-
-function checkBetaCode() {
-  const code = document.getElementById('beta-access-code').value.trim();
-  const hiddenBranch = document.getElementById('beta-hidden-branch').value.trim();
-  const msg = document.getElementById('beta-code-msg');
-
-  if (!code) {
-    alert('Пожалуйста, введите код доступа или пароль ветки');
-    return;
-  }
-
-  currentBetaPassword = code;
-  const branchName = hiddenBranch || 'private_beta';
-  document.getElementById('install-branch').value = branchName;
-
-  msg.textContent = `✓ Код доступа принят! Ветка: ${branchName}`;
-  msg.style.display = 'inline';
-}
-
-async function startInstallation() {
-  const branch = document.getElementById('install-branch').value;
-  if (!confirm(`Начать установку/обновление сервера ветки '${branch || "public"}'?`)) return;
-
-  document.getElementById('btn-do-install').disabled = true;
-  await fetch('/api/install/start', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ branch: branch, password: currentBetaPassword })
+    if (subMatches > 0 && !firstMatchSubtab) {
+      firstMatchSubtab = sub;
+    }
+    totalMatches += subMatches;
   });
 
-  pollInstallStatus();
-}
+  const stats = document.getElementById('sandbox-search-stats');
+  if (stats) {
+    stats.textContent = q ? `Найдено совпадений: ${totalMatches}` : '';
+  }
 
-function pollInstallStatus() {
-  const interval = setInterval(async () => {
-    try {
-      const res = await fetch('/api/install/status', { headers: getHeaders() });
-      const data = await res.json();
-
-      document.getElementById('install-status-msg').textContent = data.message;
-      document.getElementById('install-status-pct').textContent = data.progress + '%';
-      document.getElementById('install-progress-fill').style.width = data.progress + '%';
-
-      if (data.logs && data.logs.length > 0) {
-        document.getElementById('install-log-output').textContent = data.logs.slice(-30).join('\n');
-      }
-
-      if (!data.running) {
-        clearInterval(interval);
-        document.getElementById('btn-do-install').disabled = false;
-        fetchStatus();
-      }
-    } catch (e) {
-      clearInterval(interval);
-      document.getElementById('btn-do-install').disabled = false;
+  if (q && firstMatchSubtab) {
+    const activeSub = document.querySelector('#tab-sandbox .subtab-panel.active');
+    if (activeSub && activeSub.querySelectorAll('.sb-field:not([style*="display: none"])').length === 0) {
+      switchSandboxSubtab(firstMatchSubtab);
     }
-  }, 1000);
-}
-
-async function checkSteamUpdate() {
-  const res = await fetch('/api/install/check-update', { headers: getHeaders() });
-  const data = await res.json();
-  if (data.update_available) {
-    if (confirm(`🚀 В Steam вышла новая версия сервера!\n\nУстановлена: ${data.installed_version}\nДоступна: ${data.latest_version}\n\nОбновить сервер прямо сейчас?`)) {
-      startInstallation();
-    }
-  } else {
-    alert(`Версия сервера актуальна (${data.installed_version}). Обновлений нет.`);
   }
 }
 
-// ── Backups ───────────────────────────────────────────────────────
+// ── Backups Management ────────────────────────────────────────────
 async function loadBackups() {
   const container = document.getElementById('backups-container');
-  container.innerHTML = '<div style="color: var(--text-muted); padding: 10px;">Загрузка бэкапов...</div>';
+  if (!container) return;
 
   try {
     const res = await fetch('/api/backups', { headers: getHeaders() });
-    const list = await res.json();
+    if (!res.ok) return;
+    const backups = await res.json();
 
-    if (list.length === 0) {
-      container.innerHTML = '<div style="color: var(--text-muted); padding: 10px;">Резервные копии еще не создавались.</div>';
+    if (!Array.isArray(backups) || backups.length === 0) {
+      container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; padding: 24px; text-align: center;">Архивы резервных копий пока не созданы. Нажмите кнопку "Создать бэкап сейчас".</div>';
       return;
     }
 
-    container.innerHTML = '';
-    list.forEach(b => {
-      const item = document.createElement('div');
-      item.className = 'mod-item';
-      // Safe DOM creation
-      const div1 = document.createElement('div');
-      const nameDiv = document.createElement('div');
-      nameDiv.style.cssText = 'font-weight: bold; font-size: 13px;';
-      nameDiv.textContent = '📦 ' + b.name;
-      const sizeDiv = document.createElement('div');
-      sizeDiv.style.cssText = 'font-size: 11px; color: var(--text-muted); margin-top: 2px;';
-      sizeDiv.textContent = 'Размер архива: ' + b.size_mb + ' MB';
-      div1.appendChild(nameDiv);
-      div1.appendChild(sizeDiv);
-      const btn = document.createElement('button');
-      btn.className = 'btn btn-secondary';
-      btn.style.fontSize = '12px';
-      btn.textContent = 'Восстановить';
-      btn.onclick = () => restoreBackup(b.name);
-      item.appendChild(div1);
-      item.appendChild(btn);
-      container.appendChild(item);
+    let html = `<table class="data-table">
+      <thead>
+        <tr>
+          <th>ИМЯ АРХИВА</th>
+          <th>РАЗМЕР</th>
+          <th>ДАТА СОЗДАНИЯ</th>
+          <th style="text-align: right;">ДЕЙСТВИЯ</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    backups.forEach(b => {
+      const name = b.filename || b.name || '';
+      const size = b.size_mb !== undefined ? `${b.size_mb} MB` : '--';
+      const date = b.modified || '--';
+
+      html += `<tr>
+        <td style="font-family: var(--font-mono); font-size: 12px; color: #64b5f6;">📦 ${name}</td>
+        <td><b>${size}</b></td>
+        <td style="color: var(--text-muted);">${date}</td>
+        <td style="text-align: right; white-space: nowrap;">
+          <button class="btn btn-secondary" onclick="restoreBackup('${name}')" style="padding: 4px 10px; font-size: 11px; margin-right: 6px;">📥 Восстановить</button>
+          <button class="btn btn-danger" onclick="deleteBackup('${name}')" style="padding: 4px 10px; font-size: 11px;">🗑️ Удалить</button>
+        </td>
+      </tr>`;
     });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
   } catch (e) {
-    container.innerHTML = '<div style="color: #ff6b6b; padding: 10px;">Ошибка загрузки бэкапов: ' + e + '</div>';
+    container.innerHTML = '<div style="color: #ff6b6b; padding: 14px;">Ошибка загрузки списка бэкапов</div>';
   }
 }
 
-async function createBackup() {
-  const res = await fetch('/api/backups/create', { method: 'POST', headers: getHeaders() });
-  const data = await res.json();
-  if (data.success) {
-    alert(`Бэкап успешно создан: ${data.file}`);
-    loadBackups();
-  } else {
-    alert('Ошибка создания бэкапа: ' + data.message);
+async function createBackupWithTag() {
+  const tag = prompt('Введите тег или описание для резервной копии (например: before_wipe, test, safe):', 'manual');
+  if (tag === null) return;
+
+  try {
+    const res = await fetch('/api/backups/create', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ tag: tag.trim() || 'manual' })
+    });
+    const d = await res.json();
+    if (d.success) {
+      alert(`✅ Бэкап успешно создан: ${d.file}`);
+      loadBackups();
+    } else {
+      alert('Ошибка создания бэкапа: ' + (d.message || ''));
+    }
+  } catch (e) {
+    alert('Сетевая ошибка создания бэкапа');
   }
 }
 
 async function restoreBackup(filename) {
-  if (!confirm(`Восстановить мир из бэкапа '${filename}'? Текущие несохраненные изменения будут перезаписаны.`)) return;
-  const res = await fetch('/api/backups/restore', {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify({ action: filename })
-  });
-  const data = await res.json();
-  if (data.success) {
-    alert('Бэкап успешно восстановлен!');
-  } else {
-    alert('Ошибка восстановления: ' + data.message);
+  if (!confirm(`⚠️ ВНИМАНИЕ!\nВы действительно хотите восстановить сервер из резервной копии:\n"${filename}"?\n\nТекущее сохранение мира будет заменено!`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/backups/restore', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ filename: filename })
+    });
+    const d = await res.json();
+    if (d.success) {
+      alert('✅ Мир успешно восстановлен из резервной копии!');
+    } else {
+      alert('Ошибка восстановления: ' + (d.message || ''));
+    }
+  } catch (e) {
+    alert('Сетевая ошибка восстановления');
   }
 }
 

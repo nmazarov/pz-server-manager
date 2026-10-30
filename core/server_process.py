@@ -13,6 +13,8 @@ import subprocess
 import signal
 import platform
 import socket
+import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -50,34 +52,104 @@ def check_ports_in_use(ports: list) -> list:
 
 
 class OutputReader(QThread):
-    """Thread for reading server output asynchronously."""
+    """Thread for reading server output asynchronously from pipe and log file."""
 
     output_received = pyqtSignal(str)
     error_received = pyqtSignal(str)
     process_ended = pyqtSignal()
 
-    def __init__(self, process: subprocess.Popen):
+    def __init__(self, process: Optional[subprocess.Popen], log_file: Optional[Path] = None, callback=None):
         super().__init__()
         self.process = process
+        self.log_file = log_file
+        self.callback = callback
         self._running = True
 
+    def _emit_line(self, line: str):
+        if not line:
+            return
+        if self.callback:
+            try:
+                self.callback(line)
+            except Exception:
+                pass
+        try:
+            self.output_received.emit(line)
+        except Exception:
+            pass
+
     def run(self):
-        """Read output from the process."""
+        """Read output from stdout pipe and/or tail server-console.txt."""
+        last_pos = 0
+        if self.log_file and self.log_file.exists():
+            try:
+                sz = self.log_file.stat().st_size
+                last_pos = max(0, sz - 30000)
+            except Exception:
+                last_pos = 0
+
+        def read_pipe():
+            if not self.process or not self.process.stdout:
+                return
+            try:
+                for line in iter(self.process.stdout.readline, ''):
+                    if not self._running:
+                        break
+                    s = line.strip()
+                    if s:
+                        self._emit_line(s)
+            except Exception:
+                pass
+
+        if self.process and self.process.stdout:
+            t_pipe = threading.Thread(target=read_pipe, daemon=True)
+            t_pipe.start()
+
         try:
             while self._running:
-                if not self.process or not self.process.stdout:
+                has_read = False
+                if self.log_file and self.log_file.exists():
+                    try:
+                        curr_size = self.log_file.stat().st_size
+                        if curr_size > last_pos:
+                            with open(self.log_file, 'r', encoding='utf-8', errors='replace') as f:
+                                f.seek(last_pos)
+                                lines = f.readlines()
+                                last_pos = f.tell()
+                                for l in lines:
+                                    s = l.strip()
+                                    if s:
+                                        self._emit_line(s)
+                                        has_read = True
+                    except Exception:
+                        pass
+
+                if self.process and self.process.poll() is not None:
+                    time.sleep(0.5)
+                    if self.log_file and self.log_file.exists():
+                        try:
+                            curr_size = self.log_file.stat().st_size
+                            if curr_size > last_pos:
+                                with open(self.log_file, 'r', encoding='utf-8', errors='replace') as f:
+                                    f.seek(last_pos)
+                                    for l in f:
+                                        s = l.strip()
+                                        if s:
+                                            self._emit_line(s)
+                        except Exception:
+                            pass
                     break
-                line = self.process.stdout.readline()
-                if line:
-                    self.output_received.emit(line.strip())
-                else:
-                    # Pipe reached EOF / server process closed
-                    break
+
+                if not has_read:
+                    time.sleep(0.3)
         except Exception as e:
-            logger.error(f"Error reading process output: {e}")
+            logger.error(f"Error in OutputReader: {e}")
         finally:
             self._running = False
-            self.process_ended.emit()
+            try:
+                self.process_ended.emit()
+            except Exception:
+                pass
 
     def stop(self):
         """Stop the reader thread."""
@@ -104,6 +176,21 @@ class ServerProcess(QObject):
         self._server_name = "servertest"
         self.is_ready = False
         self._attached_pid: Optional[int] = None
+        self._output_listeners = []
+        self._ready_listeners = []
+        self._stopped_listeners = []
+
+    def add_output_listener(self, fn):
+        if fn not in self._output_listeners:
+            self._output_listeners.append(fn)
+
+    def add_ready_listener(self, fn):
+        if fn not in self._ready_listeners:
+            self._ready_listeners.append(fn)
+
+    def add_stopped_listener(self, fn):
+        if fn not in self._stopped_listeners:
+            self._stopped_listeners.append(fn)
 
     def _is_pid_alive(self, pid: int) -> bool:
         """Check if a specific PID is alive."""
@@ -157,6 +244,16 @@ class ServerProcess(QObject):
             logger.info(f"Discovered already running PZ server PID: {pid}")
             self._attached_pid = pid
             self.is_ready = True
+
+            # Start log tailing for already running server
+            log_file = Path(self.paths.get('zomboid_dir', Path.home() / 'Zomboid')) / 'server-console.txt'
+            if not self.output_reader or not self.output_reader.isRunning():
+                self.output_reader = OutputReader(None, log_file=log_file, callback=self._handle_output)
+                self.output_reader.output_received.connect(self._handle_output)
+                self.output_reader.error_received.connect(self._handle_error)
+                self.output_reader.finished.connect(self._handle_process_ended)
+                self.output_reader.start()
+
             self.server_ready.emit()
             return pid
         return None
@@ -227,8 +324,9 @@ class ServerProcess(QObject):
 
             self.process = subprocess.Popen(cmd, **kwargs)
 
-            # Start output reader thread
-            self.output_reader = OutputReader(self.process)
+            # Start output reader thread (stdout pipe + tail server-console.txt)
+            log_file = Path(self.paths.get('zomboid_dir', Path.home() / 'Zomboid')) / 'server-console.txt'
+            self.output_reader = OutputReader(self.process, log_file=log_file, callback=self._handle_output)
             self.output_reader.output_received.connect(self._handle_output)
             self.output_reader.error_received.connect(self._handle_error)
             self.output_reader.finished.connect(self._handle_process_ended)
@@ -384,17 +482,35 @@ class ServerProcess(QObject):
 
     def _handle_output(self, line: str):
         """Handle output line from the server."""
-        # Filter out empty lines
-        if line.strip():
-            self.output_received.emit(line)
+        if not line or not line.strip():
+            return
 
-            # Check for server readiness
-            if not self.is_ready and ("server started" in line.lower() or "*** server started" in line.lower()):
-                self.is_ready = True
-                logger.info("Server is READY and accepting player connections")
+        for cb in list(self._output_listeners):
+            try:
+                cb(line)
+            except Exception:
+                pass
+
+        try:
+            self.output_received.emit(line)
+        except Exception:
+            pass
+
+        # Check for server readiness
+        if not self.is_ready and ("server started" in line.lower() or "*** server started" in line.lower()):
+            self.is_ready = True
+            logger.info("Server is READY and accepting player connections")
+            for cb in list(self._ready_listeners):
+                try:
+                    cb()
+                except Exception:
+                    pass
+            try:
                 self.server_ready.emit()
-            elif "error" in line.lower():
-                self.error_received.emit(line)
+            except Exception:
+                pass
+        elif "error" in line.lower():
+            self._handle_error(line)
 
     def _handle_error(self, line: str):
         """Handle error output from the server."""

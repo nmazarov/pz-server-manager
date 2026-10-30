@@ -34,6 +34,8 @@ from core.server_installer import (
     check_server_update_available
 )
 from core.backup_manager import BackupManager
+from core.player_manager import PlayerManager
+from core.watchdog_manager import WatchdogManager
 from core.network_helper import NetworkHelper
 from web.auth import AuthManager
 
@@ -93,6 +95,30 @@ def create_app(
         mod_manager = ModManager(paths)
     if installer is None:
         installer = ServerInstaller(paths)
+    if player_manager is None:
+        player_manager = PlayerManager(paths)
+
+    watchdog_enabled = [True]
+    current_srv_name = ["servertest"]
+    current_srv_ram = [6]
+
+    def on_proc_exit(code: int):
+        if watchdog_enabled[0] and code != 0 and not server_process.is_running:
+            logger.warning(f"Watchdog: Server exited unexpectedly (code {code}), restarting in 5s...")
+            add_console_line(f"🛡️ [Watchdog]: Обнаружен краш сервера (код {code}). Авто-перезапуск через 5 сек...")
+            def do_restart():
+                if watchdog_enabled[0] and not server_process.is_running:
+                    server_process.start_server(name=current_srv_name[0], ram_gb=current_srv_ram[0])
+            threading.Timer(5.0, do_restart).start()
+
+    if hasattr(server_process, 'process_exited'):
+        try:
+            server_process.process_exited.connect(on_proc_exit)
+        except Exception:
+            pass
+
+    server_process.output_received.connect(lambda text: player_manager.parse_console_line(text))
+    server_process.server_stopped.connect(lambda: player_manager.clear_online_players())
 
     if player_manager is None:
         try:
@@ -155,6 +181,11 @@ def create_app(
 
     server_process.output_received.connect(on_live_output)
     server_process.error_received.connect(lambda err: on_live_output(f"ERROR: {err}"))
+
+    if hasattr(server_process, 'add_output_listener'):
+        server_process.add_output_listener(lambda text: player_manager.parse_console_line(text))
+        server_process.add_output_listener(lambda text: add_console_line(text))
+        server_process.add_output_listener(on_live_output)
 
     # ── Installation Worker State ───────────────────────────────────
     install_state = {
@@ -326,8 +357,19 @@ def create_app(
         auth_manager.revoke_session(token)
         return {"success": True}
 
+    @app.get("/api/metrics")
+    def api_get_metrics(token: str = Depends(get_token)):
+        return get_system_metrics()
+
+    @app.get("/api/console/history")
+    def api_console_history(token: str = Depends(get_token)):
+        return {"lines": console_history[-200:]}
+
     @app.get("/api/status")
     def api_status(token: str = Depends(get_token)):
+        if not server_process.is_running():
+            server_process.detect_and_attach_running_server()
+
         p = paths['server_dir']
         is_installed = any(
             (p / n).exists() for n in [
@@ -364,7 +406,9 @@ def create_app(
 
         return {
             "installed": is_installed,
-            "running": server_process.is_running(),
+            "running": is_run,
+            "is_running": is_run,
+            "pid": server_process.get_pid(),
             "target_version": target_version,
             "public_ip": pub_ip,
             "local_ip": loc_ip,
@@ -474,7 +518,69 @@ def create_app(
             server_process.send_command(f'servermsg "{msg}"')
             add_console_line(f'> [Admin Announcement]: servermsg "{msg}"')
             return {"success": True, "message": f"Broadcast sent: {msg}"}
+        elif act == "gunshot":
+            server_process.send_command("gunshot")
+            add_console_line("> [Admin Action]: gunshot (Ambient gunshot event)")
+            return {"success": True, "message": "Gunshot event triggered"}
         return {"success": False, "message": "Unknown action"}
+
+    # ── Live Player Dashboard & Watchdog ────────────────────────────
+
+    class PlayerActionReq(BaseModel):
+        action: str  # kick, ban, teleport, admin, whitelist_add, whitelist_remove, refresh
+        player: Optional[str] = ""
+        target: Optional[str] = ""
+        reason: Optional[str] = "Action by Administrator"
+        level: Optional[str] = "admin"
+
+    @app.get("/api/players")
+    def api_get_players(token: str = Depends(get_token)):
+        online = player_manager.get_online_players()
+        return {
+            "players": online,
+            "count": len(online)
+        }
+
+    @app.post("/api/players/action")
+    def api_player_action(req: PlayerActionReq, token: str = Depends(get_token)):
+        act = req.action.lower()
+        if act == "refresh":
+            if server_process.is_running:
+                server_process.send_command("players")
+            return {"success": True, "players": player_manager.get_online_players()}
+        elif act == "kick":
+            cmd = player_manager.cmd_kick(req.player, req.reason or "Kicked by Administrator")
+        elif act == "ban":
+            cmd = player_manager.cmd_ban(req.player, req.reason or "Banned by Administrator")
+        elif act == "teleport":
+            cmd = player_manager.cmd_teleport(req.player, req.target)
+        elif act == "admin":
+            cmd = player_manager.cmd_set_access(req.player, req.level or "admin")
+        elif act == "whitelist_add":
+            ok = player_manager.add_to_whitelist(req.player)
+            return {"success": ok}
+        elif act == "whitelist_remove":
+            ok = player_manager.remove_from_whitelist(req.player)
+            return {"success": ok}
+        else:
+            return {"success": False, "message": "Unknown action"}
+
+        if cmd and server_process.is_running:
+            server_process.send_command(cmd)
+            add_console_line(f"> [Player Action]: {cmd}")
+            return {"success": True, "command": cmd}
+        elif not server_process.is_running:
+            return {"success": False, "message": "Сервер не запущен"}
+        return {"success": True}
+
+    @app.get("/api/watchdog")
+    def api_get_watchdog(token: str = Depends(get_token)):
+        return {"enabled": watchdog_enabled[0]}
+
+    @app.post("/api/watchdog/toggle")
+    def api_toggle_watchdog(req: Dict[str, Any], token: str = Depends(get_token)):
+        watchdog_enabled[0] = bool(req.get("enabled", True))
+        return {"success": True, "enabled": watchdog_enabled[0]}
 
     # ── Settings & Sandbox ──────────────────────────────────────────
 
@@ -485,7 +591,9 @@ def create_app(
     @app.post("/api/settings")
     def api_save_settings(data: Dict[str, Any], token: str = Depends(get_token)):
         try:
-            config_manager.save_server_ini(data)
+            current = config_manager.load_server_ini()
+            current.update(data)
+            config_manager.save_server_ini(current)
             return {"success": True}
         except Exception as e:
             return {"success": False, "message": str(e)}
@@ -494,10 +602,31 @@ def create_app(
     def api_get_sandbox(token: str = Depends(get_token)):
         return config_manager.load_sandbox_vars()
 
+    @app.get("/api/sandbox/full")
+    def api_get_sandbox_full(token: str = Depends(get_token)):
+        try:
+            sb, meta = config_manager.load_sandbox_vars_full()
+            json_meta = {}
+            if meta:
+                for k, v in meta.items():
+                    if isinstance(k, tuple) and len(k) == 2:
+                        json_meta[f"{k[0]}.{k[1]}"] = str(v)
+            return {"vars": sb, "meta": json_meta}
+        except Exception as e:
+            return {"vars": config_manager.load_sandbox_vars(), "meta": {}, "error": str(e)}
+
     @app.post("/api/sandbox")
     def api_save_sandbox(data: Dict[str, Any], token: str = Depends(get_token)):
         try:
-            config_manager.save_sandbox_vars(data)
+            current = config_manager.load_sandbox_vars()
+            def deep_merge(target, src):
+                for k, v in src.items():
+                    if isinstance(v, dict) and isinstance(target.get(k), dict):
+                        deep_merge(target[k], v)
+                    else:
+                        target[k] = v
+            deep_merge(current, data)
+            config_manager.save_sandbox_vars(current)
             return {"success": True}
         except Exception as e:
             return {"success": False, "message": str(e)}
@@ -515,6 +644,37 @@ def create_app(
             pass
         return 42
 
+    class UpdateModReq(BaseModel):
+        workshop_id: str
+        name: Optional[str] = None
+        mod_id: Optional[str] = None
+        mod_ids: Optional[List[str]] = None
+        map_folders: Optional[List[str]] = None
+
+    @app.post("/api/mods/update")
+    def api_update_mod(req: UpdateModReq, token: str = Depends(get_token)):
+        wid = req.workshop_id.strip()
+        for mod in mod_manager.mods:
+            if str(mod.workshop_id) == wid:
+                if req.name is not None:
+                    mod.name = req.name.strip()
+                if req.mod_id is not None:
+                    mod.mod_id = req.mod_id.strip()
+                if req.mod_ids is not None:
+                    mod.mod_ids = [m.strip() for m in req.mod_ids if m.strip()]
+                    if not mod.mod_id and mod.mod_ids:
+                        mod.mod_id = mod.mod_ids[0]
+                if req.map_folders is not None:
+                    mod.map_folders = [m.strip() for m in req.map_folders if m.strip()]
+
+                mod_manager._save_mods()
+                try:
+                    mod_manager.save_to_config()
+                except Exception:
+                    pass
+                return {"success": True, "mod": mod.to_dict()}
+        return {"success": False, "message": f"Mod {wid} not found"}
+
     @app.get("/api/mods")
     def api_get_mods(token: str = Depends(get_token)):
         target_version = get_target_build_version()
@@ -526,11 +686,13 @@ def create_app(
         for mod in mod_manager.get_mods():
             status_code, reason = mod_manager.check_compatibility(mod, target_build=target_version)
             mods_data.append({
-                "workshop_id": mod.get("workshop_id"),
+                "workshop_id": str(mod.get("workshop_id")),
                 "name": mod.get("name", "Unknown"),
+                "mod_id": mod.get("mod_id", ""),
                 "mod_ids": mod.get("mod_ids") or ([mod.get("mod_id")] if mod.get("mod_id") else []),
+                "map_folders": mod.get("map_folders", []),
                 "tags": mod.get("tags", []),
-                "status": status_code,  # 'compatible', 'incompatible', 'warning'
+                "status": status_code,
                 "reason": reason
             })
         return {
@@ -544,27 +706,38 @@ def create_app(
     def api_add_mod(req: ModReq, token: str = Depends(get_token)):
         cid = mod_manager.parse_collection_id(req.id_or_url.strip())
         if not cid:
-            return {"success": False, "message": "Invalid Workshop ID or URL"}
+            return {"success": False, "message": "Неверный Workshop ID или ссылка на коллекцию"}
 
         # Check if it is a collection
         col = mod_manager.get_collection_mods(cid)
-        if len(col) > 1:
+        if len(col) > 0:
             res = mod_manager.import_collection(cid)
+            try:
+                mod_manager.save_to_config()
+            except Exception:
+                pass
             return {
                 "success": True,
                 "is_collection": True,
-                "message": f"Collection imported: {res['added_count']} new mods added."
+                "added_count": res.get("added_count", 0),
+                "total_items": res.get("total_items", len(col)),
+                "message": f"Коллекция успешно импортирована: добавлено {res.get('added_count', 0)} модов (всего в коллекции {len(col)})."
             }
 
         try:
             info = mod_manager.add_mod(cid)
+            try:
+                mod_manager.save_to_config()
+            except Exception:
+                pass
             target_version = get_target_build_version()
             status_code, reason = mod_manager.check_compatibility(info, target_build=target_version)
             return {
                 "success": True,
                 "mod": info,
                 "status": status_code,
-                "reason": reason
+                "reason": reason,
+                "message": f"Мод {info.get('name', cid)} успешно добавлен."
             }
         except Exception as e:
             return {"success": False, "message": str(e)}
@@ -572,11 +745,19 @@ def create_app(
     @app.post("/api/mods/remove")
     def api_remove_mod(req: ModReq, token: str = Depends(get_token)):
         mod_manager.remove_mod(req.id_or_url.strip())
+        try:
+            mod_manager.save_to_config()
+        except Exception:
+            pass
         return {"success": True}
 
     @app.post("/api/mods/clear")
     def api_clear_mods(token: str = Depends(get_token)):
         mod_manager.clear_mods()
+        try:
+            mod_manager.save_to_config()
+        except Exception:
+            pass
         return {"success": True}
 
     @app.post("/api/mods/check")
@@ -634,7 +815,14 @@ def create_app(
 
     @app.get("/api/install/status")
     def api_install_status(token: str = Depends(get_token)):
-        return install_state
+        return {
+            "running": install_state["running"],
+            "in_progress": install_state["running"],
+            "progress": install_state["progress"],
+            "message": install_state["message"],
+            "logs": install_state["logs"],
+            "log": "\n".join(install_state["logs"][-150:])
+        }
 
     @app.post("/api/install/start")
     def api_install_start(req: InstallReq, token: str = Depends(get_token)):
@@ -649,6 +837,8 @@ def create_app(
         def worker():
             try:
                 branch = req.branch.strip()
+                if branch.lower() == 'public':
+                    branch = ''
                 pwd = (req.password or "").strip()
                 installer.install_or_update(
                     beta_branch=branch,
@@ -680,25 +870,44 @@ def create_app(
     @app.get("/api/backups")
     def api_get_backups(token: str = Depends(get_token)):
         bm = BackupManager(paths)
-        return [{"name": b.name, "size_mb": round(b.stat().st_size / (1024 * 1024), 2)} for b in bm.list_backups()]
+        return bm.list_backups()
+
+    class BackupCreateReq(BaseModel):
+        tag: Optional[str] = "manual"
 
     @app.post("/api/backups/create")
-    def api_create_backup(token: str = Depends(get_token)):
+    def api_create_backup(req: Optional[BackupCreateReq] = None, token: str = Depends(get_token)):
         try:
             bm = BackupManager(paths)
-            b_path = bm.create_backup(tag="manual")
+            tag = req.tag if (req and req.tag) else "manual"
+            b_path = bm.create_backup(tag=tag)
             return {"success": True, "file": Path(b_path).name}
         except Exception as e:
             return {"success": False, "message": str(e)}
 
+    class BackupRestoreReq(BaseModel):
+        filename: str
+
     @app.post("/api/backups/restore")
-    def api_restore_backup(req: QuickActionReq, token: str = Depends(get_token)):
+    def api_restore_backup(req: BackupRestoreReq, token: str = Depends(get_token)):
         try:
             bm = BackupManager(paths)
-            b_file = paths['server_config_dir'] / "backups" / req.action
+            b_file = bm.backup_dir / req.filename
             if not b_file.exists():
-                return {"success": False, "message": "Backup file not found"}
+                return {"success": False, "message": "Файл резервной копии не найден"}
             bm.restore_backup(b_file)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    @app.delete("/api/backups/{filename}")
+    def api_delete_backup(filename: str, token: str = Depends(get_token)):
+        try:
+            bm = BackupManager(paths)
+            b_file = bm.backup_dir / filename
+            if not b_file.exists():
+                return {"success": False, "message": "Файл не найден"}
+            bm.delete_backup(b_file)
             return {"success": True}
         except Exception as e:
             return {"success": False, "message": str(e)}
@@ -707,6 +916,7 @@ def create_app(
 
     @app.websocket("/ws/console")
     async def websocket_console(websocket: WebSocket, token: Optional[str] = Query(None)):
+        loop_holder["loop"] = asyncio.get_running_loop()
         if not auth_manager.validate_session(token):
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return

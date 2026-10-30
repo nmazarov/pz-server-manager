@@ -51,8 +51,8 @@
   <!-- Navigation Tabs -->
   <nav class="tab-nav">
     <button class="tab-btn active" onclick="switchTab('server')">🎮 Управление</button>
-    <button class="tab-btn" onclick="switchTab('settings')">⚙️ Настройки (INI)</button>
-    <button class="tab-btn" onclick="switchTab('sandbox')">🧟 Sandbox</button>
+    <button class="tab-btn" onclick="switchTab('settings')">⚙️ Настройки сервера</button>
+    <button class="tab-btn" onclick="switchTab('sandbox')">🧟 Песочница (Sandbox)</button>
     <button class="tab-btn" onclick="switchTab('mods')">🧩 Моды</button>
     <button class="tab-btn" onclick="switchTab('install')">📦 Установка & Обновления</button>
     <button class="tab-btn" onclick="switchTab('backups')">💾 Бэкапы</button>
@@ -61,7 +61,9 @@
   <!-- Main Content Area -->
   <main class="content-area">
 
-    <!-- ── TAB 1: SERVER ── -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB 1: SERVER & LIVE PLAYER DASHBOARD                          -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <div id="tab-server" class="tab-panel active">
 
       <!-- Status Banner Card -->
@@ -179,7 +181,9 @@
       </div>
     </div>
 
-    <!-- ── TAB 2: SETTINGS (INI) ── -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB 2: SETTINGS (INI - servertest.ini)                         -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <div id="tab-settings" class="tab-panel">
       <div class="card">
         <div class="card-title">
@@ -444,7 +448,9 @@
       </div>
     </div>
 
-    <!-- ── TAB 3: SANDBOX ── -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB 3: SANDBOX (servertest_SandboxVars.lua)                     -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <div id="tab-sandbox" class="tab-panel">
       <div class="card">
         <!-- Top Toolbar with Presets & Save Button -->
@@ -1242,7 +1248,9 @@
       </div>
     </div>
 
-    <!-- ── TAB 4: MODS ── -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB 4: MODS (Steam Workshop)                                   -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <div id="tab-mods" class="tab-panel">
       <div class="card">
         <div class="card-title">
@@ -1281,7 +1289,9 @@
       </div>
     </div>
 
-    <!-- ── TAB 5: INSTALL & UPDATE ── -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB 5: INSTALL & UPDATE                                        -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <div id="tab-install" class="tab-panel">
       <div class="card">
         <div class="card-title">
@@ -1300,13 +1310,11 @@
             <span>ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ</span>
           </div>
 
-          <!-- Branch Rows -->
           <div id="steam-branch-rows" style="display: flex; flex-direction: column;">
             <div style="padding: 16px; color: #8f98a0; font-size: 13px;">Загрузка версий из Steam...</div>
           </div>
         </div>
 
-        <!-- Hidden input for active branch -->
         <input type="hidden" id="install-branch" value="">
 
         <!-- Скрытые версии -->
@@ -1344,7 +1352,9 @@
       </div>
     </div>
 
-    <!-- ── TAB 6: BACKUPS ── -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB 6: BACKUPS (Interactive Manager)                           -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
     <div id="tab-backups" class="tab-panel">
       <div class="card">
         <div class="card-title">

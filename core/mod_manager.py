@@ -50,7 +50,7 @@ class ModManager:
     
     def __init__(self, paths: dict):
         self.paths = paths
-        self.server_config_dir = paths.get('server_config_dir')
+        self.server_config_dir = paths.get('server_config_dir') or (Path(paths.get('zomboid_dir', Path.home() / 'Zomboid')) / 'Server')
         self.mods: List[ModInfo] = []
         self._mods_file = Path('data') / 'pz_mods.json'
         if not self._mods_file.exists() and Path('pz_mods.json').exists():
