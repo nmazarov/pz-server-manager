@@ -842,6 +842,7 @@ function switchTab(name) {
   if (name === 'mods') loadMods();
   if (name === 'install') loadInstallInfo();
   if (name === 'backups') loadBackups();
+  if (name === 'map' && window.initPzMap) window.initPzMap();
 }
 
 function switchSandboxSubtab(subtab) {

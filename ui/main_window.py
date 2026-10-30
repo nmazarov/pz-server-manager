@@ -37,6 +37,8 @@ from ui.settings_tab import SettingsTabMixin
 from ui.sandbox_tab import SandboxTabMixin
 from ui.mods_tab import ModsTabMixin
 from ui.install_tab import InstallTabMixin
+from ui.map_tab import MapTabMixin
+from core.map_manager import MapManager
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,7 @@ class MainWindow(
     SandboxTabMixin,
     ModsTabMixin,
     InstallTabMixin,
+    MapTabMixin,
     DialogsMixin
 ):
     """Main application window composed of modular tab mixins."""
@@ -72,6 +75,7 @@ class MainWindow(
 
         self.backup_manager = BackupManager(paths, saved_name)
         self.player_manager = PlayerManager(paths, saved_name)
+        self.map_manager    = MapManager(paths, saved_name)
         self.watchdog       = WatchdogManager(self)
         self.web_process    = None
         self.web_server_thread = None
@@ -211,6 +215,7 @@ class MainWindow(
         self.create_sandbox_tab()
         self.create_mods_tab()
         self.create_install_tab()
+        self.create_map_tab()
 
         self.update_target_server_build()
         self.update_status()
@@ -633,10 +638,16 @@ class MainWindow(
             )
             if res == QMessageBox.Yes:
                 self.stop_server()
+                if hasattr(self, 'cleanup_map_tab'):
+                    self.cleanup_map_tab()
                 event.accept()
             elif res == QMessageBox.No:
+                if hasattr(self, 'cleanup_map_tab'):
+                    self.cleanup_map_tab()
                 event.accept()
             else:
                 event.ignore()
         else:
+            if hasattr(self, 'cleanup_map_tab'):
+                self.cleanup_map_tab()
             event.accept()

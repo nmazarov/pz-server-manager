@@ -56,6 +56,7 @@
     <button class="tab-btn" onclick="switchTab('mods')">🧩 Моды</button>
     <button class="tab-btn" onclick="switchTab('install')">📦 Установка & Обновления</button>
     <button class="tab-btn" onclick="switchTab('backups')">💾 Бэкапы</button>
+    <button class="tab-btn" onclick="switchTab('map')">🗺️ Онлайн-карта</button>
   </nav>
 
   <!-- Main Content Area -->
@@ -1367,8 +1368,98 @@
       </div>
     </div>
 
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <!-- TAB 7: INTERACTIVE WORLD MAP                                   -->
+    <!-- ══════════════════════════════════════════════════════════════ -->
+    <div id="tab-map" class="tab-panel">
+      <!-- Map Controls & Search Bar -->
+      <div class="map-toolbar card">
+        <div class="map-toolbar-left">
+          <div class="map-search-box">
+            <span class="map-search-icon">🔍</span>
+            <input type="text" id="map-search-input" class="form-control" placeholder="Поиск города или игрока..." onkeydown="if(event.key==='Enter') window.pzMap.searchMap(this.value)">
+            <button class="btn btn-secondary btn-sm" onclick="window.pzMap.searchMap(document.getElementById('map-search-input').value)">Найти</button>
+          </div>
+          <select id="map-towns-select" class="form-control" style="max-width: 240px;" onchange="window.pzMap.onTownSelected(this.value)">
+            <option value="">📍 Выберите город / сектор...</option>
+          </select>
+        </div>
+
+        <div class="map-toolbar-center">
+          <label class="map-filter-chk"><input type="checkbox" id="chk-online" checked onchange="window.pzMap.toggleFilter('online')"> <span class="dot online"></span> Онлайн</label>
+          <label class="map-filter-chk"><input type="checkbox" id="chk-offline" checked onchange="window.pzMap.toggleFilter('offline')"> <span class="dot offline"></span> Оффлайн</label>
+          <label class="map-filter-chk"><input type="checkbox" id="chk-dead" checked onchange="window.pzMap.toggleFilter('dead')"> <span class="dot dead"></span> Погибшие</label>
+          <label class="map-filter-chk"><input type="checkbox" id="chk-towns" checked onchange="window.pzMap.toggleFilter('towns')"> 🏙️ Города</label>
+          <label class="map-filter-chk"><input type="checkbox" id="chk-grid" checked onchange="window.pzMap.toggleFilter('grid')"> 📐 Сетка</label>
+
+          <!-- Dropdown Filter for Objects & POIs -->
+          <div class="map-dropdown-wrapper">
+            <button class="btn btn-secondary btn-sm" id="btn-map-layers" onclick="window.pzMap.toggleCategoryDropdown(event)">🏢 Фильтр объектов ▾</button>
+            <div class="map-dropdown-menu hidden" id="map-categories-menu" onclick="event.stopPropagation()">
+              <div class="map-dropdown-header">Отображение на карте:</div>
+              <div class="map-dropdown-items" id="map-category-checkboxes">
+                <label class="map-layer-item" style="color: #3b82f6;"><input type="checkbox" data-cat="police" checked onchange="window.pzMap.setCategory('police', this.checked)"> 🛡️ Полиция</label>
+                <label class="map-layer-item" style="color: #f97316;"><input type="checkbox" data-cat="guns" checked onchange="window.pzMap.setCategory('guns', this.checked)"> 🎯 Оружие и охота</label>
+                <label class="map-layer-item" style="color: #ef4444;"><input type="checkbox" data-cat="medical" checked onchange="window.pzMap.setCategory('medical', this.checked)"> 🏥 Медицина и аптеки</label>
+                <label class="map-layer-item" style="color: #eab308;"><input type="checkbox" data-cat="fuel" checked onchange="window.pzMap.setCategory('fuel', this.checked)"> ⛽ АЗС и топливо</label>
+                <label class="map-layer-item" style="color: #22c55e;"><input type="checkbox" data-cat="food" checked onchange="window.pzMap.setCategory('food', this.checked)"> 🛒 Супермаркеты и еда</label>
+                <label class="map-layer-item" style="color: #d97706;"><input type="checkbox" data-cat="tools" checked onchange="window.pzMap.setCategory('tools', this.checked)"> 🔨 Склады и инструменты</label>
+                <label class="map-layer-item" style="color: #f59e0b;"><input type="checkbox" data-cat="bank" checked onchange="window.pzMap.setCategory('bank', this.checked)"> 🏦 Банки и сейфы</label>
+                <label class="map-layer-item" style="color: #94a3b8;"><input type="checkbox" data-cat="residential" checked onchange="window.pzMap.setCategory('residential', this.checked)"> 🏠 Жилые дома</label>
+              </div>
+              <div class="map-dropdown-actions">
+                <button class="btn btn-secondary btn-xs" onclick="window.pzMap.setAllCategories(true)">Все</button>
+                <button class="btn btn-secondary btn-xs" onclick="window.pzMap.setAllCategories(false)">Снять все</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="map-toolbar-right">
+          <button class="btn btn-secondary btn-sm" onclick="window.pzMap.refreshPlayers()" title="Обновить список игроков">🔄 Обновить</button>
+          <button class="btn btn-secondary btn-sm" onclick="window.pzMap.triggerServerSave()" title="Выполнить команду save на сервере для обновления координат">💾 Сохранить мир</button>
+          <button class="btn btn-secondary btn-sm" onclick="window.pzMap.resetView()" title="Центр округа Нокс">🎯 Центр</button>
+        </div>
+      </div>
+
+      <!-- Main Map Layout (Canvas + Sidebar) -->
+      <div class="map-layout">
+        <!-- Canvas Viewport -->
+        <div class="map-canvas-container">
+          <canvas id="pzMapCanvas"></canvas>
+
+          <!-- Floating HUD Overlay -->
+          <div class="map-hud">
+            <span class="map-hud-item">📍 <strong id="map-hud-coords">X: 10500, Y: 9500</strong></span>
+            <span class="map-hud-item">🏙️ <span id="map-hud-town">Округ Нокс</span></span>
+            <span class="map-hud-item">🔍 <span id="map-hud-zoom">45%</span></span>
+          </div>
+
+          <!-- Floating Zoom Controls -->
+          <div class="map-zoom-controls">
+            <button class="map-zoom-btn" onclick="window.pzMap.zoomIn()" title="Приблизить">+</button>
+            <button class="map-zoom-btn" onclick="window.pzMap.zoomOut()" title="Отдалить">−</button>
+            <button class="map-zoom-btn" onclick="window.pzMap.resetView()" title="Сбросить масштаб">↺</button>
+          </div>
+
+          <!-- Floating Target / Player Card -->
+          <div id="map-target-card" class="map-card card hidden"></div>
+        </div>
+
+        <!-- Sidebar Player List -->
+        <div class="map-sidebar card">
+          <div class="card-title" style="margin-bottom: 10px; font-size: 13px;">
+            <span>👥 Игроки на сервере</span>
+          </div>
+          <div id="map-players-sidebar-list" class="map-players-list">
+            <div class="muted small text-center" style="padding: 12px;">Загрузка координат игроков...</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
 
+  <script src="/static/map.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>

@@ -44,6 +44,7 @@ a = Analysis(
     datas=[
         (os.path.join(project_root, 'assets'), 'assets'),
         (os.path.join(project_root, 'web', 'static'), 'web/static'),
+        (os.path.join(project_root, 'data'), 'data'),
     ],
     hiddenimports=[
         'PyQt5.sip',
@@ -62,6 +63,7 @@ a = Analysis(
         'core.player_manager',
         'core.profile_manager',
         'core.watchdog_manager',
+        'core.map_manager',
         'ui',
         'ui.main_window',
         'ui.dialogs',
@@ -70,6 +72,7 @@ a = Analysis(
         'ui.sandbox_tab',
         'ui.mods_tab',
         'ui.install_tab',
+        'ui.map_tab',
         'web',
         'web.server',
         'web.auth',

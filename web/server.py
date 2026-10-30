@@ -16,12 +16,12 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query, Header, Request, status
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query, Header, Request, status, Body
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -37,6 +37,7 @@ from core.backup_manager import BackupManager
 from core.player_manager import PlayerManager
 from core.watchdog_manager import WatchdogManager
 from core.network_helper import NetworkHelper
+from core.map_manager import MapManager
 from web.auth import AuthManager
 
 logger = logging.getLogger("pz_web")
@@ -101,6 +102,7 @@ def create_app(
         except Exception:
             player_manager = None
 
+    map_manager = MapManager(paths, "servertest")
     watchdog_enabled = [True]
     current_srv_name = ["servertest"]
     current_srv_ram = [6]
@@ -461,15 +463,6 @@ def create_app(
         from core.config_manager import AppPreferences
         AppPreferences.save(paths, data)
         return {"success": True}
-
-    @app.get("/api/players")
-    def api_get_players(token: str = Depends(get_token)):
-        if player_manager:
-            return {
-                "players": player_manager.get_players_list(),
-                "count": player_manager.get_online_count()
-            }
-        return {"players": [], "count": 0}
 
     @app.post("/api/server/stop")
     def api_server_stop(token: str = Depends(get_token)):
@@ -909,6 +902,74 @@ def create_app(
             return {"success": True}
         except Exception as e:
             return {"success": False, "message": str(e)}
+
+    # ── Interactive World Map Endpoints ──────────────────────────────
+    @app.get("/api/map/info")
+    def api_map_info(token: str = Depends(get_token)):
+        return map_manager.get_info()
+
+    @app.get("/api/map/tile/{level}/{x}/{y}.png")
+    def api_map_tile(level: int, x: int, y: int):
+        data = map_manager.get_tile(level, x, y)
+        if data:
+            return Response(content=data, media_type="image/png", headers={"Cache-Control": "public, max-age=86400, immutable"})
+        return Response(status_code=404, content=b"")
+
+    @app.get("/api/map/players")
+    def api_map_players(token: str = Depends(get_token)):
+        online_list = []
+        if player_manager:
+            try:
+                online_list = [p.get("name") or p.get("username") for p in player_manager.get_online_players()]
+            except Exception:
+                pass
+        return map_manager.get_players(online_list)
+
+    @app.get("/api/map/pois")
+    def api_map_pois(category: Optional[str] = None, token: str = Depends(get_token)):
+        return {"ok": True, "pois": map_manager.get_pois(category)}
+
+    @app.get("/api/map/buildings")
+    def api_map_buildings(
+        x0: float = Query(...),
+        y0: float = Query(...),
+        x1: float = Query(...),
+        y1: float = Query(...),
+        floor: Optional[int] = Query(None),
+        category: Optional[str] = Query(None),
+        token: str = Depends(get_token)
+    ):
+        buildings = map_manager.get_buildings_in_bounds(x0, y0, x1, y1, floor=floor, category=category)
+        return {"ok": True, "buildings": buildings, "count": len(buildings)}
+
+    @app.get("/api/map/building_at")
+    def api_map_building_at(
+        x: float = Query(...),
+        y: float = Query(...),
+        floor: Optional[int] = Query(None),
+        token: str = Depends(get_token)
+    ):
+        b = map_manager.get_building_at(x, y, floor=floor)
+        return {"ok": True, "building": b}
+
+    @app.post("/api/map/teleport")
+    def api_map_teleport(req: dict = Body(...), token: str = Depends(get_token)):
+        username = req.get("username", "").strip()
+        x = req.get("x")
+        y = req.get("y")
+        z = req.get("z", 0)
+        if not username or x is None or y is None:
+            return {"ok": False, "error": "Не указано имя игрока или координаты"}
+        cmd = f'teleportto "{username}" {int(x)},{int(y)},{int(z)}'
+        server_process.send_command(cmd)
+        add_console_line(f"> {cmd}")
+        return {"ok": True, "message": f"Команда телепортации отправлена: {cmd}"}
+
+    @app.post("/api/map/save")
+    def api_map_save(token: str = Depends(get_token)):
+        server_process.send_command("save")
+        add_console_line("> save")
+        return {"ok": True, "message": "Сервер сохраняет мир..."}
 
     # ── WebSocket for Live Console ──────────────────────────────────
 

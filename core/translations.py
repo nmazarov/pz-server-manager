@@ -16,6 +16,7 @@ TRANSLATIONS = {
         'tab_sandbox':  '🎲 Sandbox Settings',
         'tab_mods':     '🧩 Mods',
         'tab_install':  '📥 Install',
+        'tab_map':      '🗺️ Map',
 
         # ── Server Control Tab ───────────────────────────────────
         'server_status':         'Server Status',
@@ -552,6 +553,7 @@ TRANSLATIONS = {
         'tab_sandbox':  '🎲 Sandbox',
         'tab_mods':     '🧩 Моды',
         'tab_install':  '📥 Установка',
+        'tab_map':      '🗺️ Карта',
 
         # ── Server Control Tab ───────────────────────────────────
         'server_status':       'Статус сервера',
