@@ -1346,10 +1346,12 @@ class SandboxTabMixin:
     def _render_mod_options(self, sb: dict, meta: dict):
         """Render dynamic controls for all third-party mod sections."""
         # Clear existing mod widgets
-        for i in reversed(range(self.mods_scroll_layout.count())):
-            item = self.mods_scroll_layout.itemAt(i)
-            if item.widget() and item.widget() != self.mod_empty_label:
-                item.widget().setParent(None)
+        for i in reversed(range(self.mod_options_layout.count())):
+            item = self.mod_options_layout.itemAt(i)
+            if item:
+                w = item.widget()
+                if w and w != self.mod_empty_label:
+                    w.deleteLater()
 
         self.mod_widgets.clear()
         self.mod_group_boxes.clear()
@@ -1388,6 +1390,7 @@ class SandboxTabMixin:
             gb_vbox = QVBoxLayout(gb)
             gb_vbox.setContentsMargins(12, 10, 12, 10)
             gb_vbox.setSpacing(6)
+            gb_items = []
 
             for key, val in mod_data.items():
                 comment = meta.get((mod_name, key), '')
@@ -1431,9 +1434,10 @@ class SandboxTabMixin:
 
                 gb_vbox.addWidget(row_widget)
                 self.mod_widgets[(mod_name, key)] = w
+                gb_items.append((row_widget, key, comment))
 
-            self.mods_scroll_layout.addWidget(gb)
-            self.mod_group_boxes[mod_name] = gb
+            self.mod_group_boxes.append((gb, gb_items))
+            self.mod_options_layout.addWidget(gb)
 
     def save_sandbox_settings(self):
         """Save all sandbox settings back to SandboxVars.lua."""
