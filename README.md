@@ -27,6 +27,25 @@ Featuring both a tactical **Desktop GUI** (Windows & Linux) and an ultra-fast **
 
 ---
 
+## 📸 Screenshots & Interface Overview
+
+| 🎮 Server Dashboard & Live Terminal | 🗺️ Interactive World Map & Player Radar |
+|:---:|:---:|
+| <a href="assets/screenshots/01_dashboard.png"><img src="assets/screenshots/01_dashboard.png" width="460" alt="Server Dashboard & Live Terminal"/></a> | <a href="assets/screenshots/05_interactive_map.png"><img src="assets/screenshots/05_interactive_map.png" width="460" alt="Interactive World Map & Player Radar"/></a> |
+| *Server lifecycle management, real-time terminal console, quick admin actions & live player list* | *High-performance Knox Country map, 506 indexed POIs, building inspector & survivor radar* |
+
+| 🎲 Sandbox Configurator (SandboxVars) | 🧩 Steam Workshop Mod Master |
+|:---:|:---:|
+| <a href="assets/screenshots/03_sandbox_vars.png"><img src="assets/screenshots/03_sandbox_vars.png" width="460" alt="Sandbox Configurator"/></a> | <a href="assets/screenshots/04_mods_manager.png"><img src="assets/screenshots/04_mods_manager.png" width="460" alt="Steam Workshop Mod Master"/></a> |
+| *100% SandboxVars coverage: vehicle physics, speed limits, gas consumption & custom preset manager* | *Build 41 / Build 42 compatibility analyzer, Steam Collection bulk import & map load order* |
+
+| ⚙️ Full Server Configuration (INI) |
+|:---:|
+| <a href="assets/screenshots/02_server_settings.png"><img src="assets/screenshots/02_server_settings.png" width="460" alt="Full Server Configuration INI"/></a> |
+| *Network ports (UDP, Steam, RCON), safehouse permissions, security rules & gameplay settings* |
+
+---
+
 ## 🌟 Key Features
 
 ### 🌐 1. Dual Interface: Desktop GUI & Headless VPS Web Panel
@@ -75,6 +94,14 @@ Organized into 6 clean sub-tabs matching the in-game Project Zomboid menu:
 * Full snapshot archives (`.zip`) containing world saves (`Saves/Multiplayer/`), configuration files (`Server/`), and player databases (`db/`).
 * Pre-launch safety backups created automatically before every start.
 * Backup manager dialog with creation date, size in MB, 1-click restore, and clean deletion.
+
+### 🗺️ 8. Interactive World Map & Tactical Radar (Build 41 / Build 42)
+* **Asynchronous 2D Tile Engine**: Zero UI lag or freezing during zooming and panning powered by multithreaded background tile decoding (`QThread`).
+* **506 Pre-indexed Points of Interest (POIs)**: Instant lookup for police stations, gun stores, medical centers, gas stations, supermarkets, warehouses, and banks across Knox Country.
+* **Building Inspector**: Interactive hover and click inspection with room polygon highlights, category colors, and functional tags.
+* **Live Player Radar**: Real-time position tracking from `players.db` with pulsing status markers (Online / Offline / Dead).
+* **Dropdown Filter Menu**: Clean `🏢 Фильтр объектов ▾` dropdown for quick layer toggles and town jump navigation (West Point, Muldraugh, Rosewood, Louisville, etc.).
+* Fully accessible in both the **Desktop GUI** and the headless **Web Panel**.
 
 ---
 

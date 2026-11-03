@@ -803,6 +803,7 @@ class MapTabMixin:
         self.tbl_map_players.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.tbl_map_players.setSelectionBehavior(QTableWidget.SelectRows)
         self.tbl_map_players.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.tbl_map_players.verticalHeader().setVisible(False)
         self.tbl_map_players.itemDoubleClicked.connect(self._on_player_table_double_click)
         sb_layout.addWidget(self.tbl_map_players, 1)
 
