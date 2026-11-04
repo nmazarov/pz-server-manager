@@ -758,35 +758,44 @@ def create_app(
         installed_version = buildid_to_game_version(bid) if bid else None
 
         mods_list = mod_manager.get_mods()
-        from collections import Counter
+        from collections import Counter, defaultdict
         wid_counts = Counter(str(m.get("workshop_id")) for m in mods_list if m.get("workshop_id"))
-        all_mod_ids = []
+        mod_to_wids = defaultdict(set)
         for m in mods_list:
-            m_ids = m.get("mod_ids") or ([m.get("mod_id")] if m.get("mod_id") else [])
-            all_mod_ids.extend([mid for mid in m_ids if mid])
-        mid_counts = Counter(all_mod_ids)
+            w_id = str(m.get("workshop_id") or "")
+            raw_mids = m.get("mod_ids") or ([m.get("mod_id")] if m.get("mod_id") else [])
+            for mid in raw_mids:
+                if mid and mid.strip():
+                    mod_to_wids[mid.strip()].add(w_id)
 
         mods_data = []
         for mod in mods_list:
             wid_str = str(mod.get("workshop_id", ""))
             status_code, reason = mod_manager.check_compatibility(mod, target_build=target_version)
             
-            # Check duplicate Workshop ID
+            # Deduplicate internal mod_ids list
+            raw_mids = mod.get("mod_ids") or ([mod.get("mod_id")] if mod.get("mod_id") else [])
+            m_ids = list(dict.fromkeys(mid.strip() for mid in raw_mids if mid and mid.strip()))
+
+            # Check duplicate Workshop ID (exact same workshop ID added multiple times)
             if wid_counts.get(wid_str, 0) > 1:
                 status_code = "warning"
                 reason = f"⚠️ Внимание: Workshop ID {wid_str} продублирован в списке!"
             
-            # Check duplicate Mod IDs
-            m_ids = mod.get("mod_ids") or ([mod.get("mod_id")] if mod.get("mod_id") else [])
-            dupe_mids = [mid for mid in m_ids if mid_counts.get(mid, 0) > 1]
-            if dupe_mids and status_code == "compatible":
+            # Check duplicate Mod IDs across DIFFERENT workshop items
+            conflicting_mids = [mid for mid in m_ids if len(mod_to_wids.get(mid, set())) > 1]
+            if conflicting_mids and status_code == "compatible":
+                other_wids = set()
+                for mid in conflicting_mids:
+                    other_wids.update(mod_to_wids.get(mid, set()) - {wid_str})
+                other_str = f" (моды: {', '.join(list(other_wids)[:3])})" if other_wids else ""
                 status_code = "warning"
-                reason = f"⚠️ Дубликат Mod ID ({', '.join(dupe_mids)}) используется другим модом в списке!"
+                reason = f"⚠️ Пересечение Mod ID ({', '.join(conflicting_mids)}) с другими модами{other_str}"
 
             mods_data.append({
                 "workshop_id": wid_str,
                 "name": mod.get("name", "Unknown"),
-                "mod_id": mod.get("mod_id", ""),
+                "mod_id": m_ids[0] if m_ids else mod.get("mod_id", ""),
                 "mod_ids": m_ids,
                 "map_folders": mod.get("map_folders", []),
                 "tags": mod.get("tags", []),
