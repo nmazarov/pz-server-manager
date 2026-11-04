@@ -1,3 +1,11 @@
+function updateLaunchStage(stage) {
+  if (!stage) return;
+  const sub = document.getElementById('status-sub');
+  if (sub && !isServerRunning) {
+    sub.textContent = stage;
+  }
+}
+
 
 // ── Custom Named Sandbox Presets Management ──────────────────────────────
 let customSandboxPresets = {};
@@ -936,6 +944,8 @@ function connectWebSocket() {
       updateMetricsUI(msg.data);
     } else if (msg.type === 'status') {
       updateStatusCard(msg.data);
+    } else if (msg.type === 'stage') {
+      updateLaunchStage(msg.stage);
     }
   };
 
@@ -1067,6 +1077,7 @@ async function fetchStatus() {
 
     updateStatusCard(data.running);
     if (data.metrics) updateMetricsUI(data.metrics);
+    if (data.stage && !data.running) updateLaunchStage(data.stage);
     if (data.target_version) {
       document.getElementById('badge-version').textContent = `🎯 Build ${data.target_version}`;
     }

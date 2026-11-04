@@ -129,20 +129,10 @@ def create_app(
         except Exception:
             pass
 
-    # ── Console Log Buffer ──────────────────────────────────────────
+    # ── Console Log Buffer & Smart Filtering ───────────────────────
     console_history: List[str] = []
     MAX_HISTORY = 1000
-
-    def add_console_line(line: str):
-        ts = datetime.now().strftime('%H:%M:%S')
-        entry = f"[{ts}] {line}"
-        console_history.append(entry)
-        if len(console_history) > MAX_HISTORY:
-            console_history.pop(0)
-
-    # Connect server process signals to web log buffer
-    server_process.output_received.connect(lambda text: add_console_line(text))
-    server_process.error_received.connect(lambda text: add_console_line(f"ERROR: {text}"))
+    current_launch_stage = ["Сервер запущен и готов к игре!" if server_process.is_running() else "Сервер остановлен"]
 
     # ── Active WebSockets Manager ───────────────────────────────────
     class ConnectionManager:
@@ -165,26 +155,106 @@ def create_app(
                     self.disconnect(conn)
 
     ws_manager = ConnectionManager()
-
-    # Hook server output directly to active WebSockets via event loop
     loop_holder = {"loop": None}
 
-    def on_live_output(text: str):
+    def set_server_stage(stage: str):
+        if current_launch_stage[0] != stage:
+            current_launch_stage[0] = stage
+            loop = loop_holder.get("loop")
+            if loop and ws_manager.active_connections:
+                asyncio.run_coroutine_threadsafe(
+                    ws_manager.broadcast({"type": "stage", "stage": stage}),
+                    loop
+                )
+
+    def filter_and_format_log(raw_line: str, is_error: bool = False) -> Optional[str]:
+        if not raw_line:
+            return None
+        line = raw_line.strip()
+        if not line:
+            return None
+
+        lower = line.lower()
+
+        # Update launch stage milestones
+        if "workshop: download" in lower or "workshop: downloadpending" in lower or "workshop: item state" in lower:
+            set_server_stage("Проверка и загрузка модов мастерской Steam...")
+        elif "loading: media/maps" in lower or "loading world" in lower or "worlddictionary" in lower or "spawnregions" in lower:
+            set_server_stage("Загрузка карты и параметров мира...")
+        elif "loading: media/lua" in lower or "loading lua script" in lower:
+            set_server_stage("Загрузка скриптов модов (Lua)...")
+        elif "*** server started ***" in lower or "server started" in lower:
+            set_server_stage("Сервер запущен и готов к игре!")
+        elif "shutdown handling started" in lower or "server exited" in lower:
+            set_server_stage("Сервер остановлен")
+        elif "exception in thread" in lower or "nullpointerexception" in lower or "fatal:" in lower:
+            set_server_stage("Ошибка запуска сервера (см. консоль)!")
+
+        # 1. Filter out repetitive / noisy spam
+        if "workshop: downloadpending getitemstate()=" in lower or "workshop: download 0/0" in lower:
+            return None
+        if "no packet handler for type:" in lower:
+            return None
+        if "iclientugc::getitemstate took too long" in lower:
+            return None
+        if "contentupdatecontext.cpp" in lower:
+            return None
+        if "zombie.core.skinnedmodel.advancedanimation.animnode" in lower:
+            return None
+        if "zombie.asset.assetmanager.doload" in lower:
+            return None
+
+        # 2. Highlight and clean up important events
+        if "workshop: item state downloadpending -> installed id=" in lower:
+            m = re.search(r'ID=(\d+)', line)
+            wid = m.group(1) if m else ""
+            return f"📦 [Мастерская Steam] Мод проверен/установлен (ID: {wid})"
+
+        if "workshop: onitemnotdownloaded" in lower or "workshop: item state downloadpending -> fail" in lower:
+            m = re.search(r'ID=(\d+)', line, re.IGNORECASE)
+            wid = m.group(1) if m else ""
+            return f"❌ [Мастерская Steam] СБОЙ загрузки мода ID: {wid}!"
+
+        if "*** server started ***" in lower or "server started" in lower:
+            return "🟢 СЕРВЕР УСПЕШНО ЗАПУЩЕН! Игроки могут подключаться."
+
+        if "connected new client" in lower:
+            return f"👤 [Игроки] Подключился новый клиент"
+        if "steam client" in lower and "is initiating a connection" in lower:
+            return f"🔗 [Игроки] Входящее подключение Steam..."
+
+        if "exception in thread" in lower or "nullpointerexception" in lower or is_error:
+            return f"🚨 [ОШИБКА] {line}"
+
+        # Clean off internal logger prefixes like "LOG  : General      f:0 st:13,879,520> "
+        cleaned = re.sub(r'^(?:LOG|WARN)\s*:\s*[A-Za-z0-9_-]+\s+f:\d+\s+st:[\d,]+>\s*', '', line)
+        return cleaned if cleaned else line
+
+    def add_console_line(line: str, is_error: bool = False):
+        formatted = filter_and_format_log(line, is_error=is_error)
+        if not formatted:
+            return
+        ts = datetime.now().strftime('%H:%M:%S')
+        entry = f"[{ts}] {formatted}"
+        console_history.append(entry)
+        if len(console_history) > MAX_HISTORY:
+            console_history.pop(0)
+
         loop = loop_holder.get("loop")
         if loop and ws_manager.active_connections:
-            ts = datetime.now().strftime('%H:%M:%S')
             asyncio.run_coroutine_threadsafe(
-                ws_manager.broadcast({"type": "console", "line": f"[{ts}] {text}"}),
+                ws_manager.broadcast({"type": "console", "line": entry}),
                 loop
             )
 
-    server_process.output_received.connect(on_live_output)
-    server_process.error_received.connect(lambda err: on_live_output(f"ERROR: {err}"))
-
+    # Attach listeners cleanly without duplicates
     if hasattr(server_process, 'add_output_listener'):
         server_process.add_output_listener(lambda text: player_manager.parse_console_line(text))
-        server_process.add_output_listener(lambda text: add_console_line(text))
-        server_process.add_output_listener(on_live_output)
+        server_process.add_output_listener(lambda text: add_console_line(text, False))
+    else:
+        server_process.output_received.connect(lambda text: add_console_line(text, False))
+
+    server_process.error_received.connect(lambda text: add_console_line(text, True))
 
     # ── Installation Worker State ───────────────────────────────────
     install_state = {
@@ -425,6 +495,7 @@ def create_app(
             "game_port": game_port,
             "server_name": saved_server_name,
             "ram_gb": saved_ram_gb,
+            "stage": current_launch_stage[0],
             "metrics": get_system_metrics()
         }
 
