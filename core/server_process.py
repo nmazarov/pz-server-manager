@@ -125,6 +125,24 @@ class OutputReader(QThread):
                         pass
 
                 if self.process and self.process.poll() is not None:
+                    # Check if game process is still alive (e.g. child ProjectZomboid64)
+                    still_alive = False
+                    try:
+                        for p in psutil.process_iter(['pid', 'name', 'cmdline']):
+                            try:
+                                name = (p.info.get('name') or '').lower()
+                                cmd = ' '.join(p.info.get('cmdline') or []).lower()
+                                if 'projectzomboid64' in name or 'projectzomboid64' in cmd:
+                                    still_alive = True
+                                    break
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                    if still_alive:
+                        if not has_read:
+                            time.sleep(0.3)
+                        continue
                     time.sleep(0.5)
                     if self.log_file and self.log_file.exists():
                         try:
@@ -222,7 +240,7 @@ class ServerProcess(QObject):
             logger.error(f"Error killing PID {pid}: {e}")
 
     def find_running_server_pids(self) -> list:
-        """Find running PZ server process PIDs by port."""
+        """Find running PZ server process PIDs by port or process name."""
         pids = set()
         ports = {16261, 16262}
         try:
@@ -232,6 +250,18 @@ class ServerProcess(QObject):
                         pids.add(conn.pid)
         except Exception as e:
             logger.debug(f"find_running_server_pids error: {e}")
+        if not pids:
+            try:
+                for p in psutil.process_iter(['pid', 'name', 'cmdline']):
+                    try:
+                        name = (p.info.get('name') or '').lower()
+                        cmd = ' '.join(p.info.get('cmdline') or []).lower()
+                        if 'projectzomboid64' in name or 'projectzomboid64' in cmd:
+                            pids.add(p.info['pid'])
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+            except Exception:
+                pass
         return list(pids)
 
     def detect_and_attach_running_server(self) -> Optional[int]:
@@ -448,6 +478,10 @@ class ServerProcess(QObject):
         if self.process is not None and self.process.poll() is None:
             return True
         if self._attached_pid and self._is_pid_alive(self._attached_pid):
+            return True
+        pids = self.find_running_server_pids()
+        if pids:
+            self._attached_pid = pids[0]
             return True
         self._attached_pid = None
         return False

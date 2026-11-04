@@ -909,15 +909,19 @@ function connectWebSocket() {
   ws = new WebSocket(url);
 
   ws.onmessage = (event) => {
+    let msg;
     try {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'console') {
-        appendConsoleLine(msg.line);
-      } else if (msg.type === 'metrics') {
-        updateMetrics(msg.data);
-      }
+      msg = JSON.parse(event.data);
     } catch (e) {
       appendConsoleLine(event.data);
+      return;
+    }
+    if (msg.type === 'console') {
+      appendConsoleLine(msg.line);
+    } else if (msg.type === 'metrics') {
+      updateMetricsUI(msg.data);
+    } else if (msg.type === 'status') {
+      updateStatusCard(msg.data);
     }
   };
 
@@ -1103,6 +1107,7 @@ function updateServerButtons(running) {
   updateStatusCard(running);
 }
 
+function updateMetrics(m) { updateMetricsUI(m); }
 function updateMetricsUI(m) {
   if (m.vps_ram_used_gb !== undefined) {
     document.getElementById('badge-vps-ram').textContent =
