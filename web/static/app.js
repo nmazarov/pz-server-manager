@@ -732,7 +732,8 @@ function applyTranslations() {
 
 // 🧟 Project Zomboid Server Manager - Web Panel Client
 
-let authToken = localStorage.getItem('pz_token') || '';
+let currentToken = localStorage.getItem('pz_token') || '';
+let authToken = currentToken;
 let ws = null;
 let currentTab = 'server';
 let isServerRunning = false;
@@ -1096,6 +1097,7 @@ function updateStatusCard(running) {
     if (btnStop) btnStop.disabled = true;
     if (btnRestart) btnRestart.disabled = true;
   }
+}
 
 function updateServerButtons(running) {
   updateStatusCard(running);
