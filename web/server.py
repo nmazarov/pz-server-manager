@@ -695,9 +695,12 @@ def create_app(
 
     @app.post("/api/mods/add")
     def api_add_mod(req: ModReq, token: str = Depends(get_token)):
-        cid = mod_manager.parse_collection_id(req.id_or_url.strip())
+        raw_input = req.id_or_url.strip()
+        cid = mod_manager.parse_collection_id(raw_input)
         if not cid:
             return {"success": False, "message": "Неверный Workshop ID или ссылка на коллекцию"}
+
+        is_collection_input = any(k in raw_input.lower() for k in ['collection', 'collections', 'browse'])
 
         # Check if it is a collection
         col = mod_manager.get_collection_mods(cid)
@@ -713,6 +716,12 @@ def create_app(
                 "added_count": res.get("added_count", 0),
                 "total_items": res.get("total_items", len(col)),
                 "message": f"Коллекция успешно импортирована: добавлено {res.get('added_count', 0)} модов (всего в коллекции {len(col)})."
+            }
+
+        if is_collection_input:
+            return {
+                "success": False,
+                "message": "Это ссылка на коллекцию Steam, но в ней не найдено модов или она скрыта (Unlisted/Private/Friends-only). Сделайте коллекцию публичной (Public) в мастерской Steam для автоматического импорта всех модов."
             }
 
         try:
