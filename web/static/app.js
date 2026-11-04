@@ -849,12 +849,25 @@ function switchTab(name) {
 
 
 // ── Dashboard Core ────────────────────────────────────────────────
+function restorePrefsFromStorage() {
+  const savedName = localStorage.getItem('pz_srv_name');
+  if (savedName) {
+    const el = document.getElementById('srv-name');
+    if (el) el.value = savedName;
+  }
+  const savedRam = localStorage.getItem('pz_srv_ram');
+  if (savedRam) {
+    const el = document.getElementById('srv-ram');
+    if (el) el.value = savedRam;
+  }
+}
+
 function initDashboard() {
+  restorePrefsFromStorage();
   connectWebSocket();
   loadConsoleHistory();
-  pollStatus();
-  setInterval(pollStatus, 3000);
-  setInterval(pollMetrics, 3000);
+  fetchStatus();
+  setInterval(fetchStatus, 3000);
   setInterval(() => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       loadConsoleHistory();
@@ -868,6 +881,8 @@ function initDashboard() {
   }, 5000);
   loadWatchdog();
 }
+const pollStatus = fetchStatus;
+const pollMetrics = fetchStatus;
 
 async function loadConsoleHistory() {
   try {
@@ -875,7 +890,8 @@ async function loadConsoleHistory() {
     if (!res.ok) return;
     const data = await res.json();
     const out = document.getElementById('console-output');
-    if (out && data.lines && data.lines.length > 0) {
+    if (!out) return;
+    if (data.lines && data.lines.length > 0) {
       out.innerHTML = '';
       data.lines.forEach(l => {
         const div = document.createElement('div');
@@ -887,6 +903,8 @@ async function loadConsoleHistory() {
       if (chk && chk.checked) {
         out.scrollTop = out.scrollHeight;
       }
+    } else if (!isServerRunning && out.children.length === 0) {
+      out.innerHTML = '<div class="terminal-line" style="color: var(--text-muted); font-style: italic;">[Сервер остановлен. Нажмите «Запустить сервер» для старта]</div>';
     }
   } catch (e) {}
 }

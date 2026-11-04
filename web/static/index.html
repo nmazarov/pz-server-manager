@@ -129,11 +129,11 @@
         <div class="server-control-grid">
           <div class="form-group" style="margin-bottom: 0; min-width: 180px; flex: 1 1 200px;">
             <label data-i18n="lbl_server_name" style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Имя сервера:</label>
-            <input type="text" id="srv-name" class="form-control" value="servertest" onchange="savePrefsOnChange()">
+            <input type="text" id="srv-name" class="form-control" value="servertest" onchange="this.dataset.userChanged='1'; savePrefsOnChange()">
           </div>
           <div class="form-group" style="margin-bottom: 0; min-width: 160px; flex: 1 1 180px;">
             <label data-i18n="lbl_srv_ram" style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Выделение ОЗУ (RAM):</label>
-            <select id="srv-ram" class="form-control" onchange="savePrefsOnChange()">
+            <select id="srv-ram" class="form-control" onchange="this.dataset.userChanged='1'; savePrefsOnChange()">
               <option value="4">4 GB</option>
               <option value="6">6 GB</option>
               <option value="8">8 GB</option>

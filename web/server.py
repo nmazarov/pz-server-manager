@@ -362,7 +362,17 @@ def create_app(
 
     @app.get("/api/console/history")
     def api_console_history(token: str = Depends(get_token)):
-        return {"lines": console_history[-200:]}
+        if len(console_history) == 0:
+            log_file = paths.get('zomboid_dir', Path.home() / 'Zomboid') / 'server-console.txt'
+            if log_file.exists():
+                try:
+                    with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
+                        lines = [line.rstrip('\r\n') for line in f.readlines()[-100:]]
+                        for line in lines:
+                            console_history.append(line)
+                except Exception as e:
+                    logger.debug(f"Could not seed console history: {e}")
+        return {"lines": list(console_history)[-200:]}
 
     @app.get("/api/status")
     def api_status(token: str = Depends(get_token)):
@@ -467,7 +477,7 @@ def create_app(
     @app.post("/api/server/stop")
     def api_server_stop(token: str = Depends(get_token)):
         if not server_process.is_running():
-            return {"success": False, "message": "Server is not running."}
+            return {"success": True, "message": "Сервер уже остановлен."}
         server_process.stop()
         add_console_line("Stopping server...")
         return {"success": True}
