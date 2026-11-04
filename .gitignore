@@ -50,3 +50,6 @@ initial_password.txt
 # Mod cache (regenerated)
 pz_mods.json
 data/pz_mods.json
+
+# References
+references/

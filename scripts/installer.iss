@@ -4,7 +4,7 @@
 ; =====================================================================
 
 #define MyAppName "Project Zomboid Server Manager"
-#define MyAppVersion "1.3.1"
+#define MyAppVersion "1.3.6"
 #define MyAppPublisher "PZ Server Manager Team"
 #define MyAppURL "https://github.com/nmazarov/pz-server-manager"
 #define MyAppExeName "PZ Server Manager.exe"
