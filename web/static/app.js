@@ -1152,11 +1152,19 @@ async function startServer() {
 
 async function stopServer() {
   if (!confirm('Вы уверены, что хотите корректно остановить сервер?')) return;
+  showToast('⏳ Остановка сервера...');
   try {
-    await fetch('/api/server/stop', { method: 'POST', headers: getHeaders() });
-    setTimeout(pollStatus, 1000);
+    const res = await fetch('/api/server/stop', { method: 'POST', headers: getHeaders() });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      showToast('🛑 Сервер остановлен');
+    } else {
+      showToast('Ошибка остановки: ' + (data.message || res.statusText));
+    }
   } catch (e) {
-    alert('Ошибка остановки');
+    showToast('Сетевая ошибка при остановке');
+  } finally {
+    setTimeout(pollStatus, 1500);
   }
 }
 
@@ -1265,6 +1273,294 @@ async function banSelectedPlayer() {
   showToast(`Игрок ${selectedPlayerName} заблокирован.`);
   setTimeout(fetchPlayers, 1000);
 }
+
+async function loadMods() {
+  try {
+    const res = await fetch('/api/mods', { headers: getHeaders() });
+    if (!res.ok) return;
+    const data = await res.json();
+    currentModsList = Array.isArray(data) ? data : (data.mods || []);
+    renderMods(currentModsList);
+  } catch (e) {
+    console.error('loadMods error:', e);
+  }
+}
+
+function renderMods(mods) {
+  const container = document.getElementById('mods-container');
+  if (!container) return;
+
+  if (!Array.isArray(mods) || mods.length === 0) {
+    container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 24px;">Моды не добавлены. Введите Workshop ID, ссылку на коллекцию Steam или выберите готовый набор выше.</div>';
+    return;
+  }
+
+  let html = `<div style="margin-bottom: 8px; font-size: 12.5px; color: var(--text-muted);">Всего подключено модов: <b>${mods.length}</b></div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width: 50px;">СТАТУС</th>
+        <th>WORKSHOP ID</th>
+        <th>МОД И ИДЕНТИФИКАТОРЫ (MOD ID)</th>
+        <th style="text-align: right;">УПРАВЛЕНИЕ</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  mods.forEach((m, idx) => {
+    let dot = '🟢';
+    if (m.status === 'incompatible') dot = '🔴';
+    else if (m.status === 'warning' || m.status === 'unknown') dot = '🟡';
+
+    const wid = m.workshop_id || m.mod_id || '--';
+    const name = m.name || ('Workshop Item ' + wid);
+    const reason = m.reason ? ` title="${m.reason.replace(/"/g, '&quot;')}"` : '';
+    const modIds = (m.mod_ids && m.mod_ids.length > 0) ? m.mod_ids : (m.mod_id ? [m.mod_id] : []);
+    const modIdBadges = modIds.map(id => `<span style="display: inline-block; background: #1c2b3a; border: 1px solid #2a475e; color: #8bc34a; font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; margin-top: 3px;">${id}</span>`).join('');
+    const mapBadges = (m.map_folders && m.map_folders.length > 0) ? m.map_folders.map(map => `<span style="display: inline-block; background: #2d261a; border: 1px solid #5a452a; color: #ffb74d; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; margin-top: 3px;">🗺️ ${map}</span>`).join('') : '';
+
+    html += `<tr>
+      <td style="font-size: 16px; text-align: center;"${reason}>${dot}</td>
+      <td style="font-family: var(--font-mono); font-size: 12px; color: #ffb74d;">${wid}</td>
+      <td>
+        <div style="font-weight: 700; color: #fff; font-size: 13.5px;">${name}</div>
+        <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
+          ${modIdBadges || '<span style="font-size: 11px; color: var(--text-muted);">[ID не указан]</span>'}
+          ${mapBadges}
+        </div>
+      </td>
+      <td style="text-align: right; white-space: nowrap;">
+        <button class="btn btn-secondary" onclick="openEditModModal(${idx})" style="padding: 3px 9px; font-size: 11px;" title="Редактировать Mod ID и название">✏️ Изменить</button>
+        <button class="btn btn-secondary" onclick="moveMod(${idx}, -1)" style="padding: 3px 8px; font-size: 11px;" title="Переместить выше">⬆</button>
+        <button class="btn btn-secondary" onclick="moveMod(${idx}, 1)" style="padding: 3px 8px; font-size: 11px;" title="Переместить ниже">⬇</button>
+        <button class="btn btn-danger" onclick="removeMod(${idx})" style="padding: 3px 9px; font-size: 11px; margin-left: 6px;" title="Удалить мод">✕</button>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+
+// ── Mod Edit Modal Logic ──────────────────────────────────────────
+let editingModIndex = -1;
+
+function openEditModModal(idx) {
+  if (idx < 0 || idx >= currentModsList.length) return;
+  editingModIndex = idx;
+  const m = currentModsList[idx];
+
+  document.getElementById('edit-mod-wid').value = m.workshop_id || '';
+  document.getElementById('edit-mod-name').value = m.name || '';
+  
+  const ids = (m.mod_ids && m.mod_ids.length > 0) ? m.mod_ids.join('; ') : (m.mod_id || '');
+  document.getElementById('edit-mod-ids').value = ids;
+
+  const maps = (m.map_folders && m.map_folders.length > 0) ? m.map_folders.join('; ') : '';
+  document.getElementById('edit-mod-maps').value = maps;
+
+  document.getElementById('edit-mod-modal').style.display = 'flex';
+}
+
+function closeEditModModal() {
+  document.getElementById('edit-mod-modal').style.display = 'none';
+  editingModIndex = -1;
+}
+
+async function saveEditMod() {
+  if (editingModIndex < 0 || editingModIndex >= currentModsList.length) return;
+  const m = currentModsList[editingModIndex];
+  const wid = m.workshop_id;
+
+  const newName = document.getElementById('edit-mod-name').value.trim();
+  const rawIds = document.getElementById('edit-mod-ids').value.split(/[;,]/).map(s => s.trim()).filter(Boolean);
+  const rawMaps = document.getElementById('edit-mod-maps').value.split(/[;,]/).map(s => s.trim()).filter(Boolean);
+
+  try {
+    const res = await fetch('/api/mods/update', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        workshop_id: String(wid),
+        name: newName,
+        mod_ids: rawIds,
+        mod_id: rawIds[0] || '',
+        map_folders: rawMaps
+      })
+    });
+    const d = await res.json();
+    if (d.success) {
+      closeEditModModal();
+      await loadMods();
+    } else {
+      alert('Ошибка обновления мода: ' + d.message);
+    }
+  } catch (e) {
+    alert('Сетевая ошибка сохранения: ' + e);
+  }
+}
+
+async function addMod() {
+  const inp = document.getElementById('mod-input-id');
+  if (!inp) return;
+  const val = inp.value.trim();
+  if (!val) return;
+
+  const btn = document.querySelector("button[onclick='addMod()']");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Добавление...';
+  }
+
+  try {
+    const res = await fetch('/api/mods/add', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ id_or_url: val })
+    });
+    const d = await res.json();
+    if (d.success) {
+      inp.value = '';
+      await loadMods();
+      if (d.is_collection) {
+        alert(d.message || 'Коллекция успешно импортирована!');
+      }
+    } else {
+      alert('Ошибка при добавлении: ' + (d.message || 'Не удалось распознать ID или коллекцию'));
+    }
+  } catch (e) {
+    alert('Сетевая ошибка при добавлении: ' + e);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '➕ Добавить мод';
+    }
+  }
+}
+
+async function removeMod(idx) {
+  if (idx < 0 || idx >= currentModsList.length) return;
+  const m = currentModsList[idx];
+  const wid = m.workshop_id || m.mod_id;
+  try {
+    const res = await fetch('/api/mods/remove', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ id_or_url: String(wid) })
+    });
+    if (res.ok) {
+      await loadMods();
+    }
+  } catch (e) {
+    console.error('removeMod error:', e);
+  }
+}
+
+async function moveMod(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= currentModsList.length) return;
+  const temp = currentModsList[idx];
+  currentModsList[idx] = currentModsList[newIdx];
+  currentModsList[newIdx] = temp;
+  renderMods(currentModsList);
+  await saveModsPayload(currentModsList);
+}
+
+async function saveMods() {
+  try {
+    const res = await fetch('/api/mods/save', {
+      method: 'POST',
+      headers: getHeaders()
+    });
+    const d = await res.json();
+    if (d.success) {
+      alert('Список модов успешно сохранен в конфигурации сервера!');
+    } else {
+      alert('Ошибка сохранения: ' + d.message);
+    }
+  } catch (e) {
+    alert('Ошибка сохранения модов: ' + e);
+  }
+}
+
+async function saveModsPayload(mods) {
+  try {
+    await fetch('/api/mods/save', {
+      method: 'POST',
+      headers: getHeaders()
+    });
+  } catch (e) {
+    console.error('saveModsPayload error:', e);
+  }
+}
+
+async function clearMods() {
+  if (!confirm('Очистить весь список подключенных модов?')) return;
+  try {
+    const res = await fetch('/api/mods/clear', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ id_or_url: '' })
+    });
+    if (res.ok) {
+      await loadMods();
+    }
+  } catch (e) {
+    console.error('clearMods error:', e);
+  }
+}
+
+async function checkAllModsCompatibility() {
+  try {
+    const res = await fetch('/api/mods/check', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ id_or_url: '' })
+    });
+    const d = await res.json();
+    await loadMods();
+    if (d.success) {
+      alert(`Проверка завершена!\nВсего: ${d.total}\nСовместимо: ${d.compatible}\nПредупреждения: ${d.warning}\nНесовместимо: ${d.incompatible}`);
+    }
+  } catch (e) {
+    alert('Ошибка при проверке совместимости: ' + e);
+  }
+}
+
+async function analyzeMods() {
+  try {
+    const res = await fetch('/api/mods/analyze', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ id_or_url: '' })
+    });
+    const d = await res.json();
+    if (d.success) {
+      await loadMods();
+      alert('Анализ завершен! Оптимальный порядок загрузки применен.');
+    }
+  } catch (e) {
+    alert('Ошибка анализа зависимостей: ' + e);
+  }
+}
+
+async function applyModPack(pack) {
+  try {
+    const res = await fetch('/api/mods/preset', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ action: pack })
+    });
+    const d = await res.json();
+    if (d.success) {
+      await loadMods();
+      alert(`Набор "${pack}" успешно применен (добавлено модов: ${d.added || 0})!`);
+    }
+  } catch (e) {
+    alert('Ошибка применения набора: ' + e);
+  }
+}
+
 
 // ── Settings (INI) ────────────────────────────────────────────────
 async function loadSettings() {
@@ -1938,43 +2234,3 @@ async function restoreBackup(filename) {
     alert('Сетевая ошибка восстановления');
   }
 }
-
-// ── Startup ───────────────────────────────────────────────────────
-function initDashboard() {
-  fetchStatus();
-  initWebSocket();
-  fetchPlayers();
-  setInterval(fetchStatus, 4000);
-  setInterval(fetchPlayers, 6000);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  // Restore persistent preferences from localStorage immediately
-  const savedRam = localStorage.getItem('pz_srv_ram');
-  if (savedRam) {
-    const el = document.getElementById('srv-ram');
-    if (el) el.value = savedRam;
-  }
-  const savedName = localStorage.getItem('pz_srv_name');
-  if (savedName) {
-    const el = document.getElementById('srv-name');
-    if (el) el.value = savedName;
-  }
-
-  const srvRamEl = document.getElementById('srv-ram');
-  if (srvRamEl) {
-    srvRamEl.addEventListener('change', () => {
-      srvRamEl.dataset.userChanged = 'true';
-      savePrefsOnChange();
-    });
-  }
-  const srvNameEl = document.getElementById('srv-name');
-  if (srvNameEl) {
-    srvNameEl.addEventListener('input', () => {
-      srvNameEl.dataset.userChanged = 'true';
-      savePrefsOnChange();
-    });
-  }
-
-  checkAuth();
-});
