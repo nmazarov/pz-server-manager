@@ -846,16 +846,7 @@ function switchTab(name) {
   if (name === 'map' && window.initPzMap) window.initPzMap();
 }
 
-function switchSandboxSubtab(subtab) {
-  document.querySelectorAll('.subtab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('#tab-sandbox .subtab-panel').forEach(p => p.classList.remove('active'));
 
-  const activeBtn = Array.from(document.querySelectorAll('.subtab-btn')).find(b => b.getAttribute('onclick')?.includes(subtab));
-  const activePanel = document.getElementById('sb-subtab-' + subtab);
-
-  if (activeBtn) activeBtn.classList.add('active');
-  if (activePanel) activePanel.classList.add('active');
-}
 
 // ── Dashboard Core ────────────────────────────────────────────────
 function initDashboard() {
@@ -1636,6 +1627,14 @@ function switchSandboxSubtab(name) {
 
   const panel = document.getElementById(`sandbox-subtab-${name}`);
   if (panel) panel.classList.add('active');
+
+  if (name === 'mods') {
+    if (!cachedSandboxData || Object.keys(cachedSandboxData).length === 0) {
+      loadSandbox();
+    } else {
+      renderModSandboxOptions(cachedSandboxData);
+    }
+  }
 }
 
 function setXpPreset(val) {
@@ -1647,6 +1646,12 @@ function setXpPreset(val) {
 async function loadSandbox() {
   try {
     const res = await fetch('/api/sandbox', { headers: getHeaders() });
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        showLogin();
+      }
+      return;
+    }
     const sb = await res.json();
     cachedSandboxData = sb || {};
 
