@@ -757,14 +757,37 @@ def create_app(
         bid = get_installed_server_buildid(paths['server_dir'])
         installed_version = buildid_to_game_version(bid) if bid else None
 
+        mods_list = mod_manager.get_mods()
+        from collections import Counter
+        wid_counts = Counter(str(m.get("workshop_id")) for m in mods_list if m.get("workshop_id"))
+        all_mod_ids = []
+        for m in mods_list:
+            m_ids = m.get("mod_ids") or ([m.get("mod_id")] if m.get("mod_id") else [])
+            all_mod_ids.extend([mid for mid in m_ids if mid])
+        mid_counts = Counter(all_mod_ids)
+
         mods_data = []
-        for mod in mod_manager.get_mods():
+        for mod in mods_list:
+            wid_str = str(mod.get("workshop_id", ""))
             status_code, reason = mod_manager.check_compatibility(mod, target_build=target_version)
+            
+            # Check duplicate Workshop ID
+            if wid_counts.get(wid_str, 0) > 1:
+                status_code = "warning"
+                reason = f"⚠️ Внимание: Workshop ID {wid_str} продублирован в списке!"
+            
+            # Check duplicate Mod IDs
+            m_ids = mod.get("mod_ids") or ([mod.get("mod_id")] if mod.get("mod_id") else [])
+            dupe_mids = [mid for mid in m_ids if mid_counts.get(mid, 0) > 1]
+            if dupe_mids and status_code == "compatible":
+                status_code = "warning"
+                reason = f"⚠️ Дубликат Mod ID ({', '.join(dupe_mids)}) используется другим модом в списке!"
+
             mods_data.append({
-                "workshop_id": str(mod.get("workshop_id")),
+                "workshop_id": wid_str,
                 "name": mod.get("name", "Unknown"),
                 "mod_id": mod.get("mod_id", ""),
-                "mod_ids": mod.get("mod_ids") or ([mod.get("mod_id")] if mod.get("mod_id") else []),
+                "mod_ids": m_ids,
                 "map_folders": mod.get("map_folders", []),
                 "tags": mod.get("tags", []),
                 "status": status_code,

@@ -1320,6 +1320,19 @@ async function loadMods() {
   }
 }
 
+let currentModFilter = 'all';
+let currentModSearch = '';
+
+function setModFilter(filter) {
+  currentModFilter = filter;
+  renderMods(currentModsList);
+}
+
+function filterModsSearch(query) {
+  currentModSearch = (query || '').toLowerCase().trim();
+  renderMods(currentModsList);
+}
+
 function renderMods(mods) {
   const container = document.getElementById('mods-container');
   if (!container) return;
@@ -1329,41 +1342,110 @@ function renderMods(mods) {
     return;
   }
 
-  let html = `<div style="margin-bottom: 8px; font-size: 12.5px; color: var(--text-muted);">Всего подключено модов: <b>${mods.length}</b></div>
-  <table class="data-table">
+  const totalCount = mods.length;
+  const warnCount = mods.filter(m => m.status === 'warning' || m.status === 'unknown').length;
+  const incompCount = mods.filter(m => m.status === 'incompatible').length;
+  const compatCount = totalCount - warnCount - incompCount;
+
+  // Filter list
+  let filtered = mods.map((m, idx) => ({ ...m, origIndex: idx }));
+
+  if (currentModFilter === 'compatible') {
+    filtered = filtered.filter(m => m.status === 'compatible');
+  } else if (currentModFilter === 'warning') {
+    filtered = filtered.filter(m => m.status === 'warning' || m.status === 'unknown');
+  } else if (currentModFilter === 'incompatible') {
+    filtered = filtered.filter(m => m.status === 'incompatible');
+  }
+
+  if (currentModSearch) {
+    filtered = filtered.filter(m => {
+      const name = (m.name || '').toLowerCase();
+      const wid = String(m.workshop_id || '');
+      const mids = (m.mod_ids || [m.mod_id || '']).join(' ').toLowerCase();
+      return name.includes(currentModSearch) || wid.includes(currentModSearch) || mids.includes(currentModSearch);
+    });
+  }
+
+  let html = `
+  <div style="margin-bottom: 14px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; background: #141923; padding: 10px 14px; border-radius: 6px; border: 1px solid #232d3d;">
+    <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+      <button class="pill-chip ${currentModFilter === 'all' ? 'active' : ''}" onclick="setModFilter('all')">Все (${totalCount})</button>
+      <button class="pill-chip ${currentModFilter === 'compatible' ? 'active' : ''}" style="color: #4ade80;" onclick="setModFilter('compatible')">🟢 Совместимы (${compatCount})</button>
+      <button class="pill-chip ${currentModFilter === 'warning' ? 'active' : ''}" style="color: #fbbf24; ${warnCount > 0 ? 'font-weight: bold; border-color: #f59e0b;' : ''}" onclick="setModFilter('warning')">⚠️ С предупреждениями (${warnCount})</button>
+      <button class="pill-chip ${currentModFilter === 'incompatible' ? 'active' : ''}" style="color: #f87171; ${incompCount > 0 ? 'font-weight: bold; border-color: #ef4444;' : ''}" onclick="setModFilter('incompatible')">⛔ Несовместимы (${incompCount})</button>
+    </div>
+    <div style="flex: 1 1 200px; max-width: 300px;">
+      <input type="text" class="form-control" style="font-size: 12px; padding: 5px 10px; height: 32px;" placeholder="🔍 Поиск по названию или ID..." value="${escapeHtml(currentModSearch)}" oninput="filterModsSearch(this.value)">
+    </div>
+  </div>`;
+
+  if (filtered.length === 0) {
+    html += '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 24px;">По заданному фильтру моды не найдены.</div>';
+    container.innerHTML = html;
+    return;
+  }
+
+  html += `<table class="data-table">
     <thead>
       <tr>
-        <th style="width: 50px;">СТАТУС</th>
-        <th>WORKSHOP ID</th>
+        <th style="width: 130px;">СТАТУС</th>
+        <th style="width: 140px;">WORKSHOP ID</th>
         <th>МОД И ИДЕНТИФИКАТОРЫ (MOD ID)</th>
-        <th style="text-align: right;">УПРАВЛЕНИЕ</th>
+        <th style="text-align: right; width: 180px;">УПРАВЛЕНИЕ</th>
       </tr>
     </thead>
     <tbody>`;
 
-  mods.forEach((m, idx) => {
-    let dot = '🟢';
-    if (m.status === 'incompatible') dot = '🔴';
-    else if (m.status === 'warning' || m.status === 'unknown') dot = '🟡';
+  filtered.forEach(m => {
+    const idx = m.origIndex;
+    const isWarn = m.status === 'warning' || m.status === 'unknown';
+    const isIncomp = m.status === 'incompatible';
+
+    let rowStyle = '';
+    let statusBadge = '';
+    let warningBox = '';
+
+    if (isIncomp) {
+      rowStyle = 'style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid #ef4444;"';
+      statusBadge = '<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; white-space: nowrap;">⛔ Несовместим</span>';
+      warningBox = `<div style="margin-top: 6px; padding: 6px 10px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 5px; color: #fca5a5; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 13px;">⛔</span>
+        <span><b>Несовместимость:</b> ${escapeHtml(m.reason || 'Мод устарел или не совместим с текущей версией')}</span>
+      </div>`;
+    } else if (isWarn) {
+      rowStyle = 'style="background: rgba(245, 158, 11, 0.08); border-left: 4px solid #f59e0b;"';
+      statusBadge = '<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.45); color: #fbbf24; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; white-space: nowrap;">⚠️ Внимание</span>';
+      warningBox = `<div style="margin-top: 6px; padding: 6px 10px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 5px; color: #fde68a; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 13px;">⚠️</span>
+        <span><b>Предупреждение:</b> ${escapeHtml(m.reason || 'Универсальный или требует проверки')}</span>
+      </div>`;
+    } else {
+      statusBadge = '<span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.35); color: #4ade80; font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; white-space: nowrap;">🟢 Build 42</span>';
+    }
 
     const wid = m.workshop_id || m.mod_id || '--';
     const name = m.name || ('Workshop Item ' + wid);
-    const reason = m.reason ? ` title="${m.reason.replace(/"/g, '&quot;')}"` : '';
     const modIds = (m.mod_ids && m.mod_ids.length > 0) ? m.mod_ids : (m.mod_id ? [m.mod_id] : []);
-    const modIdBadges = modIds.map(id => `<span style="display: inline-block; background: #1c2b3a; border: 1px solid #2a475e; color: #8bc34a; font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; margin-top: 3px;">${id}</span>`).join('');
-    const mapBadges = (m.map_folders && m.map_folders.length > 0) ? m.map_folders.map(map => `<span style="display: inline-block; background: #2d261a; border: 1px solid #5a452a; color: #ffb74d; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; margin-top: 3px;">🗺️ ${map}</span>`).join('') : '';
+    const modIdBadges = modIds.map(id => `<span style="display: inline-block; background: #1c2b3a; border: 1px solid #2a475e; color: #8bc34a; font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; margin-top: 3px;">${escapeHtml(id)}</span>`).join('');
+    const mapBadges = (m.map_folders && m.map_folders.length > 0) ? m.map_folders.map(map => `<span style="display: inline-block; background: #2d261a; border: 1px solid #5a452a; color: #ffb74d; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; margin-top: 3px;">🗺️ ${escapeHtml(map)}</span>`).join('') : '';
 
-    html += `<tr>
-      <td style="font-size: 16px; text-align: center;"${reason}>${dot}</td>
-      <td style="font-family: var(--font-mono); font-size: 12px; color: #ffb74d;">${wid}</td>
+    const workshopLink = (wid && wid !== '--')
+      ? `<a href="https://steamcommunity.com/sharedfiles/filedetails/?id=${wid}" target="_blank" rel="noopener noreferrer" style="color: #60a5fa; text-decoration: none; font-family: var(--font-mono); font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" title="Открыть страницу в мастерской Steam"><span>${wid}</span> <span style="font-size: 10px;">↗</span></a>`
+      : `<span style="font-family: var(--font-mono); font-size: 12px; color: var(--text-muted);">${wid}</span>`;
+
+    html += `<tr ${rowStyle}>
+      <td style="vertical-align: middle;">${statusBadge}</td>
+      <td style="vertical-align: middle;">${workshopLink}</td>
       <td>
-        <div style="font-weight: 700; color: #fff; font-size: 13.5px;">${name}</div>
-        <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
+        <div style="font-weight: 700; color: #fff; font-size: 13.5px;">${escapeHtml(name)}</div>
+        ${warningBox}
+        <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px;">
           ${modIdBadges || '<span style="font-size: 11px; color: var(--text-muted);">[ID не указан]</span>'}
           ${mapBadges}
         </div>
       </td>
-      <td style="text-align: right; white-space: nowrap;">
+      <td style="text-align: right; white-space: nowrap; vertical-align: middle;">
         <button class="btn btn-secondary" onclick="openEditModModal(${idx})" style="padding: 3px 9px; font-size: 11px;" title="Редактировать Mod ID и название">✏️ Изменить</button>
         <button class="btn btn-secondary" onclick="moveMod(${idx}, -1)" style="padding: 3px 8px; font-size: 11px;" title="Переместить выше">⬆</button>
         <button class="btn btn-secondary" onclick="moveMod(${idx}, 1)" style="padding: 3px 8px; font-size: 11px;" title="Переместить ниже">⬇</button>
