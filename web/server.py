@@ -8,6 +8,7 @@ Exposes full server control, live console, settings, sandbox, and mod compatibil
 import os
 import sys
 import json
+import re
 import asyncio
 import logging
 import platform
@@ -437,9 +438,11 @@ def create_app(
             if log_file.exists():
                 try:
                     with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
-                        lines = [line.rstrip('\r\n') for line in f.readlines()[-100:]]
+                        lines = [line.rstrip('\r\n') for line in f.readlines()[-300:]]
                         for line in lines:
-                            console_history.append(line)
+                            cleaned = filter_and_format_log(line)
+                            if cleaned:
+                                console_history.append(f"[{datetime.now().strftime('%H:%M:%S')}] {cleaned}")
                 except Exception as e:
                     logger.debug(f"Could not seed console history: {e}")
         return {"lines": list(console_history)[-200:]}
