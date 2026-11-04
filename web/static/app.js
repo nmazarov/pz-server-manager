@@ -902,7 +902,12 @@ async function loadConsoleHistory() {
 
 // ── WebSocket Live Console ────────────────────────────────────────
 function connectWebSocket() {
-  if (ws) return;
+  if (ws) {
+    if (ws.readyState === WebSocket.OPEN) return;
+    try { ws.close(); } catch (e) {}
+    ws = null;
+  }
+  if (!currentToken) return;
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = `${proto}//${window.location.host}/ws/console?token=${encodeURIComponent(currentToken)}`;
 
@@ -925,8 +930,12 @@ function connectWebSocket() {
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = (event) => {
     ws = null;
+    if (event && event.code === 1008) {
+      showLogin();
+      return;
+    }
     if (currentToken) {
       setTimeout(connectWebSocket, 3000);
     }

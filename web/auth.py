@@ -39,6 +39,7 @@ class AuthManager:
                     data = json.load(f)
                     
                     self.hashed_pw = data.get('hashed_pw', '')
+                    self.active_sessions = set(data.get('sessions', []))
                     # Valid bcrypt hashes start with $2a$, $2b$, or $2y$
                     if self.hashed_pw and self.hashed_pw.startswith('$2'):
                         return
@@ -60,7 +61,8 @@ class AuthManager:
         try:
             with open(self.auth_path, 'w', encoding='utf-8') as f:
                 json.dump({
-                    'hashed_pw': self.hashed_pw
+                    'hashed_pw': self.hashed_pw,
+                    'sessions': list(self.active_sessions)
                 }, f, indent=2)
         except Exception as e:
             print(f"Error saving auth config: {e}")
@@ -84,6 +86,7 @@ class AuthManager:
     def create_session(self) -> str:
         token = secrets.token_hex(32)
         self.active_sessions.add(token)
+        self._save()
         return token
 
     def validate_session(self, token: Optional[str]) -> bool:
@@ -93,3 +96,4 @@ class AuthManager:
 
     def revoke_session(self, token: str):
         self.active_sessions.discard(token)
+        self._save()
